@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22138" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="32700.99.1234" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22113"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22684"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -69,20 +69,6 @@
                                 </userDefinedRuntimeAttributes>
                                 <connections>
                                     <action selector="resumeInterruptedSession:" destination="BYZ-38-t0r" eventType="touchUpInside" id="42K-1B-qJd"/>
-                                </connections>
-                            </button>
-                            <button opaque="NO" contentMode="scaleAspectFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="eRT-dK-6dM" userLabel="Record">
-                                <rect key="frame" x="30" y="762" width="60" height="60"/>
-                                <state key="normal" image="CaptureVideo">
-                                    <color key="titleShadowColor" red="0.5" green="0.5" blue="0.5" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                </state>
-                                <userDefinedRuntimeAttributes>
-                                    <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
-                                        <integer key="value" value="4"/>
-                                    </userDefinedRuntimeAttribute>
-                                </userDefinedRuntimeAttributes>
-                                <connections>
-                                    <action selector="toggleMovieRecording:" destination="BYZ-38-t0r" eventType="touchUpInside" id="9R7-Ok-FpB"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleAspectFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="uCj-6P-mHF" userLabel="Photo">
@@ -167,11 +153,7 @@
                                 <variation key="heightClass=compact-widthClass=regular" constant="20"/>
                             </constraint>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="7Pe-hp-l4R"/>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="height" secondItem="eRT-dK-6dM" secondAttribute="height" id="AEV-ew-H4g"/>
                             <constraint firstItem="rUJ-G6-RPv" firstAttribute="trailing" secondItem="uCj-6P-mHF" secondAttribute="trailing" id="CxO-yb-bPc"/>
-                            <constraint firstItem="eRT-dK-6dM" firstAttribute="top" secondItem="nyU-fN-aJh" secondAttribute="top" constant="20" id="Euz-PB-q98">
-                                <variation key="heightClass=compact" constant="20"/>
-                            </constraint>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="top" secondItem="FAC-co-10c" secondAttribute="bottom" constant="24" id="GfS-WS-Wgh">
                                 <variation key="heightClass=compact" constant="4"/>
                             </constraint>
@@ -179,12 +161,8 @@
                                 <variation key="heightClass=regular" constant="30"/>
                                 <variation key="heightClass=compact-widthClass=regular" constant="30"/>
                             </constraint>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="trailing" secondItem="eRT-dK-6dM" secondAttribute="trailing" id="K2Z-zU-Jr6"/>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="top" secondItem="rUJ-G6-RPv" secondAttribute="top" id="NFm-e8-abT"/>
                             <constraint firstItem="g5h-YZ-dge" firstAttribute="centerX" secondItem="3eR-Rn-XpZ" secondAttribute="centerX" id="Nsk-xq-U8S"/>
-                            <constraint firstItem="eRT-dK-6dM" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" constant="20" id="Nt0-n2-Bld">
-                                <variation key="heightClass=compact-widthClass=regular" constant="20"/>
-                            </constraint>
                             <constraint firstItem="FZr-Ip-7WL" firstAttribute="centerX" secondItem="nyU-fN-aJh" secondAttribute="centerX" id="OaZ-uO-vXY"/>
                             <constraint firstItem="3eR-Rn-XpZ" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="Pik-0A-HnE"/>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="centerX" secondItem="rUJ-G6-RPv" secondAttribute="centerX" id="Q7V-4A-Qne"/>
@@ -197,19 +175,11 @@
                                 <variation key="heightClass=compact" constant="-10"/>
                             </constraint>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="height" secondItem="rUJ-G6-RPv" secondAttribute="height" id="aQi-F7-E2b"/>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="top" secondItem="eRT-dK-6dM" secondAttribute="top" id="bQd-ro-0Hw"/>
                             <constraint firstItem="nyU-fN-aJh" firstAttribute="bottom" secondItem="rUJ-G6-RPv" secondAttribute="bottom" constant="40" id="cBm-gw-jC5">
                                 <variation key="heightClass=compact" constant="20"/>
                             </constraint>
-                            <constraint firstItem="eRT-dK-6dM" firstAttribute="leading" secondItem="nyU-fN-aJh" secondAttribute="leading" constant="70" id="cCX-ki-9gT">
-                                <variation key="heightClass=regular" constant="30"/>
-                            </constraint>
                             <constraint firstItem="nyU-fN-aJh" firstAttribute="bottom" secondItem="uCj-6P-mHF" secondAttribute="bottom" constant="40" id="eWs-co-Aaz"/>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="centerX" secondItem="eRT-dK-6dM" secondAttribute="centerX" id="ecz-nu-TGQ"/>
                             <constraint firstItem="wEq-95-U3e" firstAttribute="bottom" secondItem="Pii-2r-R2l" secondAttribute="top" constant="-15" id="fZo-i7-sYT"/>
-                            <constraint firstItem="nyU-fN-aJh" firstAttribute="bottom" secondItem="eRT-dK-6dM" secondAttribute="bottom" constant="30" id="fj7-bK-7jJ">
-                                <variation key="heightClass=compact" constant="20"/>
-                            </constraint>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="leading" secondItem="FAC-co-10c" secondAttribute="trailing" constant="30" id="gJV-f9-AZC">
                                 <variation key="heightClass=compact" constant="20"/>
                             </constraint>
@@ -217,8 +187,6 @@
                             <constraint firstItem="Pii-2r-R2l" firstAttribute="centerX" secondItem="nyU-fN-aJh" secondAttribute="centerX" id="hAn-K4-0dY"/>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="kLt-6H-FhF"/>
                             <constraint firstItem="nyU-fN-aJh" firstAttribute="trailing" secondItem="uCj-6P-mHF" secondAttribute="trailing" constant="40" id="kke-DB-UMU"/>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="centerX" secondItem="eRT-dK-6dM" secondAttribute="centerX" id="l0o-ld-yKL"/>
-                            <constraint firstItem="rUJ-G6-RPv" firstAttribute="centerX" secondItem="eRT-dK-6dM" secondAttribute="centerX" id="l9q-LF-oXa"/>
                             <constraint firstItem="FAC-co-10c" firstAttribute="bottom" secondItem="uCj-6P-mHF" secondAttribute="top" constant="40" id="lOb-j4-pW7">
                                 <variation key="heightClass=compact-widthClass=regular" constant="24"/>
                             </constraint>
@@ -230,7 +198,6 @@
                             </constraint>
                             <constraint firstItem="FAC-co-10c" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="r4B-Xm-WaF"/>
                             <constraint firstItem="wEq-95-U3e" firstAttribute="top" secondItem="eI6-gV-W7d" secondAttribute="bottom" constant="14" id="reW-nh-Qu0"/>
-                            <constraint firstItem="uCj-6P-mHF" firstAttribute="width" secondItem="eRT-dK-6dM" secondAttribute="width" id="s8u-Y8-n27"/>
                             <constraint firstItem="FZr-Ip-7WL" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="sTY-i6-czN"/>
                             <constraint firstItem="uCj-6P-mHF" firstAttribute="trailing" secondItem="nyU-fN-aJh" secondAttribute="trailing" constant="40" id="uFq-al-xjE">
                                 <variation key="heightClass=compact-widthClass=regular" constant="0.0"/>
@@ -240,69 +207,51 @@
                         </constraints>
                         <variation key="default">
                             <mask key="constraints">
-                                <exclude reference="cBm-gw-jC5"/>
-                                <exclude reference="fj7-bK-7jJ"/>
                                 <exclude reference="kke-DB-UMU"/>
+                                <exclude reference="cBm-gw-jC5"/>
                                 <exclude reference="oNo-3f-BoO"/>
-                                <exclude reference="lOb-j4-pW7"/>
                                 <exclude reference="r4B-Xm-WaF"/>
-                                <exclude reference="Euz-PB-q98"/>
-                                <exclude reference="Nt0-n2-Bld"/>
-                                <exclude reference="3cf-JN-sue"/>
+                                <exclude reference="lOb-j4-pW7"/>
                                 <exclude reference="7Pe-hp-l4R"/>
-                                <exclude reference="K2Z-zU-Jr6"/>
-                                <exclude reference="Q7V-4A-Qne"/>
-                                <exclude reference="ecz-nu-TGQ"/>
-                                <exclude reference="gJV-f9-AZC"/>
                                 <exclude reference="kLt-6H-FhF"/>
-                                <exclude reference="l0o-ld-yKL"/>
+                                <exclude reference="Q7V-4A-Qne"/>
                                 <exclude reference="uFq-al-xjE"/>
+                                <exclude reference="gJV-f9-AZC"/>
+                                <exclude reference="3cf-JN-sue"/>
                                 <exclude reference="CxO-yb-bPc"/>
-                                <exclude reference="l9q-LF-oXa"/>
                                 <exclude reference="qMd-hl-eFr"/>
                             </mask>
                         </variation>
                         <variation key="heightClass=compact">
                             <mask key="constraints">
+                                <exclude reference="m8a-cF-Rf0"/>
                                 <exclude reference="J70-ky-10v"/>
+                                <include reference="kke-DB-UMU"/>
                                 <exclude reference="cBm-gw-jC5"/>
                                 <exclude reference="eWs-co-Aaz"/>
-                                <include reference="fj7-bK-7jJ"/>
-                                <include reference="kke-DB-UMU"/>
-                                <exclude reference="m8a-cF-Rf0"/>
                                 <include reference="r4B-Xm-WaF"/>
-                                <exclude reference="Euz-PB-q98"/>
-                                <exclude reference="cCX-ki-9gT"/>
                                 <include reference="7Pe-hp-l4R"/>
-                                <exclude reference="GfS-WS-Wgh"/>
-                                <exclude reference="K2Z-zU-Jr6"/>
-                                <exclude reference="NFm-e8-abT"/>
                                 <exclude reference="ZqG-KD-zbF"/>
-                                <exclude reference="bQd-ro-0Hw"/>
-                                <include reference="ecz-nu-TGQ"/>
                                 <include reference="gJV-f9-AZC"/>
+                                <exclude reference="GfS-WS-Wgh"/>
+                                <exclude reference="NFm-e8-abT"/>
                                 <exclude reference="CxO-yb-bPc"/>
-                                <include reference="l9q-LF-oXa"/>
                                 <include reference="qMd-hl-eFr"/>
                             </mask>
                         </variation>
                         <variation key="heightClass=compact-widthClass=regular">
                             <mask key="constraints">
+                                <exclude reference="m8a-cF-Rf0"/>
                                 <exclude reference="J70-ky-10v"/>
                                 <exclude reference="eWs-co-Aaz"/>
-                                <exclude reference="m8a-cF-Rf0"/>
                                 <exclude reference="oNo-3f-BoO"/>
                                 <exclude reference="lOb-j4-pW7"/>
-                                <exclude reference="Nt0-n2-Bld"/>
-                                <exclude reference="cCX-ki-9gT"/>
+                                <include reference="kLt-6H-FhF"/>
+                                <include reference="Q7V-4A-Qne"/>
+                                <exclude reference="uFq-al-xjE"/>
                                 <exclude reference="3cf-JN-sue"/>
                                 <exclude reference="GfS-WS-Wgh"/>
                                 <exclude reference="NFm-e8-abT"/>
-                                <include reference="Q7V-4A-Qne"/>
-                                <exclude reference="bQd-ro-0Hw"/>
-                                <include reference="kLt-6H-FhF"/>
-                                <include reference="l0o-ld-yKL"/>
-                                <exclude reference="uFq-al-xjE"/>
                             </mask>
                         </variation>
                     </view>
@@ -318,7 +267,6 @@
                         <outlet property="photoButton" destination="uCj-6P-mHF" id="Ha8-ua-hxy"/>
                         <outlet property="photoQualityPrioritizationSegControl" destination="wEq-95-U3e" id="Cb5-oh-nQf"/>
                         <outlet property="previewView" destination="3eR-Rn-XpZ" id="e7I-nu-L6j"/>
-                        <outlet property="recordButton" destination="eRT-dK-6dM" id="Zkv-mB-fKz"/>
                         <outlet property="resumeButton" destination="FZr-Ip-7WL" id="tX5-Sx-rQK"/>
                     </connections>
                 </viewController>
@@ -335,13 +283,12 @@
     <color key="tintColor" red="1" green="1" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
     <resources>
         <image name="CapturePhoto" width="150" height="150"/>
-        <image name="CaptureVideo" width="150" height="150"/>
         <image name="FlipCamera" width="150" height="150"/>
         <image name="LivePhotoON" width="150" height="150"/>
         <image name="MovieSelector" width="72" height="72"/>
         <image name="PhotoSelector" width="72" height="72"/>
         <systemColor name="systemGrayColor">
-            <color red="0.5568627451" green="0.5568627451" blue="0.57647058819999997" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.55686274509803924" green="0.55686274509803924" blue="0.57647058823529407" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

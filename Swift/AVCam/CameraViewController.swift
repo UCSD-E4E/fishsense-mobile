@@ -22,7 +22,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         // Disable the UI. Enable the UI later, if and only if the session
         // starts running.
         cameraButton.isEnabled = false
-        recordButton.isEnabled = false
+//        recordButton.isEnabled = false
         photoButton.isEnabled = false
         livePhotoModeButton.isEnabled = false
         photoQualityPrioritizationSegControl.isEnabled = false
@@ -318,7 +318,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         captureModeControl.isEnabled = false
         
         if captureModeControl.selectedSegmentIndex == CaptureMode.photo.rawValue {
-            recordButton.isEnabled = false
+//            recordButton.isEnabled = false
             HDRVideoModeButton.isHidden = true
             selectedMovieMode10BitDeviceFormat = nil
             
@@ -392,7 +392,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                     self.movieFileOutput = movieFileOutput
                     
                     DispatchQueue.main.async {
-                        self.recordButton.isEnabled = true
+//                        self.recordButton.isEnabled = true
                         
                         // For photo captures during movie recording, Balanced
                         // quality photo processing is prioritized to get high
@@ -438,7 +438,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     /// - Tag: ChangeCamera
     @IBAction private func changeCameraButtonPressed(_ cameraButton: UIButton) {
         cameraButton.isEnabled = false
-        recordButton.isEnabled = false
+//        recordButton.isEnabled = false
         photoButton.isEnabled = false
         livePhotoModeButton.isEnabled = false
         captureModeControl.isEnabled = false
@@ -450,7 +450,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             
             DispatchQueue.main.async {
                 self.cameraButton.isEnabled = true
-                self.recordButton.isEnabled = self.movieFileOutput != nil
+//                self.recordButton.isEnabled = self.movieFileOutput != nil
                 self.photoButton.isEnabled = true
                 self.livePhotoModeButton.isEnabled = true
                 self.captureModeControl.isEnabled = true
@@ -600,13 +600,15 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                        monitorSubjectAreaChange: Bool) {
         
         sessionQueue.async {
-            let device = self.videoDeviceInput.device
+            guard let videoDeviceInput = self.videoDeviceInput else {
+                print("Video device input is nil.")
+                return
+            }
+            
+            let device = videoDeviceInput.device
             do {
                 try device.lockForConfiguration()
                 
-                // Setting (focus/exposure)PointOfInterest alone does not
-                // initiate a (focus/exposure) operation. Call
-                // set(Focus/Exposure)Mode() to apply the new point of interest.
                 if device.isFocusPointOfInterestSupported && device.isFocusModeSupported(focusMode) {
                     device.focusPointOfInterest = devicePoint
                     device.focusMode = focusMode
@@ -887,66 +889,66 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     
     private var backgroundRecordingID: UIBackgroundTaskIdentifier?
     
-    @IBOutlet private weak var recordButton: UIButton!
+//    @IBOutlet private weak var recordButton: UIButton!
     
     @IBOutlet private weak var resumeButton: UIButton!
     
-    @IBAction private func toggleMovieRecording(_ recordButton: UIButton) {
-        guard let movieFileOutput = self.movieFileOutput else {
-            return
-        }
-        
-        /*
-         Disable the Camera button until recording finishes, and disable
-         the Record button until recording starts or finishes.
-         
-         See the AVCaptureFileOutputRecordingDelegate methods.
-         */
-        cameraButton.isEnabled = false
-        recordButton.isEnabled = false
-        captureModeControl.isEnabled = false
-        
-        let videoRotationAngle = self.videoDeviceRotationCoordinator.videoRotationAngleForHorizonLevelCapture
-        
-        if let window = self.view.window, let windowScene = window.windowScene {
-            switch windowScene.interfaceOrientation {
-            case .portrait: self.supportedInterfaceOrientations = .portrait
-            case .landscapeLeft: self.supportedInterfaceOrientations = .landscapeLeft
-            case .landscapeRight: self.supportedInterfaceOrientations = .landscapeRight
-            case .portraitUpsideDown: self.supportedInterfaceOrientations = .portraitUpsideDown
-            case .unknown: self.supportedInterfaceOrientations = .portrait
-            default: self.supportedInterfaceOrientations = .portrait
-            }
-        }
-        self.setNeedsUpdateOfSupportedInterfaceOrientations()
-        
-        sessionQueue.async {
-            if !movieFileOutput.isRecording {
-                if UIDevice.current.isMultitaskingSupported {
-                    self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
-                }
-                
-                // Update the orientation on the movie file output video
-                // connection before recording.
-                let movieFileOutputConnection = movieFileOutput.connection(with: .video)
-                movieFileOutputConnection?.videoRotationAngle = videoRotationAngle
-                
-                let availableVideoCodecTypes = movieFileOutput.availableVideoCodecTypes
-                
-                if availableVideoCodecTypes.contains(.hevc) {
-                    movieFileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc], for: movieFileOutputConnection!)
-                }
-                
-                // Start recording video to a temporary file.
-                let outputFileName = NSUUID().uuidString
-                let outputFilePath = (NSTemporaryDirectory() as NSString).appendingPathComponent((outputFileName as NSString).appendingPathExtension("mov")!)
-                movieFileOutput.startRecording(to: URL(fileURLWithPath: outputFilePath), recordingDelegate: self)
-            } else {
-                movieFileOutput.stopRecording()
-            }
-        }
-    }
-    
+//    @IBAction private func toggleMovieRecording(_ recordButton: UIButton) {
+//        guard let movieFileOutput = self.movieFileOutput else {
+//            return
+//        }
+//        
+//        /*
+//         Disable the Camera button until recording finishes, and disable
+//         the Record button until recording starts or finishes.
+//         
+//         See the AVCaptureFileOutputRecordingDelegate methods.
+//         */
+//        cameraButton.isEnabled = false
+//        recordButton.isEnabled = false
+//        captureModeControl.isEnabled = false
+//        
+//        let videoRotationAngle = self.videoDeviceRotationCoordinator.videoRotationAngleForHorizonLevelCapture
+//        
+//        if let window = self.view.window, let windowScene = window.windowScene {
+//            switch windowScene.interfaceOrientation {
+//            case .portrait: self.supportedInterfaceOrientations = .portrait
+//            case .landscapeLeft: self.supportedInterfaceOrientations = .landscapeLeft
+//            case .landscapeRight: self.supportedInterfaceOrientations = .landscapeRight
+//            case .portraitUpsideDown: self.supportedInterfaceOrientations = .portraitUpsideDown
+//            case .unknown: self.supportedInterfaceOrientations = .portrait
+//            default: self.supportedInterfaceOrientations = .portrait
+//            }
+//        }
+//        self.setNeedsUpdateOfSupportedInterfaceOrientations()
+//        
+//        sessionQueue.async {
+//            if !movieFileOutput.isRecording {
+//                if UIDevice.current.isMultitaskingSupported {
+//                    self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
+//                }
+//                
+//                // Update the orientation on the movie file output video
+//                // connection before recording.
+//                let movieFileOutputConnection = movieFileOutput.connection(with: .video)
+//                movieFileOutputConnection?.videoRotationAngle = videoRotationAngle
+//                
+//                let availableVideoCodecTypes = movieFileOutput.availableVideoCodecTypes
+//                
+//                if availableVideoCodecTypes.contains(.hevc) {
+//                    movieFileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc], for: movieFileOutputConnection!)
+//                }
+//                
+//                // Start recording video to a temporary file.
+//                let outputFileName = NSUUID().uuidString
+//                let outputFilePath = (NSTemporaryDirectory() as NSString).appendingPathComponent((outputFileName as NSString).appendingPathExtension("mov")!)
+//                movieFileOutput.startRecording(to: URL(fileURLWithPath: outputFilePath), recordingDelegate: self)
+//            } else {
+//                movieFileOutput.stopRecording()
+//            }
+//        }
+//    }
+//    
     var _supportedInterfaceOrientations: UIInterfaceOrientationMask = .all
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         get { return _supportedInterfaceOrientations }
@@ -954,14 +956,14 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     }
     
     /// - Tag: DidStartRecording
-    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        // Enable the Record button to let the user stop recording.
-        DispatchQueue.main.async {
-            self.recordButton.isEnabled = true
-            self.recordButton.setImage(#imageLiteral(resourceName: "CaptureStop"), for: [])
-        }
-    }
-    
+//    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+//        // Enable the Record button to let the user stop recording.
+//        DispatchQueue.main.async {
+//            self.recordButton.isEnabled = true
+//            self.recordButton.setImage(#imageLiteral(resourceName: "CaptureStop"), for: [])
+//        }
+//    }
+//    
     /// - Tag: DidFinishRecording
     func fileOutput(_ output: AVCaptureFileOutput,
                     didFinishRecordingTo outputFileURL: URL,
@@ -1037,9 +1039,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             // Only enable the ability to change camera if the device has more
             // than one camera.
             self.cameraButton.isEnabled = self.videoDeviceDiscoverySession.uniqueDevicePositionsCount > 1
-            self.recordButton.isEnabled = true
+//            self.recordButton.isEnabled = true
             self.captureModeControl.isEnabled = true
-            self.recordButton.setImage(#imageLiteral(resourceName: "CaptureVideo"), for: [])
+//            self.recordButton.setImage(#imageLiteral(resourceName: "CaptureVideo"), for: [])
             self.supportedInterfaceOrientations = UIInterfaceOrientationMask.all
             // After the recording finishes, allow rotation to continue.
             self.setNeedsUpdateOfSupportedInterfaceOrientations()
@@ -1059,7 +1061,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 // Only enable the ability to change camera if the device has
                 // more than one camera.
                 self.cameraButton.isEnabled = isSessionRunning && self.videoDeviceDiscoverySession.uniqueDevicePositionsCount > 1
-                self.recordButton.isEnabled = isSessionRunning && self.movieFileOutput != nil
+//                self.recordButton.isEnabled = isSessionRunning && self.movieFileOutput != nil
                 self.photoButton.isEnabled = isSessionRunning
                 self.captureModeControl.isEnabled = isSessionRunning
                 self.livePhotoModeButton.isEnabled = isSessionRunning && isLivePhotoCaptureEnabled
@@ -1113,7 +1115,13 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             if let movieFileOutput = self.movieFileOutput, movieFileOutput.isRecording {
                 return
             }
-            if self.videoDeviceInput.device == systemPreferredCamera {
+            if let videoDeviceInput = self.videoDeviceInput {
+                if videoDeviceInput.device == systemPreferredCamera {
+                    return
+                }
+            } else {
+                // Handle the case where videoDeviceInput is nil
+                // You may want to log an error or handle this condition appropriately
                 return
             }
             
