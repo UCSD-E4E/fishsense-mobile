@@ -25,7 +25,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //        recordButton.isEnabled = false
         photoButton.isEnabled = false
         livePhotoModeButton.isEnabled = false
-        photoQualityPrioritizationSegControl.isEnabled = false
+//        photoQualityPrioritizationSegControl.isEnabled = false
         captureModeControl.isEnabled = false
         HDRVideoModeButton.isHidden = true
         
@@ -258,9 +258,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             session.addOutput(photoOutput)
             
             photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
-            photoOutput.maxPhotoQualityPrioritization = .quality
+//            photoOutput.maxPhotoQualityPrioritization = .quality
             livePhotoMode = photoOutput.isLivePhotoCaptureSupported ? .on : .off
-            photoQualityPrioritizationMode = .balanced
+//            photoQualityPrioritizationMode = .balanced
             
             self.configurePhotoOutput()
             
@@ -341,14 +341,14 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 DispatchQueue.main.async {
                     self.livePhotoModeButton.isHidden = false
                     self.livePhotoModeButton.isEnabled = livePhotoCaptureEnabled
-                    self.photoQualityPrioritizationSegControl.isHidden = false
-                    self.photoQualityPrioritizationSegControl.isEnabled = true
+//                    self.photoQualityPrioritizationSegControl.isHidden = false
+//                    self.photoQualityPrioritizationSegControl.isEnabled = true
                 }
                 self.session.commitConfiguration()
             }
         } else if captureModeControl.selectedSegmentIndex == CaptureMode.movie.rawValue {
             livePhotoModeButton.isHidden = true
-            photoQualityPrioritizationSegControl.isHidden = true
+//            photoQualityPrioritizationSegControl.isHidden = true
             
             sessionQueue.async {
                 let movieFileOutput = AVCaptureMovieFileOutput()
@@ -398,8 +398,8 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                         // quality photo processing is prioritized to get high
                         // quality stills and avoid frame drops during
                         // recording.
-                        self.photoQualityPrioritizationSegControl.selectedSegmentIndex = 1
-                        self.photoQualityPrioritizationSegControl.sendActions(for: UIControl.Event.valueChanged)
+//                        self.photoQualityPrioritizationSegControl.selectedSegmentIndex = 1
+//                        self.photoQualityPrioritizationSegControl.sendActions(for: UIControl.Event.valueChanged)
                     }
                 }
             }
@@ -411,7 +411,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         let largestDimesnion = supportedMaxPhotoDimensions.last
         self.photoOutput.maxPhotoDimensions = largestDimesnion!
         self.photoOutput.isLivePhotoCaptureEnabled = self.photoOutput.isLivePhotoCaptureSupported
-        self.photoOutput.maxPhotoQualityPrioritization = .quality
+//        self.photoOutput.maxPhotoQualityPrioritization = .quality
         self.photoOutput.isResponsiveCaptureEnabled = self.photoOutput.isResponsiveCaptureSupported
         self.photoOutput.isFastCapturePrioritizationEnabled = self.photoOutput.isFastCapturePrioritizationSupported
         self.photoOutput.isAutoDeferredPhotoDeliveryEnabled = self.photoOutput.isAutoDeferredPhotoDeliverySupported
@@ -442,7 +442,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         photoButton.isEnabled = false
         livePhotoModeButton.isEnabled = false
         captureModeControl.isEnabled = false
-        photoQualityPrioritizationSegControl.isEnabled = false
+//        photoQualityPrioritizationSegControl.isEnabled = false
         HDRVideoModeButton.isEnabled = false
         self.selectedMovieMode10BitDeviceFormat = nil
         
@@ -454,7 +454,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 self.photoButton.isEnabled = true
                 self.livePhotoModeButton.isEnabled = true
                 self.captureModeControl.isEnabled = true
-                self.photoQualityPrioritizationSegControl.isEnabled = true
+//                self.photoQualityPrioritizationSegControl.isEnabled = true
             }
         })
     }
@@ -739,7 +739,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         if self.livePhotoMode == .on && self.photoOutput.isLivePhotoCaptureSupported { // Live Photo Capture is not supported in movie mode.
             photoSettings.livePhotoMovieFileURL = livePhotoMovieUniqueTemporaryDirectoryFileURL()
         }
-        photoSettings.photoQualityPrioritization = self.photoQualityPrioritizationMode
+//        photoSettings.photoQualityPrioritization = self.photoQualityPrioritizationMode
 
         return photoSettings
     }
@@ -779,32 +779,32 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         }
     }
     
-    private var photoQualityPrioritizationMode: AVCapturePhotoOutput.QualityPrioritization = .balanced
+//    private var photoQualityPrioritizationMode: AVCapturePhotoOutput.QualityPrioritization = .balanced
     
-    @IBOutlet private weak var photoQualityPrioritizationSegControl: UISegmentedControl!
+//    @IBOutlet private weak var photoQualityPrioritizationSegControl: UISegmentedControl!
     
-    @IBAction func togglePhotoQualityPrioritizationMode(_ photoQualityPrioritizationSegControl: UISegmentedControl) {
-        let selectedQuality = photoQualityPrioritizationSegControl.selectedSegmentIndex
-        sessionQueue.async {
-            switch selectedQuality {
-            case 0 :
-                self.photoQualityPrioritizationMode = .speed
-            case 1 :
-                self.photoQualityPrioritizationMode = .balanced
-            case 2 :
-                self.photoQualityPrioritizationMode = .quality
-            default:
-                break
-            }
-            
-            // Update `photoSettings` to include
-            // `photoQualityPrioritizationMode`.
-            let photoSettings = self.setUpPhotoSettings()
-            DispatchQueue.main.async {
-                self.photoSettings = photoSettings
-            }
-        }
-    }
+//    @IBAction func togglePhotoQualityPrioritizationMode(_ photoQualityPrioritizationSegControl: UISegmentedControl) {
+//        let selectedQuality = photoQualityPrioritizationSegControl.selectedSegmentIndex
+//        sessionQueue.async {
+//            switch selectedQuality {
+//            case 0 :
+//                self.photoQualityPrioritizationMode = .speed
+//            case 1 :
+//                self.photoQualityPrioritizationMode = .balanced
+//            case 2 :
+//                self.photoQualityPrioritizationMode = .quality
+//            default:
+//                break
+//            }
+//            
+//            // Update `photoSettings` to include
+//            // `photoQualityPrioritizationMode`.
+//            let photoSettings = self.setUpPhotoSettings()
+//            DispatchQueue.main.async {
+//                self.photoSettings = photoSettings
+//            }
+//        }
+//    }
 
     func tenBitVariantOfFormat(activeFormat: AVCaptureDevice.Format) -> AVCaptureDevice.Format? {
         let formats = self.videoDeviceInput.device.formats
@@ -1065,7 +1065,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 self.photoButton.isEnabled = isSessionRunning
                 self.captureModeControl.isEnabled = isSessionRunning
                 self.livePhotoModeButton.isEnabled = isSessionRunning && isLivePhotoCaptureEnabled
-                self.photoQualityPrioritizationSegControl.isEnabled = isSessionRunning
+//                self.photoQualityPrioritizationSegControl.isEnabled = isSessionRunning
             }
         }
         keyValueObservations.append(keyValueObservation)
