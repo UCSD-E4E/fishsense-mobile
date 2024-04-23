@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7AA677101CFF765500B353FB"
-               BuildableName = "AVCam.app"
+               BuildableName = "FishSense.app"
                BlueprintName = "AVCam"
                ReferencedContainer = "container:AVCam Swift.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7AA677101CFF765500B353FB"
-            BuildableName = "AVCam.app"
+            BuildableName = "FishSense.app"
             BlueprintName = "AVCam"
             ReferencedContainer = "container:AVCam Swift.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7AA677101CFF765500B353FB"
-            BuildableName = "AVCam.app"
+            BuildableName = "FishSense.app"
             BlueprintName = "AVCam"
             ReferencedContainer = "container:AVCam Swift.xcodeproj">
          </BuildableReference>
