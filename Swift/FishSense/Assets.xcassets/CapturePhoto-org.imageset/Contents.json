@@ -1,12 +1,11 @@
 {
   "images" : [
     {
-      "filename" : "icons8-loading-circle-50 (1).png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "icons8-loading-circle-100.png",
+      "filename" : "CapturePhoto@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
@@ -18,5 +17,8 @@
   "info" : {
     "author" : "xcode",
     "version" : 1
+  },
+  "properties" : {
+    "template-rendering-intent" : "template"
   }
 }
