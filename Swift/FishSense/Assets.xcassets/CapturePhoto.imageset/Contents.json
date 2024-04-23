@@ -1,12 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "icons8-loading-circle-50 (1).png",
+      "filename" : "icons8-circle-50.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "icons8-loading-circle-100.png",
+      "filename" : "icons8-circle-100.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
