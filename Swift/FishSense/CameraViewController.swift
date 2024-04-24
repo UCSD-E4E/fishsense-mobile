@@ -31,7 +31,13 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         
         // Set up the video preview view.
         previewView.session = session
-		
+        previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        previewView.layer.addSublayer(previewLayer)
+
+        // Adjust the frame of the preview layer to cover the entire preview view
+        previewLayer.frame = previewView.bounds
+
 		// Request location authorization so photos and videos can be tagged
         // with their location.
 		if locationManager.authorizationStatus == .notDetermined {
@@ -171,6 +177,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     @objc dynamic var videoDeviceInput: AVCaptureDeviceInput!
     
     @IBOutlet private weak var previewView: PreviewView!
+    
+    private var previewLayer: AVCaptureVideoPreviewLayer!
+
     
     // Call this on the session queue.
     /// - Tag: ConfigureSession
