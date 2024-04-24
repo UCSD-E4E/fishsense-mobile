@@ -37,6 +37,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
         // Adjust the frame of the preview layer to cover the entire preview view
         previewLayer.frame = previewView.bounds
+        
+        let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
+               self.previewView.addGestureRecognizer(pinchRecognizer)
 
 		// Request location authorization so photos and videos can be tagged
         // with their location.
@@ -88,6 +91,41 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             self.configureSession()
         }
     }
+    
+    let minimumZoom: CGFloat = 1.0
+    let maximumZoom: CGFloat = 2.0
+    var lastZoomFactor: CGFloat = 1.0
+    
+    @objc func pinch(_ pinch: UIPinchGestureRecognizer) {
+             let device = videoDeviceInput.device
+       
+             // Return zoom value between the minimum and maximum zoom values
+             func minMaxZoom(_ factor: CGFloat) -> CGFloat {
+                   return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
+             }
+       
+             func update(scale factor: CGFloat) {
+                  do {
+                        try device.lockForConfiguration()
+                        defer { device.unlockForConfiguration() }
+                        device.videoZoomFactor = factor
+                     } catch {
+                        print("\(error.localizedDescription)")
+                     }
+             }
+       
+             let newScaleFactor = minMaxZoom(pinch.scale * lastZoomFactor)
+       
+             switch pinch.state {
+                   case .began: fallthrough
+                   case .changed: update(scale: newScaleFactor)
+                   case .ended:
+                       lastZoomFactor = minMaxZoom(newScaleFactor)
+                       update(scale: lastZoomFactor)
+                   default: break
+                   
+              }
+     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -174,12 +212,13 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     
     private var setupResult: SessionSetupResult = .success
     
-    @objc dynamic var videoDeviceInput: AVCaptureDeviceInput!
+    @objc dynamic var videoDeviceInput: AVCaptureDeviceInput! 
     
     @IBOutlet private weak var previewView: PreviewView!
     
     private var previewLayer: AVCaptureVideoPreviewLayer!
-
+    
+    
     
     // Call this on the session queue.
     /// - Tag: ConfigureSession
@@ -203,7 +242,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             let userDefaults = UserDefaults.standard
             if !userDefaults.bool(forKey: "setInitialUserPreferredCamera") || defaultVideoDevice == nil {
                 let backVideoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInDualCamera, .builtInWideAngleCamera],
-                                                                                       mediaType: .video, position: .back)
+                                                                                       mediaType: .video, position: .back) 
                 
                 defaultVideoDevice = backVideoDeviceDiscoverySession.devices.first
                 
@@ -319,6 +358,8 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         case photo = 0
         case movie = 1
     }
+    
+    
     
  //   @IBOutlet private weak var captureModeControl: UISegmentedControl!
     
@@ -438,7 +479,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     @IBOutlet private weak var cameraUnavailableLabel: UILabel!
     
     private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTrueDepthCamera],
-                                                                               mediaType: .video, position: .unspecified)
+                                                                               mediaType: .video, position: .unspecified) 
 
     private var videoDeviceRotationCoordinator: AVCaptureDevice.RotationCoordinator!
     
@@ -1170,6 +1211,8 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         }
     }
     
+    
+    
     /// - Tag: HandleInterruption
     @objc
     func sessionWasInterrupted(notification: NSNotification) {
@@ -1233,6 +1276,10 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             )
         }
     }
+    
+    
+
+   
 }
 
 extension AVCaptureDevice.DiscoverySession {
