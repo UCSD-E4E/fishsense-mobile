@@ -29,7 +29,6 @@
 		7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
 		7AA677281CFF7B5C00B353FB /* PreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = ../Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
-		FCEB55682BE20336003D3797 /* AVCam copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "AVCam copy-Info.plist"; path = "/Users/chriscrutchfield/Repos/school/e4e/fishsense-mobile/Swift/AVCam copy-Info.plist"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,7 +49,6 @@
 				7AA677131CFF765600B353FB /* FishSense */,
 				7AA677121CFF765600B353FB /* Products */,
 				DF594A7680971C5690D94783 /* Configuration */,
-				FCEB55682BE20336003D3797 /* AVCam copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
