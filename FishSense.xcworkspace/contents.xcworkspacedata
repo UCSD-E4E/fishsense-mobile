@@ -2,6 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:/Users/willhsu/Documents/fishsense-mobile/Swift/FishSense Swift.xcodeproj">
+      location = "container:Swift/FishSense Swift.xcodeproj">
    </FileRef>
 </Workspace>

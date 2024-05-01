@@ -1,0 +1,4 @@
+module FishSenseRS {
+    header "fishsense.h"
+    export *
+}
