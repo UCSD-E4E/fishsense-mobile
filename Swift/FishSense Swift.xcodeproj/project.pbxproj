@@ -28,8 +28,8 @@
 		7AA677201CFF765600B353FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
 		7AA677281CFF7B5C00B353FB /* PreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
-		D4D50724A9FAAAE2653232EA /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = ../Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
+		FCEB55682BE20336003D3797 /* AVCam copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "AVCam copy-Info.plist"; path = "/Users/chriscrutchfield/Repos/school/e4e/fishsense-mobile/Swift/AVCam copy-Info.plist"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,15 +43,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		3ED39896C9EF62134C9B2D4C /* LICENSE */ = {
-			isa = PBXGroup;
-			children = (
-				D4D50724A9FAAAE2653232EA /* LICENSE.txt */,
-			);
-			name = LICENSE;
-			path = ../LICENSE;
-			sourceTree = "<group>";
-		};
 		7AA677081CFF765500B353FB = {
 			isa = PBXGroup;
 			children = (
@@ -59,7 +50,7 @@
 				7AA677131CFF765600B353FB /* FishSense */,
 				7AA677121CFF765600B353FB /* Products */,
 				DF594A7680971C5690D94783 /* Configuration */,
-				3ED39896C9EF62134C9B2D4C /* LICENSE */,
+				FCEB55682BE20336003D3797 /* AVCam copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -97,9 +88,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7AA677101CFF765500B353FB /* AVCam */ = {
+		7AA677101CFF765500B353FB /* FishSense */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7AA677231CFF765600B353FB /* Build configuration list for PBXNativeTarget "AVCam" */;
+			buildConfigurationList = 7AA677231CFF765600B353FB /* Build configuration list for PBXNativeTarget "FishSense" */;
 			buildPhases = (
 				7AA6770D1CFF765500B353FB /* Sources */,
 				7AA6770E1CFF765500B353FB /* Frameworks */,
@@ -109,7 +100,7 @@
 			);
 			dependencies = (
 			);
-			name = AVCam;
+			name = FishSense;
 			productName = AVCam;
 			productReference = 7AA677111CFF765600B353FB /* FishSense.app */;
 			productType = "com.apple.product-type.application";
@@ -123,7 +114,7 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 0800;
 				LastUpgradeCheck = 1530;
-				ORGANIZATIONNAME = Apple;
+				ORGANIZATIONNAME = E4E;
 				TargetAttributes = {
 					7AA677101CFF765500B353FB = {
 						CreatedOnToolsVersion = 8.0;
@@ -145,7 +136,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7AA677101CFF765500B353FB /* AVCam */,
+				7AA677101CFF765500B353FB /* FishSense */,
 			);
 		};
 /* End PBXProject section */
@@ -330,7 +321,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.AVCam${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -351,7 +342,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.AVCam${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -372,7 +363,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7AA677231CFF765600B353FB /* Build configuration list for PBXNativeTarget "AVCam" */ = {
+		7AA677231CFF765600B353FB /* Build configuration list for PBXNativeTarget "FishSense" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7AA677241CFF765600B353FB /* Debug */,
