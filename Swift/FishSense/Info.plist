@@ -23,11 +23,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>AVCam uses the camera to take photos and video.</string>
+	<string>FishSense uses the camera to take fish length measurements</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>AVCam uses your location to tag where photos and videos are taken.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>AVCam uses the microphone to record sound during Live Photos and movies.</string>
+	<string>FishSense</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>AVCam saves captured photos and videos to your photo library.</string>
 	<key>UILaunchStoryboardName</key>

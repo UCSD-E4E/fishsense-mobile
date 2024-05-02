@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1530"
-   version = "1.7">
+   version = "1.8">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
@@ -17,7 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7AA677101CFF765500B353FB"
                BuildableName = "FishSense.app"
-               BlueprintName = "AVCam"
+               BlueprintName = "FishSense"
                ReferencedContainer = "container:FishSense Swift.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,7 +46,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7AA677101CFF765500B353FB"
             BuildableName = "FishSense.app"
-            BlueprintName = "AVCam"
+            BlueprintName = "FishSense"
             ReferencedContainer = "container:FishSense Swift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -63,7 +63,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7AA677101CFF765500B353FB"
             BuildableName = "FishSense.app"
-            BlueprintName = "AVCam"
+            BlueprintName = "FishSense"
             ReferencedContainer = "container:FishSense Swift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
