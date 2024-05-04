@@ -61,7 +61,7 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
 
                     // Specify the location in which the photo was taken.
                     creationRequest.location = self.location
-                    print(self.getPoints(avDepthData: photo.depthData!, point1: CGPoint(x: 0, y: 0), point2: CGPoint(x: 3023, y: 0)))
+                    print(self.distanceCalc(avDepthData: photo.depthData!, point1: CGPoint(x: 0, y: 0), point2: CGPoint(x: 3023, y: 0)))
                     
                 }, completionHandler: { _, error in
                     if let error = error {
@@ -78,7 +78,7 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
         }
     }
     
-    private func getPoints(avDepthData: AVDepthData, point1: CGPoint, point2: CGPoint) -> Float {
+    private func distanceCalc(avDepthData: AVDepthData, point1: CGPoint, point2: CGPoint) -> Float {
         let depthData = avDepthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32)
         let intrinsicMatrix = avDepthData.cameraCalibrationData?.intrinsicMatrix
         let depthDataMap = depthData.depthDataMap
