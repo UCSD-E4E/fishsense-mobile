@@ -11,8 +11,8 @@ import CoreLocation
 import Photos
 
 class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelegate, AVCapturePhotoOutputReadinessCoordinatorDelegate {
-	
-	let locationManager = CLLocationManager()
+    
+    let locationManager = CLLocationManager()
     
     // MARK: View Controller Life Cycle
     
@@ -38,31 +38,15 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         // Adjust the frame of the preview layer to cover the entire preview view
         previewLayer.frame = previewView.bounds
         
-        // Define the height of the top and bottom borders
-        let topborderHeight: CGFloat = 60
-        let botborderHeight: CGFloat = 240
-
-
-        let topBorderView = UIView(frame: CGRect(x: 0, y: 0, width: previewView.frame.width, height: topborderHeight))
-        topBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
-
-        let bottomBorderView = UIView(frame: CGRect(x: 0, y: previewView.frame.height - botborderHeight, width: previewView.frame.width, height: botborderHeight))
-        bottomBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
-
-        // Add the top and bottom border views as subviews of the previewView
-        previewView.addSubview(topBorderView)
-        previewView.addSubview(bottomBorderView)
-      
-        
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
                self.previewView.addGestureRecognizer(pinchRecognizer)
 
-		// Request location authorization so photos and videos can be tagged
+        // Request location authorization so photos and videos can be tagged
         // with their location.
-		if locationManager.authorizationStatus == .notDetermined {
-			locationManager.requestWhenInUseAuthorization()
-		}
-		
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
+        
         // Check the video authorization status. Video access is required and
         // audio access is optional. If the user denies audio access, AVCam
         // won't record audio during movie recording.
@@ -228,7 +212,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     
     private var setupResult: SessionSetupResult = .success
     
-    @objc dynamic var videoDeviceInput: AVCaptureDeviceInput! 
+    @objc dynamic var videoDeviceInput: AVCaptureDeviceInput!
     
     @IBOutlet private weak var previewView: PreviewView!
     
@@ -252,13 +236,13 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         
         // Add video input.
         do {
-			// Handle the situation when the system-preferred camera is nil.
+            // Handle the situation when the system-preferred camera is nil.
             var defaultVideoDevice: AVCaptureDevice? = AVCaptureDevice.systemPreferredCamera
             
             let userDefaults = UserDefaults.standard
             if !userDefaults.bool(forKey: "setInitialUserPreferredCamera") || defaultVideoDevice == nil {
                 let backVideoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInDualCamera, .builtInWideAngleCamera],
-                                                                                       mediaType: .video, position: .back) 
+                                                                                       mediaType: .video, position: .back)
                 
                 defaultVideoDevice = backVideoDeviceDiscoverySession.devices.first
                 
@@ -323,7 +307,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             
             photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
 //            photoOutput.maxPhotoQualityPrioritization = .quality
-            livePhotoMode = photoOutput.isLivePhotoCaptureSupported ? .on : .off
 //            photoQualityPrioritizationMode = .balanced
             
             self.configurePhotoOutput()
@@ -480,7 +463,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //        self.photoOutput.maxPhotoQualityPrioritization = .quality
         self.photoOutput.isResponsiveCaptureEnabled = self.photoOutput.isResponsiveCaptureSupported
         self.photoOutput.isFastCapturePrioritizationEnabled = self.photoOutput.isFastCapturePrioritizationSupported
-        self.photoOutput.isAutoDeferredPhotoDeliveryEnabled = self.photoOutput.isAutoDeferredPhotoDeliverySupported
+        self.photoOutput.isDepthDataDeliveryEnabled = true
         
         let photoSettings = self.setUpPhotoSettings()
         DispatchQueue.main.async {
@@ -495,7 +478,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     @IBOutlet private weak var cameraUnavailableLabel: UILabel!
     
     private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTrueDepthCamera],
-                                                                               mediaType: .video, position: .unspecified) 
+                                                                               mediaType: .video, position: .unspecified)
 
     private var videoDeviceRotationCoordinator: AVCaptureDevice.RotationCoordinator!
     
@@ -626,8 +609,8 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                     print("Error occurred while creating video device input: \(error)")
                 }
             }
-			
-			completion?()
+            
+            completion?()
         }
     }
     
@@ -715,12 +698,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         
         // Create a unique settings object for the request.
         let photoSettings = AVCapturePhotoSettings(from: self.photoSettings)
-        
-        // Provide a unique temporary URL because Live Photo captures can overlap.
-        if photoSettings.livePhotoMovieFileURL != nil {
-            photoSettings.livePhotoMovieFileURL = livePhotoMovieUniqueTemporaryDirectoryFileURL()
-        }
-        
+        photoSettings.isDepthDataDeliveryEnabled = true
         // Start tracking capture readiness on the main thread to synchronously
         // update the shutter button's availability.
         self.photoOutputReadinessCoordinator.startTrackingCaptureRequest(using: photoSettings)
@@ -740,25 +718,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                         self.previewView.videoPreviewLayer.opacity = 1
                     }
                 }
-            }, livePhotoCaptureHandler: { capturing in
-                self.sessionQueue.async {
-                    if capturing {
-                        self.inProgressLivePhotoCapturesCount += 1
-                    } else {
-                        self.inProgressLivePhotoCapturesCount -= 1
-                    }
-                    
-                    let inProgressLivePhotoCapturesCount = self.inProgressLivePhotoCapturesCount
-                    DispatchQueue.main.async {
-                        if inProgressLivePhotoCapturesCount > 0 {
-//                            self.capturingLivePhotoLabel.isHidden = false
-                        } else if inProgressLivePhotoCapturesCount == 0 {
-//                            self.capturingLivePhotoLabel.isHidden = true
-                        } else {
-                            print("Error: In progress Live Photo capture count is less than 0.")
-                        }
-                    }
-                }
             }, completionHandler: { photoCaptureProcessor in
                 // When the capture is complete, remove a reference to the
                 // photo capture delegate so it can be deallocated.
@@ -766,9 +725,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                     self.inProgressPhotoCaptureDelegates[photoCaptureProcessor.requestedPhotoSettings.uniqueID] = nil
                 }
             })
-			
-			// Specify the location the photo was taken
-			photoCaptureProcessor.location = self.locationManager.location
+            
+            // Specify the location the photo was taken
+            photoCaptureProcessor.location = self.locationManager.location
             
             // The photo output holds a weak reference to the photo capture
             // delegate and stores it in an array to maintain a strong
@@ -779,6 +738,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
             // Stop tracking the capture request because it's now destined for
             // the photo output.
             self.photoOutputReadinessCoordinator.stopTrackingCaptureRequest(using: photoSettings.uniqueID)
+            
         }
     }
     
@@ -802,27 +762,13 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         if !photoSettings.availablePreviewPhotoPixelFormatTypes.isEmpty {
             photoSettings.previewPhotoFormat = [kCVPixelBufferPixelFormatTypeKey as String: photoSettings.__availablePreviewPhotoPixelFormatTypes.first!]
         }
-        if self.livePhotoMode == .on && self.photoOutput.isLivePhotoCaptureSupported { // Live Photo Capture is not supported in movie mode.
-            photoSettings.livePhotoMovieFileURL = livePhotoMovieUniqueTemporaryDirectoryFileURL()
-        }
+        
+        photoSettings.isDepthDataDeliveryEnabled = true
+
 //        photoSettings.photoQualityPrioritization = self.photoQualityPrioritizationMode
 
         return photoSettings
     }
-    
-    private func livePhotoMovieUniqueTemporaryDirectoryFileURL() -> URL {
-        let livePhotoMovieFileName = UUID().uuidString
-        let livePhotoMovieFilePath = (NSTemporaryDirectory() as NSString).appendingPathComponent((livePhotoMovieFileName as NSString).appendingPathExtension("mov")!)
-        let livePhotoMovieURL = NSURL.fileURL(withPath: livePhotoMovieFilePath)
-        return livePhotoMovieURL
-    }
-    
-    private enum LivePhotoMode {
-        case on
-        case off
-    }
-    
-    private var livePhotoMode: LivePhotoMode = .off
     
 //    @IBOutlet private weak var livePhotoModeButton: UIButton!
     
@@ -862,7 +808,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //            default:
 //                break
 //            }
-//            
+//
 //            // Update `photoSettings` to include
 //            // `photoQualityPrioritizationMode`.
 //            let photoSettings = self.setUpPhotoSettings()
@@ -963,19 +909,19 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //        guard let movieFileOutput = self.movieFileOutput else {
 //            return
 //        }
-//        
+//
 //        /*
 //         Disable the Camera button until recording finishes, and disable
 //         the Record button until recording starts or finishes.
-//         
+//
 //         See the AVCaptureFileOutputRecordingDelegate methods.
 //         */
 //        cameraButton.isEnabled = false
 //        recordButton.isEnabled = false
 //        captureModeControl.isEnabled = false
-//        
+//
 //        let videoRotationAngle = self.videoDeviceRotationCoordinator.videoRotationAngleForHorizonLevelCapture
-//        
+//
 //        if let window = self.view.window, let windowScene = window.windowScene {
 //            switch windowScene.interfaceOrientation {
 //            case .portrait: self.supportedInterfaceOrientations = .portrait
@@ -987,24 +933,24 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //            }
 //        }
 //        self.setNeedsUpdateOfSupportedInterfaceOrientations()
-//        
+//
 //        sessionQueue.async {
 //            if !movieFileOutput.isRecording {
 //                if UIDevice.current.isMultitaskingSupported {
 //                    self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
 //                }
-//                
+//
 //                // Update the orientation on the movie file output video
 //                // connection before recording.
 //                let movieFileOutputConnection = movieFileOutput.connection(with: .video)
 //                movieFileOutputConnection?.videoRotationAngle = videoRotationAngle
-//                
+//
 //                let availableVideoCodecTypes = movieFileOutput.availableVideoCodecTypes
-//                
+//
 //                if availableVideoCodecTypes.contains(.hevc) {
 //                    movieFileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc], for: movieFileOutputConnection!)
 //                }
-//                
+//
 //                // Start recording video to a temporary file.
 //                let outputFileName = NSUUID().uuidString
 //                let outputFilePath = (NSTemporaryDirectory() as NSString).appendingPathComponent((outputFileName as NSString).appendingPathExtension("mov")!)
@@ -1014,7 +960,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //            }
 //        }
 //    }
-//    
+//
     var _supportedInterfaceOrientations: UIInterfaceOrientationMask = .all
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         get { return _supportedInterfaceOrientations }
@@ -1029,7 +975,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 //            self.recordButton.setImage(#imageLiteral(resourceName: "CaptureStop"), for: [])
 //        }
 //    }
-//    
+//
     /// - Tag: DidFinishRecording
     func fileOutput(_ output: AVCaptureFileOutput,
                     didFinishRecordingTo outputFileURL: URL,
@@ -1073,9 +1019,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                         options.shouldMoveFile = true
                         let creationRequest = PHAssetCreationRequest.forAsset()
                         creationRequest.addResource(with: .video, fileURL: outputFileURL, options: options)
-						
-						// Specify the movie's location.
-						creationRequest.location = self.locationManager.location
+                        
+                        // Specify the movie's location.
+                        creationRequest.location = self.locationManager.location
                     }, completionHandler: { success, error in
                         if !success {
                             print("AVCam couldn't save the movie to your photo library: \(String(describing: error))")
