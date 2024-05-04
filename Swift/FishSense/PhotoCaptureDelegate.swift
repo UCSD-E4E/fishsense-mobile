@@ -82,11 +82,13 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
         let depthData = avDepthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32)
         let intrinsicMatrix = avDepthData.cameraCalibrationData?.intrinsicMatrix
         let depthDataMap = depthData.depthDataMap
+        
         CVPixelBufferLockBaseAddress(depthDataMap, CVPixelBufferLockFlags(rawValue: 0))
-           
+        
         let width = CVPixelBufferGetWidth(depthDataMap)
         let height = CVPixelBufferGetHeight(depthDataMap)
-           
+        
+        // Hardcoded using the fact that the imagei s 3024 x 4032 on a 12MP camera from the iPhone Pro for now, but will modify later
         let focalX = Float(width) * ((intrinsicMatrix?[0][0] ?? 0.0) / 3024)
         let focalY = Float(height) * ((intrinsicMatrix?[1][1] ?? 0.0) / 4032)
         let principalPointX = Float(width) * ((intrinsicMatrix?[2][0] ?? 0.0) / 3024)
@@ -111,6 +113,5 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
         CVPixelBufferUnlockBaseAddress(depthDataMap, CVPixelBufferLockFlags(rawValue: 0))
         
         return sqrt(pow(X1 - X2, 2) + pow(Y1 - Y2,2) + pow(Z1 - Z2,2))
-
     }
 }
