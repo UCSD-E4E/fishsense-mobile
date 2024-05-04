@@ -7,6 +7,7 @@ The app's photo capture delegate object.
 
 import AVFoundation
 import Photos
+import UIKit
 
 class PhotoCaptureProcessor: NSObject {
     private(set) var requestedPhotoSettings: AVCapturePhotoSettings
@@ -19,6 +20,7 @@ class PhotoCaptureProcessor: NSObject {
     
     private var photoData: Data?
     
+    private var distance : Float
     // Save the location of captured photos.
     var location: CLLocation?
 
@@ -28,6 +30,7 @@ class PhotoCaptureProcessor: NSObject {
         self.requestedPhotoSettings = requestedPhotoSettings
         self.willCapturePhotoAnimation = willCapturePhotoAnimation
         self.completionHandler = completionHandler
+        self.distance = 0.0
     }
     
     private func didFinish() {
@@ -61,13 +64,11 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
 
                     // Specify the location in which the photo was taken.
                     creationRequest.location = self.location
-                    print(self.distanceCalc(avDepthData: photo.depthData!, point1: CGPoint(x: 0, y: 0), point2: CGPoint(x: 3023, y: 0)))
-                    
+                    self.distance = self.distanceCalc(avDepthData: photo.depthData!, point1: CGPoint(x: 0, y: 0), point2: CGPoint(x: 3023, y: 0))
                 }, completionHandler: { _, error in
                     if let error = error {
                         print("Error occurred while saving photo to photo library: \(error)")
                     }
-                    
                     self.didFinish()
                 }
                 )
@@ -76,6 +77,10 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
                 self.didFinish()
             }
         }
+    }
+    
+    public func getDistance() -> Float {
+        return self.distance
     }
     
     private func distanceCalc(avDepthData: AVDepthData, point1: CGPoint, point2: CGPoint) -> Float {
