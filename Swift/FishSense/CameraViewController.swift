@@ -10,17 +10,15 @@ import AVFoundation
 import CoreLocation
 import Photos
 
-class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelegate, AVCapturePhotoOutputReadinessCoordinatorDelegate {
+class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoordinatorDelegate {
     
     let locationManager = CLLocationManager()
     
-    // MARK: View Controller Life Cycle
-    
+    // This method is called after the view controller has loaded its view hierarchy into memory
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Disable the UI. Enable the UI later, if and only if the session
-        // starts running.
+        // Disable the UI. Enable the UI later, if and only if the session starts running.
         photoButton.isEnabled = false
         
         // Set up the video preview view.
@@ -31,10 +29,10 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
         // Adjust the frame of the preview layer to cover the entire preview view
         previewLayer.frame = previewView.bounds
+        
         // Define the height of the top and bottom borders
         let topborderHeight: CGFloat = 60
         let botborderHeight: CGFloat = 240
-
 
         let topBorderView = UIView(frame: CGRect(x: 0, y: 0, width: previewView.frame.width, height: topborderHeight))
         topBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
@@ -46,33 +44,18 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         previewView.addSubview(topBorderView)
         previewView.addSubview(bottomBorderView)
 
-        
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
-               self.previewView.addGestureRecognizer(pinchRecognizer)
+        self.previewView.addGestureRecognizer(pinchRecognizer)
 
-        // Request location authorization so photos and videos can be tagged
-        // with their location.
+        // Request location authorization so photos and videos can be tagged with their location.
         if locationManager.authorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         }
         
-        // Check the video authorization status. Video access is required and
-        // audio access is optional. If the user denies audio access, AVCam
-        // won't record audio during movie recording.
+        // Check the video authorization status. Video access is required and audio access is optional.
         switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            // The user has previously granted access to the camera.
-            break
-            
+        case .authorized: break
         case .notDetermined:
-            /*
-             The user has not yet been presented with the option to grant
-             video access. Suspend the session queue to delay session
-             setup until the access request has completed.
-             
-             Note that audio access will be implicitly requested when we
-             create an AVCaptureDeviceInput for audio during session setup.
-             */
             sessionQueue.suspend()
             AVCaptureDevice.requestAccess(for: .video, completionHandler: { granted in
                 if !granted {
@@ -80,22 +63,11 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 }
                 self.sessionQueue.resume()
             })
-            
         default:
-            // The user has previously denied access.
             setupResult = .notAuthorized
         }
         
-        /*
-         Setup the capture session.
-         In general, it's not safe to mutate an AVCaptureSession or any of its
-         inputs, outputs, or connections from multiple threads at the same time.
-         
-         Don't perform these tasks on the main queue because
-         AVCaptureSession.startRunning() is a blocking call, which can
-         take a long time. Dispatch session setup to the sessionQueue, so
-         that the main queue isn't blocked, which keeps the UI responsive.
-         */
+        // Setup the capture session.
         sessionQueue.async {
             self.configureSession()
         }
@@ -226,8 +198,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     @IBOutlet private weak var previewView: PreviewView!
     
     private var previewLayer: AVCaptureVideoPreviewLayer!
-    
-    
     
     // Call this on the session queue.
     /// - Tag: ConfigureSession
@@ -384,8 +354,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     
     @IBOutlet private weak var cameraUnavailableLabel: UILabel!
     
-    private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTrueDepthCamera],
-                                                                               mediaType: .video, position: .unspecified)
+    private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTrueDepthCamera], mediaType: .video, position: .unspecified)
 
     private var videoDeviceRotationCoordinator: AVCaptureDevice.RotationCoordinator!
     
@@ -744,86 +713,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         get { return _supportedInterfaceOrientations }
         set { _supportedInterfaceOrientations = newValue }
     }
-
-    /// - Tag: DidFinishRecording
-    func fileOutput(_ output: AVCaptureFileOutput,
-                    didFinishRecordingTo outputFileURL: URL,
-                    from connections: [AVCaptureConnection],
-                    error: Error?) {
-        // Note: Because we use a unique file path for each recording, a new
-        // recording won't overwrite a recording mid-save.
-        func cleanup() {
-            let path = outputFileURL.path
-            if FileManager.default.fileExists(atPath: path) {
-                do {
-                    try FileManager.default.removeItem(atPath: path)
-                } catch {
-                    print("Could not remove file at url: \(outputFileURL)")
-                }
-            }
-            
-            if let currentBackgroundRecordingID = backgroundRecordingID {
-                backgroundRecordingID = UIBackgroundTaskIdentifier.invalid
-                
-                if currentBackgroundRecordingID != UIBackgroundTaskIdentifier.invalid {
-                    UIApplication.shared.endBackgroundTask(currentBackgroundRecordingID)
-                }
-            }
-        }
-        
-        var success = true
-        
-        if error != nil {
-            print("Movie file finishing error: \(String(describing: error))")
-            success = (((error! as NSError).userInfo[AVErrorRecordingSuccessfullyFinishedKey] as AnyObject).boolValue)!
-        }
-        
-        if success {
-            // Check the authorization status.
-            PHPhotoLibrary.requestAuthorization { status in
-                if status == .authorized {
-                    // Save the movie file to the photo library and cleanup.
-                    PHPhotoLibrary.shared().performChanges({
-                        let options = PHAssetResourceCreationOptions()
-                        options.shouldMoveFile = true
-                        let creationRequest = PHAssetCreationRequest.forAsset()
-                        creationRequest.addResource(with: .video, fileURL: outputFileURL, options: options)
-                        
-                        // Specify the movie's location.
-                        creationRequest.location = self.locationManager.location
-                    }, completionHandler: { success, error in
-                        if !success {
-                            print("AVCam couldn't save the movie to your photo library: \(String(describing: error))")
-                        }
-                        cleanup()
-                    })
-                } else {
-                    cleanup()
-                }
-            }
-        } else {
-            cleanup()
-        }
-        
-        // When recording finishes, check if the system-preferred camera
-        // changed during the recording.
-        sessionQueue.async {
-            let systemPreferredCamera = AVCaptureDevice.systemPreferredCamera
-            if self.videoDeviceInput.device != systemPreferredCamera {
-                self.changeCamera(systemPreferredCamera, isUserSelection: false)
-            }
-        }
-        
-        // Enable the Camera and Record buttons to let the user switch camera
-        // and start another recording.
-        DispatchQueue.main.async {
-            // Only enable the ability to change camera if the device has more
-            // than one camera.
-            self.supportedInterfaceOrientations = UIInterfaceOrientationMask.all
-            // After the recording finishes, allow rotation to continue.
-            self.setNeedsUpdateOfSupportedInterfaceOrientations()
-        }
-    }
     
     // MARK: KVO and Notifications
     
@@ -882,20 +771,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         if context == &systemPreferredCameraContext {
             guard let systemPreferredCamera = change?[.newKey] as? AVCaptureDevice else { return }
-            
-            // Don't switch cameras if movie recording is in progress.
-            if let movieFileOutput = self.movieFileOutput, movieFileOutput.isRecording {
-                return
-            }
-            if let videoDeviceInput = self.videoDeviceInput {
-                if videoDeviceInput.device == systemPreferredCamera {
-                    return
-                }
-            } else {
-                // Handle the case where videoDeviceInput is nil
-                // You may want to log an error or handle this condition appropriately
-                return
-            }
             
             self.changeCamera(systemPreferredCamera, isUserSelection: false)
         } else {
