@@ -266,20 +266,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
             return
         }
         
-        // Add an audio input device.
-        do {
-            let audioDevice = AVCaptureDevice.default(for: .audio)
-            let audioDeviceInput = try AVCaptureDeviceInput(device: audioDevice!)
-            
-            if session.canAddInput(audioDeviceInput) {
-                session.addInput(audioDeviceInput)
-            } else {
-                print("Could not add audio device input to the session")
-            }
-        } catch {
-            print("Could not create audio device input: \(error)")
-        }
-        
         // Add the photo output.
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
@@ -302,32 +288,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         }
         
         session.commitConfiguration()
-    }
-    
-    @IBAction private func resumeInterruptedSession(_ resumeButton: UIButton) {
-        sessionQueue.async {
-            // The session might fail to start running, for example, if a phone
-            // or FaceTime call is still using audio or video. This failure is
-            // communicated by the session posting a runtime error notification.
-            // To avoid repeatedly failing to start the session, only try to
-            // restart the session in the error handler if you aren't trying to
-            // resume the session.
-            self.session.startRunning()
-            self.isSessionRunning = self.session.isRunning
-            if !self.session.isRunning {
-                DispatchQueue.main.async {
-                    let message = NSLocalizedString("Unable to resume", comment: "Alert message when unable to resume the session running")
-                    let alertController = UIAlertController(title: "AVCam", message: message, preferredStyle: .alert)
-                    let cancelAction = UIAlertAction(title: NSLocalizedString("OK", comment: "Alert OK button"), style: .cancel, handler: nil)
-                    alertController.addAction(cancelAction)
-                    self.present(alertController, animated: true, completion: nil)
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.resumeButton.isHidden = true
-                }
-            }
-        }
     }
     
     private enum CaptureMode: Int {
@@ -552,16 +512,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         
         return nil
     }
-
-    private var selectedMovieMode10BitDeviceFormat: AVCaptureDevice.Format?
-    
-    private enum HDRVideoMode {
-        case on
-        case off
-    }
-
-    private var HDRVideoMode: HDRVideoMode = .on
-    
         
     private var inProgressLivePhotoCapturesCount = 0
     
@@ -570,9 +520,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     private var movieFileOutput: AVCaptureMovieFileOutput?
     
     private var backgroundRecordingID: UIBackgroundTaskIdentifier?
-        
-    @IBOutlet private weak var resumeButton: UIButton!
-    
 
     var _supportedInterfaceOrientations: UIInterfaceOrientationMask = .all
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -581,17 +528,13 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     }
     
     // MARK: KVO and Notifications
-    
     private var keyValueObservations = [NSKeyValueObservation]()
     /// - Tag: ObserveInterruption
     private func addObservers() {
         let keyValueObservation = session.observe(\.isRunning, options: .new) { _, change in
             guard let isSessionRunning = change.newValue else { return }
-           // let isLivePhotoCaptureEnabled = self.photoOutput.isLivePhotoCaptureEnabled
-            
             DispatchQueue.main.async {
-                // Only enable the ability to change camera if the device has
-                // more than one camera.
+                // Only enable the ability to change camera if the device has more than one camera.
                 self.photoButton.isEnabled = isSessionRunning
             }
         }
@@ -607,19 +550,9 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
                                                name: .AVCaptureSessionRuntimeError,
                                                object: session)
         
-        // A session can only run when the app is full screen. It will be
-        // interrupted in a multi-app layout, introduced in iOS 9, see also the
-        // documentation of AVCaptureSessionInterruptionReason. Add observers to
-        // handle these session interruptions and show a preview is paused
-        // message. See `AVCaptureSessionWasInterruptedNotification` for other
-        // interruption reasons.
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(sessionWasInterrupted),
                                                name: .AVCaptureSessionWasInterrupted,
-                                               object: session)
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(sessionInterruptionEnded),
-                                               name: .AVCaptureSessionInterruptionEnded,
                                                object: session)
     }
     
@@ -636,8 +569,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         if context == &systemPreferredCameraContext {
-            guard let systemPreferredCamera = change?[.newKey] as? AVCaptureDevice else { return }
-            
+            guard change?[.newKey] is AVCaptureDevice else { return }
         } else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
@@ -653,95 +585,27 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     @objc
     func sessionRuntimeError(notification: NSNotification) {
         guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError else { return }
-        
         print("Capture session runtime error: \(error)")
-        // If media services were reset, and the last start succeeded, restart
-        // the session.
+        // If media services were reset, and the last start succeeded, restart the session.
         if error.code == .mediaServicesWereReset {
             sessionQueue.async {
                 if self.isSessionRunning {
                     self.session.startRunning()
                     self.isSessionRunning = self.session.isRunning
-                } else {
-                    DispatchQueue.main.async {
-                        self.resumeButton.isHidden = false
-                    }
                 }
             }
-        } else {
-            resumeButton.isHidden = false
         }
     }
-    
-    
     
     /// - Tag: HandleInterruption
     @objc
     func sessionWasInterrupted(notification: NSNotification) {
-        // In some scenarios you want to enable the user to resume the session.
-        // For example, if music playback is initiated from Control Center while
-        // using AVCam, then the user can let AVCam resume the session running,
-        // which will stop music playback. Note that stopping music playback in
-        // Control Center will not automatically resume the session. Also note
-        // that it's not always possible to resume, see
-        // `resumeInterruptedSession(_:)`.
         if let userInfoValue = notification.userInfo?[AVCaptureSessionInterruptionReasonKey] as AnyObject?,
             let reasonIntegerValue = userInfoValue.integerValue,
             let reason = AVCaptureSession.InterruptionReason(rawValue: reasonIntegerValue) {
             print("Capture session was interrupted with reason \(reason)")
-            
-            var showResumeButton = false
-            if reason == .audioDeviceInUseByAnotherClient || reason == .videoDeviceInUseByAnotherClient {
-                showResumeButton = true
-            } else if reason == .videoDeviceNotAvailableWithMultipleForegroundApps {
-                // Fade-in a label to inform the user that the camera is
-                // unavailable.
-                cameraUnavailableLabel.alpha = 0
-                cameraUnavailableLabel.isHidden = false
-                UIView.animate(withDuration: 0.25) {
-                    self.cameraUnavailableLabel.alpha = 1
-                }
-            } else if reason == .videoDeviceNotAvailableDueToSystemPressure {
-                print("Session stopped running due to shutdown system pressure level.")
-            }
-            if showResumeButton {
-                // Fade-in a button to enable the user to try to resume the
-                // session running.
-                resumeButton.alpha = 0
-                resumeButton.isHidden = false
-                UIView.animate(withDuration: 0.25) {
-                    self.resumeButton.alpha = 1
-                }
-            }
         }
     }
-    
-    @objc
-    func sessionInterruptionEnded(notification: NSNotification) {
-        print("Capture session interruption ended")
-        
-        if !resumeButton.isHidden {
-            UIView.animate(withDuration: 0.25,
-                           animations: {
-                            self.resumeButton.alpha = 0
-            }, completion: { _ in
-                self.resumeButton.isHidden = true
-            })
-        }
-        if !cameraUnavailableLabel.isHidden {
-            UIView.animate(withDuration: 0.25,
-                           animations: {
-                            self.cameraUnavailableLabel.alpha = 0
-            }, completion: { _ in
-                self.cameraUnavailableLabel.isHidden = true
-            }
-            )
-        }
-    }
-    
-    
-
-   
 }
 
 extension AVCaptureDevice.DiscoverySession {
