@@ -360,112 +360,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     
     private var videoDeviceIsConnectedObservation: NSKeyValueObservation?
     
-    private func changeCamera(_ videoDevice: AVCaptureDevice?, isUserSelection: Bool, completion: (() -> Void)? = nil) {
-        sessionQueue.async {
-            let currentVideoDevice = self.videoDeviceInput.device
-            let newVideoDevice: AVCaptureDevice?
-            
-            if let videoDevice = videoDevice {
-                newVideoDevice = videoDevice
-            } else {
-                let currentPosition = currentVideoDevice.position
-                
-                let backVideoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInDualCamera, .builtInWideAngleCamera],
-                                                                                       mediaType: .video, position: .back)
-                let frontVideoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInTrueDepthCamera, .builtInWideAngleCamera],
-                                                                                        mediaType: .video, position: .front)
-                let externalVideoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.external],
-                                                                                           mediaType: .video, position: .unspecified)
-                
-                switch currentPosition {
-                case .unspecified, .front:
-                    newVideoDevice = backVideoDeviceDiscoverySession.devices.first
-                    
-                case .back:
-                    if let externalCamera = externalVideoDeviceDiscoverySession.devices.first {
-                        newVideoDevice = externalCamera
-                    } else {
-                        newVideoDevice = frontVideoDeviceDiscoverySession.devices.first
-                    }
-                    
-                @unknown default:
-                    print("Unknown capture position. Defaulting to back, dual-camera.")
-                    newVideoDevice = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back)
-                }
-            }
-            
-            if let videoDevice = newVideoDevice {
-                do {
-                    let videoDeviceInput = try AVCaptureDeviceInput(device: videoDevice)
-                    
-                    self.session.beginConfiguration()
-                    
-                    // Remove the existing device input first, because
-                    // AVCaptureSession doesn't support simultaneous use of the
-                    // rear and front cameras.
-                    self.session.removeInput(self.videoDeviceInput)
-                    
-                    if self.session.canAddInput(videoDeviceInput) {
-                        NotificationCenter.default.removeObserver(self, name: .AVCaptureDeviceSubjectAreaDidChange, object: currentVideoDevice)
-                        NotificationCenter.default.addObserver(self, selector: #selector(self.subjectAreaDidChange), name: .AVCaptureDeviceSubjectAreaDidChange, object: videoDeviceInput.device)
-                        
-                        self.session.addInput(videoDeviceInput)
-                        self.videoDeviceInput = videoDeviceInput
-                        
-                        if isUserSelection {
-                            AVCaptureDevice.userPreferredCamera = videoDevice
-                        }
-                        
-                        DispatchQueue.main.async {
-                            self.createDeviceRotationCoordinator()
-                        }
-                    } else {
-                        self.session.addInput(self.videoDeviceInput)
-                    }
-                    if let connection = self.movieFileOutput?.connection(with: .video) {
-                        self.session.sessionPreset = .high
-                        
-                        self.selectedMovieMode10BitDeviceFormat = self.tenBitVariantOfFormat(activeFormat: self.videoDeviceInput.device.activeFormat)
-                        
-                        if self.selectedMovieMode10BitDeviceFormat != nil {
-                            DispatchQueue.main.async {
-                                self.HDRVideoModeButton.isEnabled = true
-                            }
-                            
-                            if self.HDRVideoMode == .on {
-                                do {
-                                    try self.videoDeviceInput.device.lockForConfiguration()
-                                    self.videoDeviceInput.device.activeFormat = self.selectedMovieMode10BitDeviceFormat!
-                                    print("Setting 'x420' format \(String(describing: self.selectedMovieMode10BitDeviceFormat)) for video recording")
-                                    self.videoDeviceInput.device.unlockForConfiguration()
-                                } catch {
-                                    print("Could not lock device for configuration: \(error)")
-                                }
-                            }
-                        }
-                        
-                        if connection.isVideoStabilizationSupported {
-                            connection.preferredVideoStabilizationMode = .auto
-                        }
-                    }
-                    
-                    // `livePhotoCaptureEnabled` and other properties of
-                    // the`AVCapturePhotoOutput` are `NO` when a video device
-                    // disconnects from the session. After the session acquires
-                    // a new video device, you need to reconfigure the photo
-                    // output to enable those properties, if applicable.
-                    self.configurePhotoOutput()
-                    
-                    self.session.commitConfiguration()
-                } catch {
-                    print("Error occurred while creating video device input: \(error)")
-                }
-            }
-            
-            completion?()
-        }
-    }
-    
     // MARK: Readiness Coordinator
     
     func readinessCoordinator(_ coordinator: AVCapturePhotoOutputReadinessCoordinator, captureReadinessDidChange captureReadiness: AVCapturePhotoOutput.CaptureReadiness) {
@@ -668,36 +562,8 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
 
     private var HDRVideoMode: HDRVideoMode = .on
     
-    @IBOutlet private weak var HDRVideoModeButton: UIButton!
-    
-    @IBAction private func toggleHDRVideoMode(_ HDRVideoModeButton: UIButton) {
-        sessionQueue.async {
-            self.HDRVideoMode = (self.HDRVideoMode == .on) ? .off : .on
-            let HDRVideoMode = self.HDRVideoMode
-            
-            DispatchQueue.main.async {
-                if HDRVideoMode == .on {
-                    do {
-                        try self.videoDeviceInput.device.lockForConfiguration()
-                        self.videoDeviceInput.device.activeFormat = self.selectedMovieMode10BitDeviceFormat!
-                        self.videoDeviceInput.device.unlockForConfiguration()
-                    } catch {
-                        print("Could not lock device for configuration: \(error)")
-                    }
-                    self.HDRVideoModeButton.setTitle("HDR On", for: .normal)
-                } else {
-                    self.session.beginConfiguration()
-                    self.session.sessionPreset = .high
-                    self.session.commitConfiguration()
-                    self.HDRVideoModeButton.setTitle("HDR Off", for: .normal)
-                }
-            }
-        }
-    }
-    
+        
     private var inProgressLivePhotoCapturesCount = 0
-    
-    @IBOutlet var capturingLivePhotoLabel: UILabel!
     
     // MARK: Recording Movies
     
@@ -772,7 +638,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         if context == &systemPreferredCameraContext {
             guard let systemPreferredCamera = change?[.newKey] as? AVCaptureDevice else { return }
             
-            self.changeCamera(systemPreferredCamera, isUserSelection: false)
         } else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
