@@ -484,10 +484,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         let activeMaxFrameRate = activeFormat.videoSupportedFrameRateRanges.last?.maxFrameRate
         let activePixelFormat = CMFormatDescriptionGetMediaSubType(activeFormat.formatDescription)
         
-        // AVCaptureDeviceFormats are sorted from smallest to largest in
-        // resolution and frame rate. For each resolution and max frame rate
-        // there's a cluster of formats that only differ in pixelFormatType.
-        // Here, we look for an 'x420' variant of the current activeFormat.
         if activePixelFormat != kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange {
             // Current activeFormat is not a 10-bit HDR format, find its 10-bit
             // HDR variant.

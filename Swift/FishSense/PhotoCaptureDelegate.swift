@@ -47,6 +47,7 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
 //              let cameraCalibrationData = depthData.cameraCalibrationData else { return }
 //        print("NEXT")
         let photoData = photo.fileDataRepresentation()
+        print("photo data", photoData ?? "")
         // Convert the depth data to the expected format.
 //        let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         PHPhotoLibrary.requestAuthorization { status in
@@ -56,7 +57,7 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
                     let creationRequest = PHAssetCreationRequest.forAsset()
                     options.uniformTypeIdentifier = self.requestedPhotoSettings.processedFileType.map { $0.rawValue }
                     
-                    var resourceType = PHAssetResourceType.photo
+                    let resourceType = PHAssetResourceType.photo
                     creationRequest.addResource(with: resourceType, data: photoData!, options: options)
 
                     // Specify the location in which the photo was taken.
