@@ -37,6 +37,21 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
         // Adjust the frame of the preview layer to cover the entire preview view
         previewLayer.frame = previewView.bounds
+        // Define the height of the top and bottom borders
+        let topborderHeight: CGFloat = 60
+        let botborderHeight: CGFloat = 240
+
+
+        let topBorderView = UIView(frame: CGRect(x: 0, y: 0, width: previewView.frame.width, height: topborderHeight))
+        topBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
+
+        let bottomBorderView = UIView(frame: CGRect(x: 0, y: previewView.frame.height - botborderHeight, width: previewView.frame.width, height: botborderHeight))
+        bottomBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
+
+        // Add the top and bottom border views as subviews of the previewView
+        previewView.addSubview(topBorderView)
+        previewView.addSubview(bottomBorderView)
+
         
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
                self.previewView.addGestureRecognizer(pinchRecognizer)
