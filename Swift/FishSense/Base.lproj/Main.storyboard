@@ -4,7 +4,6 @@
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22684"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -110,15 +109,15 @@
             </objects>
             <point key="canvasLocation" x="-657.97101449275362" y="-630.80357142857144"/>
         </scene>
-        <!--Photos-->
+        <!--Photo View Controller-->
         <scene sceneID="Kpp-XO-XKy">
             <objects>
-                <viewController id="Tn6-a4-qAp" sceneMemberID="viewController">
+                <viewController title="Photo View Controller" id="Tn6-a4-qAp" customClass="PhotoViewController" customModule="FishSense" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="fFc-22-5vj">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <viewLayoutGuide key="safeArea" id="dHU-Fv-vct"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     </view>
                     <tabBarItem key="tabBarItem" title="Photos" image="photo" catalog="system" id="Wwo-7P-Y9Q"/>
                 </viewController>
@@ -150,8 +149,5 @@
         <image name="CapturePhoto" width="50" height="50"/>
         <image name="camera" catalog="system" width="128" height="93"/>
         <image name="photo" catalog="system" width="128" height="93"/>
-        <systemColor name="systemBackgroundColor">
-            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
     </resources>
 </document>

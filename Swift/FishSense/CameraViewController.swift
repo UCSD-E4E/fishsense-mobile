@@ -32,7 +32,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         
         // Define the height of the top and bottom borders
         let topborderHeight: CGFloat = 60
-        let botborderHeight: CGFloat = 150
+        let botborderHeight: CGFloat = 155
 
         let topBorderView = UIView(frame: CGRect(x: 0, y: 0, width: previewView.frame.width, height: topborderHeight))
         topBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
