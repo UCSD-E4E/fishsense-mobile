@@ -2,6 +2,8 @@ import UIKit
 
 class PhotoViewController: UIViewController {
 
+    @IBOutlet private var deleteButton: UIButton!
+
     // Array to store saved photos
     var savedPhotos: [UIImage] = []
 
@@ -19,6 +21,18 @@ class PhotoViewController: UIViewController {
         super.viewWillAppear(animated)
         savedPhotos = loadSavedPhotos()
         // Call displaySavedPhotos() each time the view appears
+        displaySavedPhotos()
+    }
+    
+    @IBAction func deleteButtonTapped(_ sender: UIButton) {
+        // Delete all saved photos
+        deleteAllSavedPhotos()
+        
+        // Clear the saved photos array
+        savedPhotos.removeAll()
+        
+        // Update the UI
+        savedPhotos = loadSavedPhotos()
         displaySavedPhotos()
     }
     
@@ -103,4 +117,22 @@ class PhotoViewController: UIViewController {
 
         return loadedPhotos
     }
+    
+    func deleteAllSavedPhotos() {
+        print("Deleting.. all photos")
+            // Get the URL for the document directory
+            if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                do {
+                    // Get the contents of the document directory
+                    let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
+
+                    // Loop through the file URLs and delete each file
+                    for fileURL in fileURLs {
+                        try FileManager.default.removeItem(at: fileURL)
+                    }
+                } catch {
+                    print("Error deleting saved photos: \(error.localizedDescription)")
+                }
+            }
+        }
 }
