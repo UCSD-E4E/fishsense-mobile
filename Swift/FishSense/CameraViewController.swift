@@ -430,6 +430,13 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
                 self.sessionQueue.async {
                     self.inProgressPhotoCaptureDelegates[photoCaptureProcessor.requestedPhotoSettings.uniqueID] = nil
                 }
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(title: "Distance Calculation", message: "(0,0) to (3023, 0): " + String(format: "%.3f", photoCaptureProcessor.getDistance() * 100) + "cm", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: "Default action"), style: .default, handler: { _ in
+                    NSLog("The \"OK\" alert occured.")
+                    }))
+                    self.present(alert, animated: true, completion: nil)
+                }
             })
             
             // Specify the location the photo was taken
@@ -456,11 +463,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
             photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
         } else {
             photoSettings = AVCapturePhotoSettings()
-        }
-        
-        // Set the flash to auto mode.
-        if self.videoDeviceInput.device.isFlashAvailable {
-            photoSettings.flashMode = .auto
         }
         
         // Enable high-resolution photos.

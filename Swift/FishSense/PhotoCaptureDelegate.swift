@@ -20,6 +20,7 @@ class PhotoCaptureProcessor: NSObject {
     
     private var photoData: Data?
     
+    private var distance : Float
     // Save the location of captured photos.
     var location: CLLocation?
 
@@ -29,6 +30,7 @@ class PhotoCaptureProcessor: NSObject {
         self.requestedPhotoSettings = requestedPhotoSettings
         self.willCapturePhotoAnimation = willCapturePhotoAnimation
         self.completionHandler = completionHandler
+        self.distance = 0.0
     }
     
     private func didFinish() {
@@ -72,12 +74,11 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
 
                     // Specify the location in which the photo was taken.
                     creationRequest.location = self.location
-                    
+                    self.distance = self.distanceCalc(avDepthData: photo.depthData!, point1: CGPoint(x: 0, y: 0), point2: CGPoint(x: 3023, y: 0))
                 }, completionHandler: { _, error in
                     if let error = error {
                         print("Error occurred while saving photo to photo library: \(error)")
                     }
-                    
                     self.didFinish()
                 }
                 )
@@ -88,6 +89,7 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
         }
     }
     
+
     func savePhotoToGallery(imageData: Data) {
         // Generate a unique file name for each photo
         let uniqueFileName = UUID().uuidString
@@ -130,5 +132,44 @@ extension PhotoCaptureProcessor: AVCapturePhotoCaptureDelegate {
         }
 
         return savedPhotos
+    public func getDistance() -> Float {
+        return self.distance
+    }
+    
+    private func distanceCalc(avDepthData: AVDepthData, point1: CGPoint, point2: CGPoint) -> Float {
+        let depthData = avDepthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32)
+        let intrinsicMatrix = avDepthData.cameraCalibrationData?.intrinsicMatrix
+        let depthDataMap = depthData.depthDataMap
+        
+        CVPixelBufferLockBaseAddress(depthDataMap, CVPixelBufferLockFlags(rawValue: 0))
+        
+        let width = CVPixelBufferGetWidth(depthDataMap)
+        let height = CVPixelBufferGetHeight(depthDataMap)
+        
+        // Hardcoded using the fact that the imagei s 3024 x 4032 on a 12MP camera from the iPhone Pro for now, but will modify later
+        let focalX = Float(width) * ((intrinsicMatrix?[0][0] ?? 0.0) / 3024)
+        let focalY = Float(height) * ((intrinsicMatrix?[1][1] ?? 0.0) / 4032)
+        let principalPointX = Float(width) * ((intrinsicMatrix?[2][0] ?? 0.0) / 3024)
+        let principalPointY = Float(height) * ((intrinsicMatrix?[2][1] ?? 0.0) / 4032)
+
+        let floatBuffer = unsafeBitCast(CVPixelBufferGetBaseAddress(depthDataMap), to: UnsafeMutablePointer<Float32>.self)
+        
+        let x1 = Float(point1.x) / (3024/Float(width))
+        let y1 = Float(point1.y) / (4032/Float(height))
+        let x2 = Float(point2.x) / (3024/Float(width))
+        let y2 = Float(point2.y) / (4032/Float(height))
+        
+        let Z1 = floatBuffer[Int(x1 * y1)]
+        let Z2 = floatBuffer[Int(x2 * y2)]
+        
+        let X1 = (x1 - principalPointX) * Z1 / focalX
+        let Y1 = (y1 - principalPointY) * Z1 / focalY
+        
+        let X2 = (x2 - principalPointX) * Z2 / focalX
+        let Y2 = (y2 - principalPointY) * Z2 / focalY
+        
+        CVPixelBufferUnlockBaseAddress(depthDataMap, CVPixelBufferLockFlags(rawValue: 0))
+        
+        return sqrt(pow(X1 - X2, 2) + pow(Y1 - Y2,2) + pow(Z1 - Z2,2))
     }
 }
