@@ -18,31 +18,13 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     override func viewDidLoad() {
         super.viewDidLoad()
         
+
         // Disable the UI. Enable the UI later, if and only if the session starts running.
         photoButton.isEnabled = false
         
         // Set up the video preview view.
         previewView.session = session
-        previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        previewView.layer.addSublayer(previewLayer)
-
-        // Adjust the frame of the preview layer to cover the entire preview view
-        previewLayer.frame = previewView.bounds
-        
-        // Define the height of the top and bottom borders
-        let topborderHeight: CGFloat = 60
-        let botborderHeight: CGFloat = 155
-
-        let topBorderView = UIView(frame: CGRect(x: 0, y: 0, width: previewView.frame.width, height: topborderHeight))
-        topBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
-
-        let bottomBorderView = UIView(frame: CGRect(x: 0, y: previewView.frame.height - botborderHeight, width: previewView.frame.width, height: botborderHeight))
-        bottomBorderView.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Adjust alpha as needed
-
-        // Add the top and bottom border views as subviews of the previewView
-        previewView.addSubview(topBorderView)
-        previewView.addSubview(bottomBorderView)
+        previewView.videoPreviewLayer.videoGravity = .resizeAspectFill
 
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
         self.previewView.addGestureRecognizer(pinchRecognizer)
@@ -265,8 +247,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
             session.commitConfiguration()
             return
         }
-        
-        // Add the photo output.
+
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
             
@@ -302,7 +283,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         self.photoOutput.isLivePhotoCaptureEnabled = self.photoOutput.isLivePhotoCaptureSupported
         self.photoOutput.isResponsiveCaptureEnabled = self.photoOutput.isResponsiveCaptureSupported
         self.photoOutput.isFastCapturePrioritizationEnabled = self.photoOutput.isFastCapturePrioritizationSupported
-        self.photoOutput.isDepthDataDeliveryEnabled = true
+//        self.photoOutput.isDepthDataDeliveryEnabled = true
         
         let photoSettings = self.setUpPhotoSettings()
         DispatchQueue.main.async {
@@ -404,7 +385,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         
         // Create a unique settings object for the request.
         let photoSettings = AVCapturePhotoSettings(from: self.photoSettings)
-        photoSettings.isDepthDataDeliveryEnabled = true
+//        photoSettings.isDepthDataDeliveryEnabled = true
         // Start tracking capture readiness on the main thread to synchronously
         // update the shutter button's availability.
         self.photoOutputReadinessCoordinator.startTrackingCaptureRequest(using: photoSettings)
@@ -469,7 +450,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
             photoSettings.previewPhotoFormat = [kCVPixelBufferPixelFormatTypeKey as String: photoSettings.__availablePreviewPhotoPixelFormatTypes.first!]
         }
         
-        photoSettings.isDepthDataDeliveryEnabled = true
+//        photoSettings.isDepthDataDeliveryEnabled = true
 
 //        photoSettings.photoQualityPrioritization = self.photoQualityPrioritizationMode
 
