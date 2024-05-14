@@ -14,18 +14,19 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     
     let locationManager = CLLocationManager()
     
+
+    
     // This method is called after the view controller has loaded its view hierarchy into memory
     override func viewDidLoad() {
         super.viewDidLoad()
-        
 
         // Disable the UI. Enable the UI later, if and only if the session starts running.
         photoButton.isEnabled = false
         
         // Set up the video preview view.
-        previewView.session = session
-        previewView.videoPreviewLayer.videoGravity = .resizeAspectFill
-
+        previewView.videoPreviewLayer.session = session
+        previewView.videoPreviewLayer.videoGravity = .resizeAspect
+        
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
         self.previewView.addGestureRecognizer(pinchRecognizer)
 
@@ -193,7 +194,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         // Do not create an AVCaptureMovieFileOutput when setting up the session
         // because Live Photo is not supported when AVCaptureMovieFileOutput is
         // added to the session.
-        session.sessionPreset = .photo
+//        session.sessionPreset = .photo
         
         // Add video input.
         do {
@@ -284,6 +285,9 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         self.photoOutput.isResponsiveCaptureEnabled = self.photoOutput.isResponsiveCaptureSupported
         self.photoOutput.isFastCapturePrioritizationEnabled = self.photoOutput.isFastCapturePrioritizationSupported
 //        self.photoOutput.isDepthDataDeliveryEnabled = true
+        
+        
+        
         
         let photoSettings = self.setUpPhotoSettings()
         DispatchQueue.main.async {
