@@ -1,4 +1,5 @@
 nightly_version = 2024-05-01
+arch = `./get_arch`
 
 all: framework
 
@@ -22,8 +23,8 @@ macos: toolchain
 	@mkdir -p ./libs
 	@cargo build --release --lib --target aarch64-apple-darwin
 	@cargo build --release --lib --target x86_64-apple-darwin
-	@cargo +nightly-$(nightly_version)-aarch64-apple-darwin build -Z build-std --release --lib --target aarch64-apple-ios-macabi
-	@cargo +nightly-$(nightly_version)-aarch64-apple-darwin build -Z build-std --release --lib --target x86_64-apple-ios-macabi
+	@cargo +nightly-$(nightly_version)-$(arch)-apple-darwin build -Z build-std --release --lib --target aarch64-apple-ios-macabi
+	@cargo +nightly-$(nightly_version)-$(arch)-apple-darwin build -Z build-std --release --lib --target x86_64-apple-ios-macabi
 	@$(RM) -f libs/libfishsense-macos.a
 	@$(RM) -f libs/libfishsense-maccatalyst.a
 	@lipo -create -output libs/libfishsense-macos.a \
@@ -47,7 +48,7 @@ ios: toolchain
 
 toolchain:
 	@cargo install cbindgen
-	@rustup component add rust-src --toolchain nightly-$(nightly_version)-aarch64-apple-darwin
+	@rustup component add rust-src --toolchain nightly-$(nightly_version)-$(arch)-apple-darwin
 
 clean: toolchain
 	@$(RM) -rf ./target

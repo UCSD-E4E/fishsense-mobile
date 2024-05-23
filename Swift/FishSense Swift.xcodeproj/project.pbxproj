@@ -341,13 +341,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J7APG66N2C;
+				DEVELOPMENT_TEAM = Y5NHPLB2BZ;
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSenseHarish;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -362,13 +362,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J7APG66N2C;
+				DEVELOPMENT_TEAM = Y5NHPLB2BZ;
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSenseHarish;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
