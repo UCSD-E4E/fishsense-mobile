@@ -25,7 +25,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
         
         // Set up the video preview view.
         previewView.videoPreviewLayer.session = session
-        previewView.videoPreviewLayer.videoGravity = .resizeAspect
+        previewView.videoPreviewLayer.videoGravity = .resizeAspectFill// .resizeAspect
         
         let pinchRecognizer = UIPinchGestureRecognizer(target: self, action:#selector(pinch(_:)))
         self.previewView.addGestureRecognizer(pinchRecognizer)
@@ -454,10 +454,6 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
             photoSettings.previewPhotoFormat = [kCVPixelBufferPixelFormatTypeKey as String: photoSettings.__availablePreviewPhotoPixelFormatTypes.first!]
         }
         
-//        photoSettings.isDepthDataDeliveryEnabled = true
-
-//        photoSettings.photoQualityPrioritization = self.photoQualityPrioritizationMode
-
         return photoSettings
     }
     
