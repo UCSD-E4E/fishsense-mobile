@@ -10,7 +10,7 @@ class PhotoViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        // deleteAllSavedPhotos()
         // Load saved photos when the view controller loads
         savedPhotos = loadSavedPhotos()
         
@@ -40,7 +40,6 @@ class PhotoViewController: UIViewController {
     func displaySavedPhotos() {
         // Convert savedPhotos to DataTemp array
         let dataTempList = savedPhotos.map { DataTemp(image: $0) }
-        
         // Create the SwiftUI view
         let galleryView = ImageGallery(dataList: dataTempList)
         
@@ -60,11 +59,18 @@ class PhotoViewController: UIViewController {
         // Get the URL for the document directory
         if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             do {
-                // Get the contents of the document directory
-                let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
+                // Get the contents of the document directory, including creation date key
+                let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: [.creationDateKey])
+                
+                // Sort the file URLs by their creation date
+                let sortedFileURLs = fileURLs.sorted {
+                    let date1 = (try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                    let date2 = (try? $1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                    return date1 > date2
+                }
 
-                // Loop through the file URLs
-                for fileURL in fileURLs {
+                // Loop through the sorted file URLs
+                for fileURL in sortedFileURLs {
                     // Load the image data from each file URL
                     if let imageData = try? Data(contentsOf: fileURL), let image = UIImage(data: imageData) {
                         // Add the image to the array of saved photos
@@ -78,6 +84,7 @@ class PhotoViewController: UIViewController {
 
         return loadedPhotos
     }
+
     
     func deleteAllSavedPhotos() {
         print("Deleting all photos")
