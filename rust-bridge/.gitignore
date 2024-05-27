@@ -1,0 +1,3 @@
+include/fishsense.h
+libs/
+FishSenseRS.xcframework/
