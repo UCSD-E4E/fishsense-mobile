@@ -1,5 +1,7 @@
 import SwiftUI
 
+/** Modeled after the tutorial found here: https://www.youtube.com/watch?v=89fps_fP9DM&ab_channel=ScribbleCode **/
+
 struct ImageGallery: View {
     @Namespace var namespace
     
@@ -12,31 +14,43 @@ struct ImageGallery: View {
         ZStack {
             ScrollView {
                 LazyVGrid(columns: [
-                    GridItem(.flexible(minimum: 100, maximum: 200), spacing: 2),
-                    GridItem(.flexible(minimum: 100, maximum: 200), spacing: 2),
-                    GridItem(.flexible(minimum: 100, maximum: 200), spacing: 2)
+                    GridItem(.flexible(minimum: 100, maximum: .infinity), spacing: 2),
                 ], spacing: 2) {
                     ForEach(dataList) { data in
-                        Image(uiImage: data.image)
-                            .resizable()
-                            .aspectRatio(1, contentMode: .fill)
-                            .matchedGeometryEffect(
-                                id: data.id,
-                                in: namespace,
-                                isSource: selectedItem == nil
-                            )
-                            .zIndex(selectedItem == data ? 1 : 0)
-                            .onTapGesture {
-                                position = .zero
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                                    selectedItem = data
+                        HStack(spacing: 2) {
+                            // Image on the left
+                            Image(uiImage: data.image)
+                                .resizable()
+                                .aspectRatio(1, contentMode: .fill)
+                                .matchedGeometryEffect(
+                                    id: data.id,
+                                    in: namespace,
+                                    isSource: selectedItem == nil
+                                )
+                                .zIndex(selectedItem == data ? 1 : 0)
+                                .onTapGesture {
+                                    position = .zero
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                        selectedItem = data
+                                    }
                                 }
+                            
+                            // VStack for stacking text vertically
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Time: \n\(data.creationDate, formatter: dateFormatter)\n ")
+                                    .foregroundColor(.white)
+                                Text("Fish Length: \(data.fishLen.map { "\($0)" } ?? "Unavailable")")
+                                    .foregroundColor(.white)
                             }
+                            .padding(8)
+                            .cornerRadius(8)
+                        }
                     }
                 }
-                .padding(2)
             }
-            
+
+
+        
             Color.white
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
