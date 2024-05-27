@@ -1,3 +1,11 @@
+# FishSense Mobile
+
+## Dependencies
+This project is dependent on installing `rust-up`.
+
+## Build Steps
+Before building the FishSense App itself execute `make` in the `rust-bridge` directory.
+
 # AVCam: Building a Camera App
 
 Capture photos and record video using the front and rear iPhone and iPad cameras.

@@ -17,7 +17,22 @@
 		7AA677291CFF7B5C00B353FB /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677281CFF7B5C00B353FB /* PreviewView.swift */; };
 		EF9079482BE892D300EDEF43 /* PhotoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9079472BE892D300EDEF43 /* PhotoViewController.swift */; };
 		EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */; };
-/* End PBXBuildFile section */
+		// FCE700942BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; };
+		// FCE700952BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FCEB556D2BE2A3A0003D3797 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				FCE700952BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7697F938217A94FB0011862B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
@@ -33,6 +48,7 @@
 		EF9079472BE892D300EDEF43 /* PhotoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewController.swift; sourceTree = "<group>"; };
 		EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGallery.swift; sourceTree = "<group>"; };
 		F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = ../Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
+		FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = FishSenseRS.xcframework; path = "../rust-bridge/FishSenseRS.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FCE700942BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,6 +70,7 @@
 				7AA677131CFF765600B353FB /* FishSense */,
 				7AA677121CFF765600B353FB /* Products */,
 				DF594A7680971C5690D94783 /* Configuration */,
+				FCEB55692BE2A39F003D3797 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -89,6 +107,14 @@
 			name = Configuration;
 			sourceTree = "<group>";
 		};
+		FCEB55692BE2A39F003D3797 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -99,6 +125,7 @@
 				7AA6770D1CFF765500B353FB /* Sources */,
 				7AA6770E1CFF765500B353FB /* Frameworks */,
 				7AA6770F1CFF765500B353FB /* Resources */,
+				FCEB556D2BE2A3A0003D3797 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
