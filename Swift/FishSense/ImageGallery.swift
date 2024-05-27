@@ -42,38 +42,59 @@ struct ImageGallery: View {
                 .ignoresSafeArea()
                 .opacity(selectedItem == nil ? 0 : min(1, max(0, 1 - abs(Double(position.height) / 800))))
             
-            if let selectedItem {
-                Image(uiImage: selectedItem.image)
-                    .resizable()
-                    .aspectRatio(1, contentMode: .fit)
-                    .matchedGeometryEffect(
-                        id: selectedItem.id,
-                        in: namespace,
-                        isSource: self.selectedItem != nil
-                    )
-                    .zIndex(2)
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                            self.selectedItem = nil
-                        }
-                    }
-                    .offset(position)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                self.position = value.translation
+            if let selectedItem = selectedItem {
+                VStack {
+                    Image(uiImage: selectedItem.image)
+                        .resizable()
+                        // .aspectRatio(1, contentMode: .fit)
+                        .matchedGeometryEffect(
+                            id: selectedItem.id,
+                            in: namespace,
+                            isSource: self.selectedItem != nil
+                        )
+                        .zIndex(2)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                self.selectedItem = nil
                             }
-                            .onEnded { value in
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                                    if 200 < abs(self.position.height) {
-                                        self.selectedItem = nil
-                                    } else {
-                                        self.position = .zero
+                        }
+                        .offset(position)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    self.position = value.translation
+                                }
+                                .onEnded { value in
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                        if abs(self.position.height) > 200 {
+                                            self.selectedItem = nil
+                                        } else {
+                                            self.position = .zero
+                                        }
                                     }
                                 }
-                            }
-                    )
+                        )
+                    
+                    // Textual Information Below the Image
+                    VStack(alignment: .leading, spacing: 5) {
+                        VStack {
+                            Text("Time: \(selectedItem.creationDate, formatter: dateFormatter)")
+                                .foregroundColor(.black)
+                            //Text("Location: \(selectedItem.location ?? "Unknown")")
+                            //    .foregroundColor(.black)
+                            Text("Fish Length: \(selectedItem.fishLen.map { "\($0)" } ?? "Unavailable")")
+                                .foregroundColor(.black)
+                        }
+                    }
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(8)
+                    .shadow(radius: 5)
+                    .padding(.top, 10)
+                }
+                .padding()
             }
+
         }
     }
 }
@@ -81,4 +102,14 @@ struct ImageGallery: View {
 struct DataTemp: Identifiable, Equatable {
     let id: UUID = .init()
     let image: UIImage
+    let creationDate: Date
+    // let location: String?
+    let fishLen: Int?
 }
+
+let dateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .short
+    return formatter
+}()

@@ -6,7 +6,7 @@ class PhotoViewController: UIViewController {
     @IBOutlet private var deleteButton: UIButton!
 
     // Array to store saved photos
-    var savedPhotos: [UIImage] = []
+    var savedPhotos: [DataTemp] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,7 +39,8 @@ class PhotoViewController: UIViewController {
     
     func displaySavedPhotos() {
         // Convert savedPhotos to DataTemp array
-        let dataTempList = savedPhotos.map { DataTemp(image: $0) }
+        let dataTempList = savedPhotos
+
         // Create the SwiftUI view
         let galleryView = ImageGallery(dataList: dataTempList)
         
@@ -53,8 +54,8 @@ class PhotoViewController: UIViewController {
         hostingController.didMove(toParent: self)
     }
 
-    func loadSavedPhotos() -> [UIImage] {
-        var loadedPhotos: [UIImage] = []
+    func loadSavedPhotos() -> [DataTemp] {
+        var loadedData: [DataTemp] = []
 
         // Get the URL for the document directory
         if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
@@ -71,10 +72,18 @@ class PhotoViewController: UIViewController {
 
                 // Loop through the sorted file URLs
                 for fileURL in sortedFileURLs {
-                    // Load the image data from each file URL
-                    if let imageData = try? Data(contentsOf: fileURL), let image = UIImage(data: imageData) {
-                        // Add the image to the array of saved photos
-                        loadedPhotos.append(image)
+                    // Load the image data and metadata from each file URL
+                    if let imageData = try? Data(contentsOf: fileURL),
+                       let image = UIImage(data: imageData),
+                       let creationDate = (try? fileURL.resourceValues(forKeys: [.creationDateKey]))?.creationDate {
+                        // For fishLen, you need to provide appropriate values based on your application's logic
+                        let fishLen: Int? = nil // Provide actual fish length if available
+                        
+                        // Create a DataTemp instance with the loaded data and metadata
+                        let dataTemp = DataTemp(image: image, creationDate: creationDate, fishLen: fishLen)
+                        
+                        // Add the DataTemp instance to the array of loaded data
+                        loadedData.append(dataTemp)
                     }
                 }
             } catch {
@@ -82,8 +91,9 @@ class PhotoViewController: UIViewController {
             }
         }
 
-        return loadedPhotos
+        return loadedData
     }
+
 
     
     func deleteAllSavedPhotos() {
