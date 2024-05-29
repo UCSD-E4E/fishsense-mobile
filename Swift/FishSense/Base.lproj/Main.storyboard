@@ -203,7 +203,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleAspectFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4WK-b5-uBB" userLabel="Photo">
-                                <rect key="frame" x="177" y="705" width="60" height="60"/>
+                                <rect key="frame" x="177" y="703" width="60" height="60"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="60" id="AEb-Cg-SP8"/>
                                     <constraint firstAttribute="height" constant="60" id="FaW-OA-0f4"/>
@@ -239,7 +239,7 @@
                             <constraint firstItem="fUG-G3-waa" firstAttribute="bottom" secondItem="EWq-8J-bjQ" secondAttribute="bottom" id="vdS-mc-f8L"/>
                         </constraints>
                     </view>
-                    <tabBarItem key="tabBarItem" title="Camera2" id="vlQ-im-uRx"/>
+                    <tabBarItem key="tabBarItem" title="Camera2" image="camera" catalog="system" id="vlQ-im-uRx"/>
                     <connections>
                         <outlet property="arView" destination="fUG-G3-waa" id="9up-H1-XA1"/>
                         <outlet property="hideMeshButton" destination="MeV-5z-d7c" id="fw9-ck-MFl"/>
