@@ -15,9 +15,10 @@
 		7AA6771F1CFF765600B353FB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7AA6771D1CFF765600B353FB /* LaunchScreen.storyboard */; };
 		7AA677271CFF774800B353FB /* PhotoCaptureDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */; };
 		7AA677291CFF7B5C00B353FB /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677281CFF7B5C00B353FB /* PreviewView.swift */; };
-		FCE700942BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; };
-		FCE700952BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-/* End PBXBuildFile section */
+		EF9079482BE892D300EDEF43 /* PhotoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9079472BE892D300EDEF43 /* PhotoViewController.swift */; };
+		EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */; };
+		// FCE700942BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; };
+		// FCE700952BE2AA4C00B33CA1 /* FishSenseRS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };/* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		FCEB556D2BE2A3A0003D3797 /* Embed Frameworks */ = {
@@ -44,6 +45,8 @@
 		7AA677201CFF765600B353FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
 		7AA677281CFF7B5C00B353FB /* PreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
+		EF9079472BE892D300EDEF43 /* PhotoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewController.swift; sourceTree = "<group>"; };
+		EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGallery.swift; sourceTree = "<group>"; };
 		F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = ../Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = FishSenseRS.xcframework; path = "../rust-bridge/FishSenseRS.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -86,6 +89,8 @@
 				7AA677281CFF7B5C00B353FB /* PreviewView.swift */,
 				7AA677161CFF765600B353FB /* CameraViewController.swift */,
 				7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */,
+				EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */,
+				EF9079472BE892D300EDEF43 /* PhotoViewController.swift */,
 				7AA677181CFF765600B353FB /* Main.storyboard */,
 				7AA6771B1CFF765600B353FB /* Assets.xcassets */,
 				7AA6771D1CFF765600B353FB /* LaunchScreen.storyboard */,
@@ -186,10 +191,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */,
 				7AA677271CFF774800B353FB /* PhotoCaptureDelegate.swift in Sources */,
 				7AA677291CFF7B5C00B353FB /* PreviewView.swift in Sources */,
 				7AA677171CFF765600B353FB /* CameraViewController.swift in Sources */,
 				7AA677151CFF765600B353FB /* AppDelegate.swift in Sources */,
+				EF9079482BE892D300EDEF43 /* PhotoViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -341,13 +348,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = Y5NHPLB2BZ;
+				DEVELOPMENT_TEAM = 9Q292JQ3TP;
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSenseHarish;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-kyle";
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -362,13 +369,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = Y5NHPLB2BZ;
+				DEVELOPMENT_TEAM = 9Q292JQ3TP;
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSenseHarish;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-kyle";
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
