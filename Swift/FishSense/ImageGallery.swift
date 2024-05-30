@@ -40,9 +40,9 @@ struct ImageGallery: View {
                             // VStack for stacking text vertically
                             VStack(alignment: .leading, spacing: 5) {
                                 Text("Time: \n\(data.creationDate, formatter: dateFormatter)\n ")
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Color.primary)
                                 Text("Fish Length: \(data.fishLen.map { "\($0)" } ?? "Unavailable")")
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Color.primary)
                             }
                             .padding(8)
                             .cornerRadius(8)
@@ -97,8 +97,6 @@ struct ImageGallery: View {
                         VStack {
                             Text("Time: \(selectedItem.creationDate, formatter: dateFormatter)")
                                 .foregroundColor(.black)
-                            //Text("Location: \(selectedItem.location ?? "Unknown")")
-                            //    .foregroundColor(.black)
                             Text("Fish Length: \(selectedItem.fishLen.map { "\($0)" } ?? "Unavailable")")
                                 .foregroundColor(.black)
                         }
