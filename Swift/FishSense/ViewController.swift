@@ -157,8 +157,8 @@ class ViewController: UIViewController, ARSessionDelegate {
             let timestamp = Date().timeIntervalSince1970
             
             // Save the RGB image
-            let imageName = "image_\(timestamp).jpg"
-            saveImage(image, withName: imageName)
+            // let imageName = "image_\(timestamp).jpg"
+            saveImage(image/*, withName: imageName*/)
 
             // Handle depth data
             if #available(iOS 14.0, *) {
@@ -173,14 +173,39 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
 
-    func saveImage(_ image: UIImage, withName name: String) {
+    /*func saveImage(_ image: UIImage, withName name: String) {
         if let imageData = image.jpegData(compressionQuality: 0.8) {
             let filePath = getDocumentsDirectory().appendingPathComponent(name)
             try? imageData.write(to: filePath)
             print("Saved image to \(filePath)")
         }
+    }*/
+
+    func saveImage(_ image: UIImage) {
+        // Generate a unique file name for each photo
+        let uniqueFileName = UUID().uuidString
+        
+        // Get the URL for the document directory
+        if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            // Append the unique file name to the documents directory URL
+            let fileURL = documentsDirectory.appendingPathComponent("\(uniqueFileName).jpg")
+            
+            // Convert the UIImage to JPEG data
+            if let imageData = image.jpegData(compressionQuality: 0.8) {
+                do {
+                    // Write the image data to the file URL
+                    try imageData.write(to: fileURL)
+                    print("Photo saved successfully at \(fileURL)")
+                } catch {
+                    print("Error saving photo: \(error.localizedDescription)")
+                }
+            } else {
+                print("Error: Unable to convert UIImage to JPEG data")
+            }
+        }
     }
 
+    
     func saveDepthData(_ depthData: CVPixelBuffer, withName name: String) {
         let ciImage = CIImage(cvPixelBuffer: depthData)
         let context = CIContext()

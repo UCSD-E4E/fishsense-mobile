@@ -13,11 +13,11 @@
             <objects>
                 <viewController id="BYZ-38-t0r" userLabel="Camera View Controller" customClass="CameraViewController" customModule="FishSense" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
-                        <rect key="frame" x="0.0" y="0.0" width="414" height="813"/>
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="3eR-Rn-XpZ" userLabel="Preview" customClass="PreviewView" customModule="FishSense" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="0.0" width="414" height="813"/>
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                                 <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <gestureRecognizers/>
                                 <connections>
@@ -25,7 +25,7 @@
                                 </connections>
                             </view>
                             <button opaque="NO" contentMode="scaleAspectFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="uCj-6P-mHF" userLabel="Photo">
-                                <rect key="frame" x="177" y="743" width="60" height="60"/>
+                                <rect key="frame" x="177" y="792" width="60" height="60"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="60" id="NtC-UN-gTs"/>
                                     <constraint firstAttribute="width" constant="60" id="dxU-UP-4Ae"/>
@@ -43,7 +43,7 @@
                                 </connections>
                             </button>
                             <label hidden="YES" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Camera Unavailable" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="zf0-db-esM" userLabel="Camera Unavailable">
-                                <rect key="frame" x="103.5" y="392" width="207" height="29"/>
+                                <rect key="frame" x="103.5" y="433.5" width="207" height="29"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="24"/>
                                 <color key="textColor" red="1" green="1" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
@@ -160,7 +160,6 @@
                         </userDefinedRuntimeAttributes>
                     </tabBar>
                     <connections>
-                        <segue destination="BYZ-38-t0r" kind="relationship" relationship="viewControllers" id="ZND-6z-uKz"/>
                         <segue destination="rtl-9K-AWT" kind="relationship" relationship="viewControllers" id="JGA-Qe-QbF"/>
                         <segue destination="Tn6-a4-qAp" kind="relationship" relationship="viewControllers" id="n1Z-Kg-fzV"/>
                     </connections>
@@ -247,7 +246,7 @@
                             <constraint firstItem="fUG-G3-waa" firstAttribute="bottom" secondItem="EWq-8J-bjQ" secondAttribute="bottom" id="vdS-mc-f8L"/>
                         </constraints>
                     </view>
-                    <tabBarItem key="tabBarItem" title="Camera2" image="camera" catalog="system" id="vlQ-im-uRx"/>
+                    <tabBarItem key="tabBarItem" title="Camera" image="camera" catalog="system" id="vlQ-im-uRx"/>
                     <connections>
                         <outlet property="arView" destination="fUG-G3-waa" id="9up-H1-XA1"/>
                         <outlet property="hideMeshButton" destination="MeV-5z-d7c" id="fw9-ck-MFl"/>
