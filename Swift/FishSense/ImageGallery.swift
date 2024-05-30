@@ -9,7 +9,7 @@ struct ImageGallery: View {
     
     @State private var selectedItem: DataTemp?
     @State private var position = CGSize.zero
-    
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -21,7 +21,9 @@ struct ImageGallery: View {
                             // Image on the left
                             Image(uiImage: data.image)
                                 .resizable()
-                                .aspectRatio(1, contentMode: .fill)
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: UIScreen.main.bounds.height/4, height: UIScreen.main.bounds.height/4)
+                                .clipped()
                                 .matchedGeometryEffect(
                                     id: data.id,
                                     in: namespace,
@@ -60,7 +62,8 @@ struct ImageGallery: View {
                 VStack {
                     Image(uiImage: selectedItem.image)
                         .resizable()
-                        // .aspectRatio(1, contentMode: .fit)
+                        .aspectRatio(contentMode: .fit)
+                        .clipped()
                         .matchedGeometryEffect(
                             id: selectedItem.id,
                             in: namespace,

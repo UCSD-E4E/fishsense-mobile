@@ -108,7 +108,7 @@
                     </connections>
                 </tapGestureRecognizer>
             </objects>
-            <point key="canvasLocation" x="-657.97101449275362" y="-630.80357142857144"/>
+            <point key="canvasLocation" x="1497" y="-631"/>
         </scene>
         <!--Photo View Controller-->
         <scene sceneID="Kpp-XO-XKy">
@@ -140,7 +140,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="wvV-Wp-Xfi" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="64" y="-631"/>
+            <point key="canvasLocation" x="136" y="-631"/>
         </scene>
         <!--Tab Bar Controller-->
         <scene sceneID="sFr-7c-PEc">
@@ -150,11 +150,19 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="49"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <userDefinedRuntimeAttributes>
+                            <userDefinedRuntimeAttribute type="color" keyPath="unselectedItemTintColor">
+                                <color key="value" white="0.66666666666666663" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            </userDefinedRuntimeAttribute>
+                            <userDefinedRuntimeAttribute type="color" keyPath="tintColor">
+                                <color key="value" systemColor="systemCyanColor"/>
+                            </userDefinedRuntimeAttribute>
+                        </userDefinedRuntimeAttributes>
                     </tabBar>
                     <connections>
                         <segue destination="BYZ-38-t0r" kind="relationship" relationship="viewControllers" id="ZND-6z-uKz"/>
-                        <segue destination="Tn6-a4-qAp" kind="relationship" relationship="viewControllers" id="n1Z-Kg-fzV"/>
                         <segue destination="rtl-9K-AWT" kind="relationship" relationship="viewControllers" id="JGA-Qe-QbF"/>
+                        <segue destination="Tn6-a4-qAp" kind="relationship" relationship="viewControllers" id="n1Z-Kg-fzV"/>
                     </connections>
                 </tabBarController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="XTN-1w-Tpw" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -249,7 +257,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="T3q-ea-tdC" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="834.78260869565224" y="-631.47321428571422"/>
+            <point key="canvasLocation" x="-590" y="-631"/>
         </scene>
     </scenes>
     <color key="tintColor" white="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -259,6 +267,9 @@
         <image name="photo" catalog="system" width="128" height="93"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+        <systemColor name="systemCyanColor">
+            <color red="0.1960784314" green="0.67843137249999996" blue="0.90196078430000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>
