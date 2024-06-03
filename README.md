@@ -6,6 +6,7 @@ FishSense is a simple iOS app for taking images using iPhone and displaying phot
 
 - Take images.
 - View images taken in a photo gallery.
+- Select two points on the camera and get an estimated length measurement.
 
 ## Installation
 
@@ -25,8 +26,9 @@ Once installed, follow these steps to use FishSense:
 
 1. Open the app on your iOS device or simulator.
 2. Tap the Shutter button to take a new image.
-3. Tap the "Photos" tab to view the photo gallery.
-4. Tap on any image in the gallery to see more information.
+3. Tap on the screen two times to set the start and end point for the length measurement.
+4. Tap the "Photos" tab to view the photo gallery.
+5. Tap on any image in the gallery to see more information.
 
 ## Contributing
 
@@ -43,7 +45,7 @@ This project is dependent on installing `rust-up`.
 
 ## Contact
 
-For questions, feedback, or support, please email [Christopher Crutchfield](ccrutchf@ucsd.edu) and refer to the [E4E FishSense Site](https://e4e.ucsd.edu/fishsense)
+For questions, feedback, or support, please email [Christopher Crutchfield](ccrutchf@ucsd.edu) and refer to the [E4E FishSense Site](https://e4e.ucsd.edu/fishsense) for more information.
 
 ## Credits
 
