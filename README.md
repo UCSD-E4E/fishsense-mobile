@@ -1,6 +1,6 @@
 # FishSense iOS App
 
-FishSense is a simple iOS app for taking images using iPhone and displaying photos taken in a photo gallery. https://e4e.ucsd.edu/fishsense
+FishSense is a simple iOS app for taking images using iPhone and displaying photos taken in a photo gallery.
 
 ## Features
 
