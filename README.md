@@ -8,6 +8,15 @@ To monitor fish population health, marine scientists measure fish length from he
 
 Our goal is to expedite this process with an iOS app that uses iPhone hardware to measure fish length from a quick photo taken on a clear board. This method is faster, simpler, and minimizes the time fish spend out of water, increasing their survival chances. Additionally, users can easily save collected data, and the app reduces human error by automating data collection.
 
+## Repository Organization
+
+The project is organized into several main directories:
+- Configuration: Contains configuration files.
+- Documentation: Contains documentation images.
+- FishSense.xcworkspace: Xcode workspace files and shared data.
+- Swift: Main Swift project files, including assets, storyboards, and source code.
+- rust-bridge: Contains Rust bridge components, configuration, source files, and a VSCode setup.
+
 ## Features
 
 - Take images.
