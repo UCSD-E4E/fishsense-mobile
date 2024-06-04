@@ -2,6 +2,12 @@
 
 FishSense is a simple iOS app for taking images using iPhone and displaying photos taken in a photo gallery.
 
+## Overview
+
+To monitor fish population health, marine scientists measure fish length from head to tail. Averaging these lengths across a large sample provides valuable insights. Traditional methods involve hand-measuring fish out of water, which is inefficient, error-prone, and potentially harmful to the fish. Alternative methods, like underwater eyeball measurements, also pose challenges to accuracy and efficiency.
+
+Our goal is to expedite this process with an iOS app that uses iPhone hardware to measure fish length from a quick photo taken on a clear board. This method is faster, simpler, and minimizes the time fish spend out of water, increasing their survival chances. Additionally, users can easily save collected data, and the app reduces human error by automating data collection.
+
 ## Features
 
 - Take images.
@@ -30,6 +36,8 @@ Once installed, follow these steps to use FishSense:
 4. Tap the "Photos" tab to view the photo gallery.
 5. Tap on any image in the gallery to see more information.
 
+[Watch demo video](https://youtube.com/shorts/he1tru-qiu0?feature=share)
+
 ## Contributing
 
 If you'd like to contribute to FishSense, please follow these guidelines:
@@ -42,6 +50,11 @@ If you'd like to contribute to FishSense, please follow these guidelines:
 ## Dependencies
 
 This project is dependent on installing `rust-up`.
+
+## Documentation
+
+[Project Specification](https://drive.google.com/file/d/1ilQzUzoTjJRMs9WBgopTwlVI-bCJKUCj/view?usp=sharing)
+[Milestone Report](https://drive.google.com/file/d/1CXrF6uCFg3iVLRkhn2YxwyVFhJFtu0g7/view?usp=sharing)
 
 ## Contact
 
