@@ -1,27 +1,28 @@
 # FishSense iOS App
 
-FishSense is a simple iOS app for taking images using iPhone and displaying photos taken in a photo gallery.
+FishSense is a simple iOS app for taking images using iPhone and displaying photos taken in a photo gallery, which added features on measuring fish length.
 
 ## Overview
 
 To monitor fish population health, marine scientists measure fish length from head to tail. Averaging these lengths across a large sample provides valuable insights. Traditional methods involve hand-measuring fish out of water, which is inefficient, error-prone, and potentially harmful to the fish. Alternative methods, like underwater eyeball measurements, also pose challenges to accuracy and efficiency.
 
-Our goal is to expedite this process with an iOS app that uses iPhone hardware to measure fish length from a quick photo taken on a clear board. This method is faster, simpler, and minimizes the time fish spend out of water, increasing their survival chances. Additionally, users can easily save collected data, and the app reduces human error by automating data collection.
-
-## Repository Organization
-
-The project is organized into several main directories:
-- Configuration: Contains configuration files.
-- Documentation: Contains documentation images.
-- FishSense.xcworkspace: Xcode workspace files and shared data.
-- Swift: Main Swift project files, including assets, storyboards, and source code.
-- rust-bridge: Contains Rust bridge components, configuration, source files, and a VSCode setup.
+Our goal is to expedite this process with an iOS app that uses iPhone LIDAR hardware to measure fish length from a quick photo taken on a clear board. This method is faster, simpler, and minimizes the time fish spend out of water, increasing their survival chances. Additionally, users can easily save collected data, and the app reduces human error by automating data collection.
 
 ## Features
 
 - Take images.
 - View images taken in a photo gallery.
 - Select two points on the camera and get an estimated length measurement.
+- [Watch demo video](https://youtube.com/shorts/he1tru-qiu0?feature=share)
+
+## Repository Organization
+
+The project is organized into several main directories:
+
+- `/Configuration`: Contains configuration files.
+- `/FishSense.xcworkspace`: Xcode workspace files and shared data.
+- `/Swift`: Main Swift project files, including assets, storyboards, and source code.
+- `/rust-bridge`: Contains Rust bridge components, configuration, source files, and a VSCode setup.
 
 ## Installation
 
@@ -45,8 +46,6 @@ Once installed, follow these steps to use FishSense:
 4. Tap the "Photos" tab to view the photo gallery.
 5. Tap on any image in the gallery to see more information.
 
-[Watch demo video](https://youtube.com/shorts/he1tru-qiu0?feature=share)
-
 ## Contributing
 
 If you'd like to contribute to FishSense, please follow these guidelines:
@@ -62,8 +61,8 @@ This project is dependent on installing `rust-up`.
 
 ## Documentation
 
-[Project Specification](https://drive.google.com/file/d/1ilQzUzoTjJRMs9WBgopTwlVI-bCJKUCj/view?usp=sharing)
-[Milestone Report](https://drive.google.com/file/d/1CXrF6uCFg3iVLRkhn2YxwyVFhJFtu0g7/view?usp=sharing)
+- [Project Specification](https://drive.google.com/file/d/1ilQzUzoTjJRMs9WBgopTwlVI-bCJKUCj/view?usp=sharing): our initial plan for our project for the quarter (including MVP, group management, milestone plan and schedule).
+- [Milestone Report](https://drive.google.com/file/d/1CXrF6uCFg3iVLRkhn2YxwyVFhJFtu0g7/view?usp=sharing): our mid-quarter progress update, including an updated MVP and discussion on completed and future deliverables.
 
 ## Contact
 
