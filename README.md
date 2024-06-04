@@ -22,6 +22,9 @@ The project is organized into several main directories:
 - `/Configuration`: Contains configuration files.
 - `/FishSense.xcworkspace`: Xcode workspace files and shared data.
 - `/Swift`: Main Swift project files, including assets, storyboards, and source code.
+  - `/Swift/FishSence/ViewController.swift`: an ARKit based app for capturing photos, saving depth data, detecting planes, visualizing distances between points, and interacting with AR meshes using touch gestures and various UI elements.
+  - `/Swift/FishSence/ImageGallery.swift`: view that displays a scrollable, grid-based gallery of images taken by the camera.
+  - `/Swift/FishSence/PhotoViewController.swift`: controller for managing and displaying saved photos, including loading, displaying, and deleting photos.
 - `/rust-bridge`: Contains Rust bridge components, configuration, source files, and a VSCode setup.
 
 ## Installation
@@ -63,6 +66,7 @@ This project is dependent on installing `rust-up`.
 
 - [Project Specification](https://drive.google.com/file/d/1ilQzUzoTjJRMs9WBgopTwlVI-bCJKUCj/view?usp=sharing): our initial plan for our project for the quarter (including MVP, group management, milestone plan and schedule).
 - [Milestone Report](https://drive.google.com/file/d/1CXrF6uCFg3iVLRkhn2YxwyVFhJFtu0g7/view?usp=sharing): our mid-quarter progress update, including an updated MVP and discussion on completed and future deliverables.
+- [Oral Presentation](https://docs.google.com/presentation/d/1yuhbzucz12eFJZDX1K5wSOqCdl-Lg-KMAf012UUYhLo/edit?usp=sharing): our final presentation on the project.
 
 ## Contact
 
