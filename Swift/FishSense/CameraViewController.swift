@@ -9,7 +9,6 @@ import UIKit
 import AVFoundation
 import CoreLocation
 import Photos
-import FishSenseRS
 
 class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoordinatorDelegate {
     
@@ -63,13 +62,13 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     
     @objc func pinch(_ pinch: UIPinchGestureRecognizer) {
         // Begin Rust Test Code
-        let result = add2(1, 2)
+        // let result = add2(1, 2)
         
-        let alertMessagePopUpBox = UIAlertController(title: "This is my test title", message: "Hello using Rust! add2(1, 2) = \(result)", preferredStyle: .alert)
+        /*let alertMessagePopUpBox = UIAlertController(title: "This is my test title", message: "Hello using Rust! add2(1, 2) = \(result)", preferredStyle: .alert)
         let okButton = UIAlertAction(title: "OK", style: .default)
         
         alertMessagePopUpBox.addAction(okButton)
-        self.present(alertMessagePopUpBox, animated: true)
+        self.present(alertMessagePopUpBox, animated: true)*/
         // End Rust Test Code
         
         
