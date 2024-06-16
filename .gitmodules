@@ -1,0 +1,3 @@
+[submodule "rust-bridge/third_party/onnxruntime"]
+	path = rust-bridge/third_party/onnxruntime
+	url = https://github.com/microsoft/onnxruntime.git

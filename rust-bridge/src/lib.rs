@@ -1,8 +1,8 @@
-use fishsense::add;
+// use fishsense::add;
 
 #[no_mangle]
 pub extern fn add2(left: usize, right: usize) -> usize {
-    add(left, right)
+    left + right
 }
 
 #[cfg(test)]
