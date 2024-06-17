@@ -1,3 +1,6 @@
 [submodule "rust-bridge/third_party/onnxruntime"]
 	path = rust-bridge/third_party/onnxruntime
 	url = https://github.com/microsoft/onnxruntime.git
+[submodule "rust-bridge/third_party/opencv"]
+	path = rust-bridge/third_party/opencv
+	url = https://github.com/opencv/opencv.git

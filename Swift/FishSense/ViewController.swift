@@ -1,5 +1,6 @@
 import ARKit
 import RealityKit
+import FishSenseRS
 
 class ViewController: UIViewController, ARSessionDelegate {
     
@@ -144,7 +145,7 @@ class ViewController: UIViewController, ARSessionDelegate {
             }
         }
     }
-    
+       
     @IBAction func captureCurrentFrame() {
         print("Capturing photo with ARKit\n")
         guard let currentFrame = arView.session.currentFrame else { return }
@@ -153,6 +154,10 @@ class ViewController: UIViewController, ARSessionDelegate {
         let context = CIContext(options: nil)
 
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+            let data = cgImage.dataProvider?.data
+            let bytes = CFDataGetBytePtr(data)
+            FishSenseRS.find_head_tail(bytes, UInt32(cgImage.width), UInt32(cgImage.height))
+            
             let image = UIImage(cgImage: cgImage)
             let timestamp = Date().timeIntervalSince1970
             

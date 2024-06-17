@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 fishsense = { git = "https://github.com/UCSD-E4E/fishsense.rs.git", version = "0.1.0" }
+libc = "0.2.155"
+ndarray = "0.15.6"
 
 [lib]
 name = "fishsense"

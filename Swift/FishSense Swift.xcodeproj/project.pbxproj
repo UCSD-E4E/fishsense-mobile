@@ -21,15 +21,22 @@
 		EFBFFD1F2C0791EC0061AE66 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */; };
 		EFBFFD212C0791F10061AE66 /* ViewController+CoachingOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */; };
 		EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */; };
+		FC1FC4652C1EB2560018C48C /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC1FC4642C1EB2560018C48C /* FishSenseRS.xcframework */; };
+		FC1FC4662C1EB2560018C48C /* FishSenseRS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FC1FC4642C1EB2560018C48C /* FishSenseRS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FC1FF8D92C2023A10018C48C /* opencv2.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC1FF8D82C2023A10018C48C /* opencv2.xcframework */; };
+		FC1FF8DA2C2023A10018C48C /* opencv2.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FC1FF8D82C2023A10018C48C /* opencv2.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FC1FF8DC2C2023FD0018C48C /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FC1FF8DB2C2023E30018C48C /* libc++.tbd */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		FCEB556D2BE2A3A0003D3797 /* Embed Frameworks */ = {
+		FC1FC4672C1EB2560018C48C /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				FC1FC4662C1EB2560018C48C /* FishSenseRS.xcframework in Embed Frameworks */,
+				FC1FF8DA2C2023A10018C48C /* opencv2.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -54,7 +61,9 @@
 		EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ViewController+CoachingOverlay.swift"; sourceTree = "<group>"; };
 		EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGallery.swift; sourceTree = "<group>"; };
 		F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = ../Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
-		FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = FishSenseRS.xcframework; path = "../rust-bridge/FishSenseRS.xcframework"; sourceTree = "<group>"; };
+		FC1FC4642C1EB2560018C48C /* FishSenseRS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = FishSenseRS.xcframework; path = Frameworks/FishSenseRS.xcframework; sourceTree = "<group>"; };
+		FC1FF8D82C2023A10018C48C /* opencv2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = opencv2.xcframework; path = Frameworks/opencv2.xcframework; sourceTree = "<group>"; };
+		FC1FF8DB2C2023E30018C48C /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FC1FF8DC2C2023FD0018C48C /* libc++.tbd in Frameworks */,
+				FC1FC4652C1EB2560018C48C /* FishSenseRS.xcframework in Frameworks */,
+				FC1FF8D92C2023A10018C48C /* opencv2.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,7 +131,9 @@
 		FCEB55692BE2A39F003D3797 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				FCE700932BE2AA4C00B33CA1 /* FishSenseRS.xcframework */,
+				FC1FF8DB2C2023E30018C48C /* libc++.tbd */,
+				FC1FF8D82C2023A10018C48C /* opencv2.xcframework */,
+				FC1FC4642C1EB2560018C48C /* FishSenseRS.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -134,7 +148,7 @@
 				7AA6770D1CFF765500B353FB /* Sources */,
 				7AA6770E1CFF765500B353FB /* Frameworks */,
 				7AA6770F1CFF765500B353FB /* Resources */,
-				FCEB556D2BE2A3A0003D3797 /* Embed Frameworks */,
+				FC1FC4672C1EB2560018C48C /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -360,14 +374,21 @@
 			baseConfigurationReference = F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 9Q292JQ3TP;
+				DEVELOPMENT_TEAM = J7APG66N2C;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-kyle";
+				OTHER_LDFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -381,14 +402,21 @@
 			baseConfigurationReference = F832D8CBECBB204152E1E99B /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 9Q292JQ3TP;
+				DEVELOPMENT_TEAM = J7APG66N2C;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = FishSense/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-kyle";
+				OTHER_LDFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
