@@ -19,7 +19,7 @@
 extern crate libc;
 use std::{ffi::c_uchar, mem};
 
-//use fishsense::fish::FishSegmentation;
+use fishsense::fish::FishSegmentation;
 use ndarray::Array;
 
 #[no_mangle]
@@ -37,7 +37,10 @@ pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) {
     };
 
     let img_arr = Array::from_vec(data_vec).into_shape((height as usize, width as usize, 3 as usize)).unwrap(); // TODO
-    //let segmentation = FishSegmentation::from_web().unwrap(); // TODO
+    let mut segmentation = FishSegmentation::from_web().unwrap(); // TODO
+    segmentation.load_model().unwrap(); // TODO
 
-    println!("this is a test");
+    let mask = segmentation.inference(&img_arr).unwrap(); // TODO
+
+    println!("this is a test, {}", mask.sum() > 0);
 }
