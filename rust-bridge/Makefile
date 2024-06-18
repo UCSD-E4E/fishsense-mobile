@@ -62,8 +62,8 @@ $(opencv_location)/opencv2.xcframework/Info.plist:
 		--build_only_specified_archs True \
 		--dynamic \
 		--without objc
-	@cp ./third_party/ocl.hpp ./third_party/libs/opencv/opencv2.xcframework/ios-arm64/Headers/core
-	@cp ./third_party/ocl.hpp ./third_party/libs/opencv/opencv2.xcframework/ios-arm64_x86_64/Headers/core
+	@cp ./third_party/ocl.hpp ./third_party/lib/opencv/opencv2.xcframework/ios-arm64/opencv2.framework/Headers/core
+	@cp ./third_party/ocl.hpp ./third_party/lib/opencv/opencv2.xcframework/ios-arm64_x86_64-simulator/opencv2.framework/Headers/core
 
 clean-all: clean clean-lib
 

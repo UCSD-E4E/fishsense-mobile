@@ -154,6 +154,7 @@ class ViewController: UIViewController, ARSessionDelegate {
         let context = CIContext(options: nil)
 
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+            print("bits per pixel \(cgImage.bitsPerPixel)")
             let data = cgImage.dataProvider?.data
             let bytes = CFDataGetBytePtr(data)
             FishSenseRS.find_head_tail(bytes, UInt32(cgImage.width), UInt32(cgImage.height))
