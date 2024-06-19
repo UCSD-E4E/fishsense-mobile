@@ -17,50 +17,130 @@
 // }
 
 extern crate libc;
-use std::ffi::c_uchar;
+use std::{ffi::c_uchar, fmt::Display};
 
 use cv_convert::TryIntoCv;
 use fishsense::fish::{FishSegmentation, SegmentationError};
-use ndarray::Array3;
+use ndarray::{Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
 
-#[no_mangle]
-pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) {
+#[derive(Debug)]
+enum ExecutionError {
+    OpenCVError(opencv::Error),
+    FishNotFound,
+    SegmentationError(SegmentationError),
+    CVToNDArrayError
+}
+
+impl Display for ExecutionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExecutionError::OpenCVError(error) => 
+                write!(f, "{}", error),
+            ExecutionError::FishNotFound => 
+                write!(f, "FishNotFound"),
+            ExecutionError::SegmentationError(error) => 
+                write!(f, "{}", error),
+            ExecutionError::CVToNDArrayError => 
+                write!(f, "CVToNDArrayError"),
+        }
+    }
+}
+
+fn ios_image_into_cv_bgr(data: *const c_uchar, width: u32, height: u32) -> Result<Mat, ExecutionError> {
     let img_cv = unsafe {
+        // iOS images are 4 channel RGBA.
         let length = (width * height * 4) as usize;
 
-        let mut img_cv = Mat::new_rows_cols(height as i32, width as i32, CV_8UC4).unwrap(); // TODO
-        std::ptr::copy(data, img_cv.ptr_mut(0).unwrap(), length); // TODO
+        match Mat::new_rows_cols(height as i32, width as i32, CV_8UC4) {
+            Ok(mut img_cv) => {
+                match img_cv.ptr_mut(0) {
+                    Ok(ptr) => {
+                        // Copy the data into the Mat structure.
+                        std::ptr::copy(data, ptr, length);
+                        Ok(img_cv)
+                    },
+                    Err(err) => Err(ExecutionError::OpenCVError(err))
+                }
 
-        img_cv
-    };
+            },
+            Err(err) => Err(ExecutionError::OpenCVError(err))
+        }
+    }?;
 
     let mut img_bgr = Mat::default();
-    cvt_color_def(&img_cv, &mut img_bgr, COLOR_RGBA2BGR).unwrap(); // TODO
-    let img_arr: Array3<u8> = img_bgr.try_into_cv().unwrap(); // TODO
+    match cvt_color_def(&img_cv, &mut img_bgr, COLOR_RGBA2BGR) {
+        Ok(_) => Ok(img_bgr),
+        Err(err) => Err(ExecutionError::OpenCVError(err))
+    }
+}
 
-    let mut segmentation = FishSegmentation::from_web().unwrap(); // TODO
-    segmentation.load_model().unwrap(); // TODO
+fn segmentation_factory() -> Result<FishSegmentation, ExecutionError> {
+    match FishSegmentation::from_web() {
+        Ok(mut segmentation) => {
+            match segmentation.load_model() {
+                Ok(_) => Ok(segmentation),
+                Err(err) => Err(ExecutionError::SegmentationError(err))
+            }
+        },
+        Err(err) => Err(ExecutionError::SegmentationError(err))
+    }
+}
 
-    match segmentation.inference(&img_arr) {
+fn inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
+    let segmentation = segmentation_factory()?;
+
+    match segmentation.inference(&img) {
         Ok(mask) => {
-            println!("fish found={}", mask.sum() > 0);
-
-            Ok(())
+            if mask.sum() > 0 {
+                Ok(mask)
+            }
+            else {
+                Err(ExecutionError::FishNotFound)
+            }
         },
         Err(err) => {
             match err {
                 SegmentationError::OrtErr(err) => {
                     match err {
                         ort::Error::SessionRun(_) => { // Hack to work around a bug in our onnx model which causes crashes when no fish are found.
-                            println!("oh no, no fish found");
-                            Ok(())
+                            Err(ExecutionError::FishNotFound)
                         },
-                        other => Err(SegmentationError::OrtErr(other))
+                        other => Err(ExecutionError::SegmentationError(SegmentationError::OrtErr(other)))
                     }
                 },
-                other => Err(other)
+                other => Err(ExecutionError::SegmentationError(other))
             }
         }
-    }.unwrap()
+    }
+}
+
+fn do_find_head_tail(data: *const c_uchar, width: u32, height: u32) -> Result<(), ExecutionError> {
+    let img_cv = ios_image_into_cv_bgr(data, width, height)?;
+    let img_arr: Result<Array3<u8>, _> = img_cv.try_into_cv();
+    match img_arr {
+        Ok(img_arr) => {
+            match inference(img_arr) {
+                Ok(mask) => {
+                    println!("We found a fish!");
+                    Ok(())
+                },
+                Err(err) => {
+                    match err {
+                        ExecutionError::FishNotFound => {
+                            println!("We did not find a fish!");
+                            Ok(())
+                        },
+                        other => Err(other)
+                    }
+                }
+            }
+        },
+        Err(_) => Err(ExecutionError::CVToNDArrayError)
+    }
+}
+
+#[no_mangle]
+pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) {
+    do_find_head_tail(data, width, height).unwrap() // TODO
 }
