@@ -157,7 +157,20 @@ class ViewController: UIViewController, ARSessionDelegate {
             print("bits per pixel \(cgImage.bitsPerPixel)")
             let data = cgImage.dataProvider?.data
             let bytes = CFDataGetBytePtr(data)
-            FishSenseRS.find_head_tail(bytes, UInt32(cgImage.width), UInt32(cgImage.height))
+            let fishHeadTailResult = FishSenseRS.find_head_tail(bytes, UInt32(cgImage.width), UInt32(cgImage.height))
+            
+            if fishHeadTailResult.error_string != nil {
+                print(String(cString: fishHeadTailResult.error_string));
+                fishHeadTailResult.error_string.deallocate();
+            }
+            else {
+                if fishHeadTailResult.fish_found {
+                    print("We found a fish in swift!")
+                }
+                else {
+                    print("We did not find a fish in swift!")
+                }
+            }
             
             let image = UIImage(cgImage: cgImage)
             let timestamp = Date().timeIntervalSince1970

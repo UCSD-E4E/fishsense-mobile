@@ -17,7 +17,7 @@
 // }
 
 extern crate libc;
-use std::{ffi::c_uchar, fmt::Display};
+use std::{ffi::{c_uchar, CString}, fmt::Display, mem::transmute, ptr::null};
 
 use cv_convert::TryIntoCv;
 use fishsense::fish::{FishSegmentation, SegmentationError};
@@ -30,6 +30,12 @@ enum ExecutionError {
     FishNotFound,
     SegmentationError(SegmentationError),
     CVToNDArrayError
+}
+
+#[repr(C)]
+pub struct HeadTailResult {
+    fish_found: bool,
+    error_string: *const c_uchar
 }
 
 impl Display for ExecutionError {
@@ -87,7 +93,7 @@ fn segmentation_factory() -> Result<FishSegmentation, ExecutionError> {
     }
 }
 
-fn inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
+fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     let segmentation = segmentation_factory()?;
 
     match segmentation.inference(&img) {
@@ -115,32 +121,60 @@ fn inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     }
 }
 
-fn do_find_head_tail(data: *const c_uchar, width: u32, height: u32) -> Result<(), ExecutionError> {
+fn inference(data: *const c_uchar, width: u32, height: u32) -> Result<Array2<u8>, ExecutionError> {
     let img_cv = ios_image_into_cv_bgr(data, width, height)?;
     let img_arr: Result<Array3<u8>, _> = img_cv.try_into_cv();
     match img_arr {
         Ok(img_arr) => {
-            match inference(img_arr) {
-                Ok(mask) => {
-                    println!("We found a fish!");
-                    Ok(())
-                },
-                Err(err) => {
-                    match err {
-                        ExecutionError::FishNotFound => {
-                            println!("We did not find a fish!");
-                            Ok(())
-                        },
-                        other => Err(other)
-                    }
-                }
-            }
+            do_inference(img_arr)
         },
         Err(_) => Err(ExecutionError::CVToNDArrayError)
     }
 }
 
+fn do_find_head_tail(data: *const c_uchar, width: u32, height: u32) -> Result<(), ExecutionError> {
+    let mask = inference(data, width, height)?;
+
+    Ok(())
+}
+
 #[no_mangle]
-pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) {
-    do_find_head_tail(data, width, height).unwrap() // TODO
+pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) -> HeadTailResult {
+    match do_find_head_tail(data, width, height) {
+        Ok(()) => HeadTailResult {
+            fish_found: true,
+            error_string: null()
+        },
+        Err(error) => {
+            match error {
+                ExecutionError::FishNotFound => HeadTailResult {
+                    fish_found: false,
+                    error_string: null()
+                },
+                other => {
+                    let cstring_ptr = unsafe {
+                        // By boxing this, we move it to the heap.
+                        // It is still owned by Rust.
+                        let cstring_heap = Box::new(
+                            // This cannot be null here, so unwrap should be safe.
+                            // This is part of the error handling, if we can't fail
+                            // gracefully, it's okay to crash.
+                            CString::new(other.to_string()).unwrap()
+                        );
+
+                        // Rust no longer has ownership of this data.
+                        // It is now Swift's responsibility to clean up correctly!
+                        let data:*const CString = transmute(cstring_heap);
+
+                        (&*data).as_ptr()
+                    };
+
+                    HeadTailResult {
+                        fish_found: false,
+                        error_string: cstring_ptr as *const c_uchar
+                    }
+                }
+            }
+        }
+    }
 }
