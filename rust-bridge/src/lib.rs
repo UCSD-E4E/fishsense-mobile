@@ -20,7 +20,7 @@ extern crate libc;
 use std::ffi::c_uchar;
 
 use cv_convert::TryIntoCv;
-use fishsense::fish::FishSegmentation;
+use fishsense::fish::{FishSegmentation, SegmentationError};
 use ndarray::Array3;
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
 
@@ -42,7 +42,25 @@ pub extern fn find_head_tail(data: *const c_uchar, width: u32, height: u32) {
     let mut segmentation = FishSegmentation::from_web().unwrap(); // TODO
     segmentation.load_model().unwrap(); // TODO
 
-    let mask = segmentation.inference(&img_arr).unwrap(); // TODO
+    match segmentation.inference(&img_arr) {
+        Ok(mask) => {
+            println!("fish found={}", mask.sum() > 0);
 
-    println!("fish found={}", mask.sum() > 0);
+            Ok(())
+        },
+        Err(err) => {
+            match err {
+                SegmentationError::OrtErr(err) => {
+                    match err {
+                        ort::Error::SessionRun(_) => { // Hack to work around a bug in our onnx model which causes crashes when no fish are found.
+                            println!("oh no, no fish found");
+                            Ok(())
+                        },
+                        other => Err(SegmentationError::OrtErr(other))
+                    }
+                },
+                other => Err(other)
+            }
+        }
+    }.unwrap()
 }
