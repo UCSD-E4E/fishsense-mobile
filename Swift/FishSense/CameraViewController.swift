@@ -60,17 +60,7 @@ class CameraViewController: UIViewController, AVCapturePhotoOutputReadinessCoord
     let maximumZoom: CGFloat = 2.0
     var lastZoomFactor: CGFloat = 1.0
     
-    @objc func pinch(_ pinch: UIPinchGestureRecognizer) {
-        // Begin Rust Test Code
-        // let result = add2(1, 2)
-        
-        /*let alertMessagePopUpBox = UIAlertController(title: "This is my test title", message: "Hello using Rust! add2(1, 2) = \(result)", preferredStyle: .alert)
-        let okButton = UIAlertAction(title: "OK", style: .default)
-        
-        alertMessagePopUpBox.addAction(okButton)
-        self.present(alertMessagePopUpBox, animated: true)*/
-        // End Rust Test Code
-        
+    @objc func pinch(_ pinch: UIPinchGestureRecognizer) {       
         
              let device = videoDeviceInput.device
        

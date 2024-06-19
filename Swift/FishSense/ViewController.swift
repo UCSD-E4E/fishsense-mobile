@@ -80,6 +80,7 @@ class ViewController: UIViewController, ARSessionDelegate {
         configuration.sceneReconstruction = .meshWithClassification
 
         configuration.environmentTexturing = .automatic
+        configuration.frameSemantics.insert(.sceneDepth)
         arView.session.run(configuration)
         
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
@@ -145,6 +146,15 @@ class ViewController: UIViewController, ARSessionDelegate {
             }
         }
     }
+    
+    func displayErrorMessage(title: String, message: String) {
+        // Pop an error message to the user with the error.
+        let alertMessagePopUpBox = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let okButton = UIAlertAction(title: "OK", style: .default)
+        
+        alertMessagePopUpBox.addAction(okButton)
+        self.present(alertMessagePopUpBox, animated: true)
+    }
        
     @IBAction func captureCurrentFrame() {
         print("Capturing photo with ARKit\n")
@@ -154,42 +164,64 @@ class ViewController: UIViewController, ARSessionDelegate {
         let context = CIContext(options: nil)
 
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
-            print("bits per pixel \(cgImage.bitsPerPixel)")
-            let data = cgImage.dataProvider?.data
-            let bytes = CFDataGetBytePtr(data)
-            let fishHeadTailResult = FishSenseRS.find_head_tail(bytes, UInt32(cgImage.width), UInt32(cgImage.height))
-            
-            if fishHeadTailResult.error_string != nil {
-                print(String(cString: fishHeadTailResult.error_string));
-                fishHeadTailResult.error_string.deallocate();
-            }
-            else {
-                if fishHeadTailResult.fish_found {
-                    print("We found a fish in swift!")
-                }
-                else {
-                    print("We did not find a fish in swift!")
-                }
-            }
-            
-            let image = UIImage(cgImage: cgImage)
-            let timestamp = Date().timeIntervalSince1970
-            
-            // Save the RGB image
-            // let imageName = "image_\(timestamp).jpg"
-            saveImage(image/*, withName: imageName*/)
-
             // Handle depth data
             if #available(iOS 14.0, *) {
                 if let depthData = currentFrame.sceneDepth?.depthMap {
-                    // Save depth data
-                    let depthName = "depth_\(timestamp).png"
-                    saveDepthData(depthData, withName: depthName)
+                    let imgData = cgImage.dataProvider?.data
+                    let imgBytes = CFDataGetBytePtr(imgData)
+                    
+                    CVPixelBufferLockBaseAddress(depthData, .readOnly)
+                    let depthWidth = CVPixelBufferGetHeight(depthData)
+                    let depthHeight = CVPixelBufferGetHeight(depthData)
+                    let depthBytes = CVPixelBufferGetBaseAddress(depthData)
+                    
+                    let lengthResult = FishSenseRS.compute_length(
+                        imgBytes, UInt32(cgImage.width), UInt32(cgImage.height), // RGB
+                        depthBytes, UInt32(depthWidth), UInt32(depthHeight) // Depth Map
+                    )
+                    
+                    defer { CVPixelBufferUnlockBaseAddress(depthData, .readOnly) }
+                    
+                    if lengthResult.error_string != nil {
+                        let error = String(cString: lengthResult.error_string);
+                        print(error);
+                        displayErrorMessage(title: "An error occurred while trying to automatically measure the fish.", message: error)
+                        
+                        lengthResult.error_string.deallocate();
+                    }
+                    else {
+                        if lengthResult.fish_found {
+                            print("We found a fish in swift! left (\(lengthResult.left.x), \(lengthResult.left.y)), right (\(lengthResult.right.x), \(lengthResult.right.y)) with length \(lengthResult.length)")
+                            
+                            let image = UIImage(cgImage: cgImage)
+                            let timestamp = Date().timeIntervalSince1970
+                            
+                            // Save the RGB image
+                            let imageName = "rgb_\(timestamp).jpg"
+                            saveImage(image/*, withName: imageName*/, withName: imageName)
+                            
+                            // Save depth data
+                            let depthName = "depth_\(timestamp).png"
+                            saveDepthData(depthData, withName: depthName)
+                            
+                            // Save the length data
+                            saveLength(lengthResult, andTimeStamp: timestamp)
+                        }
+                        else {
+                            print("We did not find a fish in swift!")
+                            
+                            displayErrorMessage(title: "No fish was found in the image.", message: "No fish was found in the image. Please try again.")
+                        }
+                    }
                 }
             } else {
                 // Fallback on earlier versions
             }
         }
+    }
+    
+    func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
+        displayErrorMessage(title: "Fish Length", message: "\(lengthResult.length)")
     }
 
     /*func saveImage(_ image: UIImage, withName name: String) {
@@ -200,14 +232,11 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }*/
 
-    func saveImage(_ image: UIImage) {
-        // Generate a unique file name for each photo
-        let uniqueFileName = UUID().uuidString
-        
+    func saveImage(_ image: UIImage, withName name: String) {
         // Get the URL for the document directory
         if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             // Append the unique file name to the documents directory URL
-            let fileURL = documentsDirectory.appendingPathComponent("\(uniqueFileName).jpg")
+            let fileURL = documentsDirectory.appendingPathComponent(name)
             
             // Convert the UIImage to JPEG data
             if let imageData = image.jpegData(compressionQuality: 0.8) {
@@ -254,6 +283,7 @@ class ViewController: UIViewController, ARSessionDelegate {
 
     @IBAction func resetButtonPressed(_ sender: Any) {
         if let configuration = arView.session.configuration {
+            configuration.frameSemantics.insert(.sceneDepth)
             arView.session.run(configuration, options: .resetSceneReconstruction)
         }
         arView.scene.anchors.removeAll()
@@ -282,6 +312,7 @@ class ViewController: UIViewController, ARSessionDelegate {
             configuration.planeDetection = []
             button.setTitle("Start Detection", for: [])
         }
+        configuration.frameSemantics.insert(.sceneDepth)
         arView.session.run(configuration)
     }
     
@@ -335,7 +366,7 @@ class ViewController: UIViewController, ARSessionDelegate {
             errorWithInfo.localizedFailureReason,
             errorWithInfo.localizedRecoverySuggestion
         ]
-        let errorMessage = messages.compactMap({ $0 }).joined(separator: "\n")
+        //let errorMessage = messages.compactMap({ $0 }).joined(separator: "\n")
         DispatchQueue.main.async {
             // Present an alert informing about the error that has occurred.
             /*let alertController = UIAlertController(title: "The AR session failed.", message: errorMessage, preferredStyle: .alert)
