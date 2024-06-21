@@ -1,18 +1,20 @@
 extern crate libc;
+use core::slice;
 use std::{ffi::{c_uchar, CString}, fmt::Display, mem::{size_of, transmute}, ptr::null};
 
 use cv_convert::TryIntoCv;
-use fishsense::fish::{FishHeadTailDetector, FishSegmentation, SegmentationError, HeadTailError};
+use fishsense::{fish::{FishHeadTailDetector, FishLengthCalculator, FishSegmentation, HeadTailError, SegmentationError}, world_point_handlers::ViewMatrixWorldPointHandler};
 use ndarray::{Array1, Array2, Array3};
-use opencv::{core::{Mat, MatTrait, CV_8UC4, CV_32FC1}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
+use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
 
 #[derive(Debug)]
 enum ExecutionError {
     OpenCVError(opencv::Error),
     FishNotFound,
     SegmentationError(SegmentationError),
-    CVToNDArrayError,
-    HeadTailError(HeadTailError)
+    CVToNDArrayError8UC3(<Mat as TryIntoCv<Array3<u8>>>::Error),
+    HeadTailError(HeadTailError),
+    ArrayShapeError(ndarray::ShapeError),
 }
 
 #[repr(C)]
@@ -23,7 +25,7 @@ pub struct Coordinate {
 
 #[repr(C)]
 pub struct ComputeLengthResult {
-    length: usize,
+    length: f32,
     left: Coordinate,
     right: Coordinate,
     fish_found: bool,
@@ -39,9 +41,11 @@ impl Display for ExecutionError {
                 write!(f, "FishNotFound"),
             ExecutionError::SegmentationError(error) => 
                 write!(f, "{}", error),
-            ExecutionError::CVToNDArrayError => 
-                write!(f, "CVToNDArrayError"),
+            ExecutionError::CVToNDArrayError8UC3(error) => 
+                write!(f, "{}", error),
             ExecutionError::HeadTailError(error) => 
+                write!(f, "{}", error),
+            ExecutionError::ArrayShapeError(error) => 
                 write!(f, "{}", error),
         }
     }
@@ -75,24 +79,17 @@ fn ios_image_into_cv_bgr(img_data: *const c_uchar, img_width: u32, img_height: u
     }
 }
 
-fn ios_depth_into_ndarray(depth_data: *const c_uchar, depth_width: u32, depth_height: u32) -> Result<Array2<f32>, ExecutionError> {
-    let depth_cv = unsafe {
-        let length = depth_width as usize * depth_height as usize * size_of::<f32>();
+fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: usize) -> Result<Array2<f32>, ExecutionError> {
+    let length = width * height;
+    
+    let vector = unsafe {
+        let slice = slice::from_raw_parts(array_data, length);
+        slice.to_vec()
+    };
 
-        match Mat::new_rows_cols(depth_height as i32, depth_width as i32, CV_32FC1) {
-            Ok(mut depth_cv) => {
-                std::ptr::copy(depth_data, depth_cv.ptr_mut(0).unwrap(), length);
-
-                Ok(depth_cv)
-            },
-            Err(err) => Err(ExecutionError::OpenCVError(err))
-        }
-    }?;
-
-    let depth_arr: Result<Array2<f32>, _> = depth_cv.try_into_cv();
-    match depth_arr {
-        Ok(depth_arr) => Ok(depth_arr),
-        Err(_) => Err(ExecutionError::CVToNDArrayError)
+    match Array2::<f32>::from_shape_vec((height, width), vector) {
+        Ok(arr) => Ok(arr),
+        Err(error) => Err(ExecutionError::ArrayShapeError(error))
     }
 }
 
@@ -137,45 +134,82 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 }
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
+    println!("RUST: Start Inference");
+
     let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
     let img_arr: Result<Array3<u8>, _> = img_cv.try_into_cv();
-    match img_arr {
+    let result = match img_arr {
         Ok(img_arr) => {
             do_inference(img_arr)
         },
-        Err(_) => Err(ExecutionError::CVToNDArrayError)
-    }
+        Err(error) => Err(ExecutionError::CVToNDArrayError8UC3(error))
+    };
+
+    println!("RUST: End Inference");
+
+    result
 }
 
-fn do_find_head_tail(mask: &Array2<u8>) -> Result<(Array1<usize>, Array1<usize>), ExecutionError> {
-    match FishHeadTailDetector::find_head_tail(&mask) {
+fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<usize>, Array1<usize>), ExecutionError> {
+    println!("RUST: Start find_head_tail");
+
+    let result = match FishHeadTailDetector::find_head_tail(&mask) {
         Ok((left, right)) => {
             Ok((left, right))
         },
         Err(error) => Err(ExecutionError::HeadTailError(error))
-    }
+    };
+
+    println!("RUST: End find_head_tail");
+
+    result
 }
 
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
-    depth_data: *const c_uchar, depth_width: u32, depth_height: u32 // Depth Map
-) -> Result<(usize, Array1<usize>, Array1<usize>), ExecutionError> {
+    depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
+    camera_intrinsics_inverted_data: *const f32, view_matrix_inverted_data: *const f32
+) -> Result<(f32, Array1<usize>, Array1<usize>), ExecutionError> {
     let mask = inference(img_data, img_width, img_height)?;
-    let (left, right) = do_find_head_tail(&mask)?;
+    let (left, right) = find_head_tail(&mask)?;
 
-    let depth = ios_depth_into_ndarray(depth_data, depth_width, depth_height)?;
+    let depth_map = ios_f32_array_data_to_ndarray(depth_data as *const f32, depth_width as usize, depth_height as usize)?.t().mapv(|v| v as f32);
+    let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
+    let view_matrix_inverted = ios_f32_array_data_to_ndarray(view_matrix_inverted_data, 4, 4)?;
 
-    Ok((0 as usize, left, right))
+    println!("RUST: depth_map[2,3]: {}", depth_map[[2, 3]]);
+    println!("RUST: camera_intrinsics_inverted: {}", camera_intrinsics_inverted);
+    println!("RUST: view_matrix_inverted: {}", view_matrix_inverted);
+
+    let world_point_handler = ViewMatrixWorldPointHandler {
+        camera_intrinsics_inverted,
+        view_matrix_inverted
+    };
+
+    let fish_length_calculator = FishLengthCalculator {
+        image_height: img_height as usize,
+        image_width: img_width as usize,
+        world_point_handler: &world_point_handler
+    };
+
+    println!("RUST: Start Calculate Fish Length");
+    let length = fish_length_calculator.calculate_fish_length(
+        &depth_map, &left.mapv(|v| v as f32), &right.mapv(|v| v as f32));
+    println!("RUST: End Calculate Fish Length");
+
+    Ok((length, left, right))
 }
 
 #[no_mangle]
 pub extern fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
-    depth_data: *const c_uchar, depth_width: u32, depth_height: u32 // Depth Map
+    depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
+    camera_intrinsics_inverted_data: *const f32, view_matrix_inverted_data: *const f32
 ) -> ComputeLengthResult {
     match do_compute_length(
         img_data, img_width, img_height, // RGB
-        depth_data, depth_width, depth_height // Depth Map
+        depth_data, depth_width, depth_height, // Depth Map
+        camera_intrinsics_inverted_data, view_matrix_inverted_data
     ) {
         Ok((length, left, right)) => ComputeLengthResult {
             length,
@@ -187,7 +221,7 @@ pub extern fn compute_length(
         Err(error) => {
             match error {
                 ExecutionError::FishNotFound => ComputeLengthResult {
-                    length: 0,
+                    length: 0f32,
                     left: Coordinate { x: 0, y: 0 },
                     right: Coordinate { x: 0, y: 0 },
                     fish_found: false,
@@ -212,7 +246,7 @@ pub extern fn compute_length(
                     };
 
                     ComputeLengthResult {
-                        length: 0,
+                        length: 0f32,
                         left: Coordinate { x: 0, y: 0 },
                         right: Coordinate { x: 0, y: 0 },
                         fish_found: false,
