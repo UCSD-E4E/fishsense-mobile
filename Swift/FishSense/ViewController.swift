@@ -155,6 +155,14 @@ class ViewController: UIViewController, ARSessionDelegate {
         alertMessagePopUpBox.addAction(okButton)
         self.present(alertMessagePopUpBox, animated: true)
     }
+    
+    func matrix3x3ToArray(_ matrix3x3: simd_float3x3) -> [Float] {
+        return (0..<3).flatMap { x in (0..<3).map { y in matrix3x3[x][y] } }
+    }
+    
+    func matrix4x4ToArray(_ matrix4x4: simd_float4x4) -> [Float] {
+        return (0..<4).flatMap { x in (0..<4).map { y in matrix4x4[x][y] } }
+    }
        
     @IBAction func captureCurrentFrame() {
         print("Capturing photo with ARKit\n")
@@ -171,13 +179,28 @@ class ViewController: UIViewController, ARSessionDelegate {
                     let imgBytes = CFDataGetBytePtr(imgData)
                     
                     CVPixelBufferLockBaseAddress(depthData, .readOnly)
-                    let depthWidth = CVPixelBufferGetHeight(depthData)
+                    let depthWidth = CVPixelBufferGetWidth(depthData)
                     let depthHeight = CVPixelBufferGetHeight(depthData)
                     let depthBytes = CVPixelBufferGetBaseAddress(depthData)
                     
+                    let bytesPerRow = CVPixelBufferGetBytesPerRow(depthData)
+                    let row = 2
+                    let col = 3
+                    let rowPtr = depthBytes! + row * bytesPerRow
+                    let typed = rowPtr.assumingMemoryBound(to: Float.self)
+                    print("\(CVPixelBufferGetPixelFormatType(depthData)) == \(kCVPixelFormatType_DepthFloat32)")
+                    print("depth[2, 3] = \(typed[col])")
+                    print("\(currentFrame.camera.intrinsics.inverse)");
+                    print("\(currentFrame.camera.viewMatrix(for: .landscapeRight).inverse)")
+                    
+                    // Get a flat array of both
+                    let cameraIntrinsicsInverted = matrix3x3ToArray(currentFrame.camera.intrinsics.inverse.transpose)
+                    let viewMatrixInverted = matrix4x4ToArray(currentFrame.camera.viewMatrix(for: .landscapeRight).inverse.transpose)
+                    
                     let lengthResult = FishSenseRS.compute_length(
                         imgBytes, UInt32(cgImage.width), UInt32(cgImage.height), // RGB
-                        depthBytes, UInt32(depthWidth), UInt32(depthHeight) // Depth Map
+                        depthBytes, UInt32(depthWidth), UInt32(depthHeight), // Depth Map
+                        cameraIntrinsicsInverted, viewMatrixInverted
                     )
                     
                     defer { CVPixelBufferUnlockBaseAddress(depthData, .readOnly) }
