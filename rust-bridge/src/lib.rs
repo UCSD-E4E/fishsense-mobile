@@ -12,7 +12,6 @@ enum ExecutionError {
     OpenCVError(opencv::Error),
     FishNotFound,
     SegmentationError(SegmentationError),
-    CVToNDArrayErrorArray2F32(<Array2<f32> as TryIntoCv<Mat>>::Error),
     CVToNDArrayError8UC3(<Mat as TryIntoCv<Array3<u8>>>::Error),
     HeadTailError(HeadTailError),
     ArrayShapeError(ndarray::ShapeError),
@@ -41,8 +40,6 @@ impl Display for ExecutionError {
             ExecutionError::FishNotFound => 
                 write!(f, "FishNotFound"),
             ExecutionError::SegmentationError(error) => 
-                write!(f, "{}", error),
-            ExecutionError::CVToNDArrayErrorArray2F32(error) => 
                 write!(f, "{}", error),
             ExecutionError::CVToNDArrayError8UC3(error) => 
                 write!(f, "{}", error),
@@ -137,8 +134,6 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 }
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
-    println!("RUST: Start Inference");
-
     let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
     let img_arr: Result<Array3<u8>, _> = img_cv.try_into_cv();
     let result = match img_arr {
@@ -148,22 +143,16 @@ fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Resul
         Err(error) => Err(ExecutionError::CVToNDArrayError8UC3(error))
     };
 
-    println!("RUST: End Inference");
-
     result
 }
 
 fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<usize>, Array1<usize>), ExecutionError> {
-    println!("RUST: Start find_head_tail");
-
     let result = match FishHeadTailDetector::find_head_tail(&mask) {
         Ok((left, right)) => {
             Ok((left, right))
         },
         Err(error) => Err(ExecutionError::HeadTailError(error))
     };
-
-    println!("RUST: End find_head_tail");
 
     result
 }
@@ -181,7 +170,7 @@ fn rotate_arrayu8(arr: Array2<u8>) -> Array2<u8> {
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
-    camera_intrinsics_inverted_data: *const f32, view_matrix_inverted_data: *const f32
+    camera_intrinsics_inverted_data: *const f32
 ) -> Result<(f32, Array1<usize>, Array1<usize>), ExecutionError> {
     let mask = inference(img_data, img_width, img_height)?;
     let mask = rotate_arrayu8(mask);
@@ -190,11 +179,6 @@ fn do_compute_length(
     let depth_map = ios_f32_array_data_to_ndarray(depth_data as *const f32, depth_width as usize, depth_height as usize)?.t().mapv(|v| v as f32);
     let depth_map = rotate_arrayf32(depth_map);
     let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
-    let view_matrix_inverted = ios_f32_array_data_to_ndarray(view_matrix_inverted_data, 4, 4)?;
-
-    println!("RUST: depth_map[2,3]: {}", depth_map[[2, 3]]);
-    println!("RUST: camera_intrinsics_inverted: {}", camera_intrinsics_inverted);
-    println!("RUST: view_matrix_inverted: {}", view_matrix_inverted);
 
     let world_point_handler = WorldPointHandler {
         camera_intrinsics_inverted
@@ -206,10 +190,8 @@ fn do_compute_length(
         world_point_handler
     };
 
-    println!("RUST: Start Calculate Fish Length");
     let length = fish_length_calculator.calculate_fish_length(
         &depth_map, &left.mapv(|v| v as f32), &right.mapv(|v| v as f32));
-    println!("RUST: End Calculate Fish Length");
 
     Ok((length, left, right))
 }
@@ -218,12 +200,12 @@ fn do_compute_length(
 pub extern fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
-    camera_intrinsics_inverted_data: *const f32, view_matrix_inverted_data: *const f32
+    camera_intrinsics_inverted_data: *const f32
 ) -> ComputeLengthResult {
     match do_compute_length(
         img_data, img_width, img_height, // RGB
         depth_data, depth_width, depth_height, // Depth Map
-        camera_intrinsics_inverted_data, view_matrix_inverted_data
+        camera_intrinsics_inverted_data
     ) {
         Ok((length, left, right)) => ComputeLengthResult {
             length,
