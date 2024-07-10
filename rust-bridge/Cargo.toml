@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fishsense = { git = "https://github.com/UCSD-E4E/fishsense.rs.git", version = "0.1.0" }
+fishsense = { git = "https://github.com/UCSD-E4E/fishsense.rs.git", version = "0.2.0" }
 libc = "0.2.155"
 ndarray = "0.15.6"
 opencv = { version = "0.91.3", features = ["clang-runtime"]}

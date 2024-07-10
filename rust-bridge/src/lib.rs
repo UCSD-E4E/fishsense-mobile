@@ -117,19 +117,7 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
                 Err(ExecutionError::FishNotFound)
             }
         },
-        Err(err) => {
-            match err {
-                SegmentationError::OrtErr(err) => {
-                    match err {
-                        ort::Error::SessionRun(_) => { // Hack to work around a bug in our onnx model which causes crashes when no fish are found.
-                            Err(ExecutionError::FishNotFound)
-                        },
-                        other => Err(ExecutionError::SegmentationError(SegmentationError::OrtErr(other)))
-                    }
-                },
-                other => Err(ExecutionError::SegmentationError(other))
-            }
-        }
+        Err(err) => Err(ExecutionError::SegmentationError(err))
     }
 }
 

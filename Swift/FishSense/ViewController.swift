@@ -171,6 +171,20 @@ class ViewController: UIViewController, ARSessionDelegate {
             // Handle depth data
             if #available(iOS 14.0, *) {
                 if let depthData = currentFrame.sceneDepth?.depthMap {
+                    let image = UIImage(cgImage: cgImage)
+                    let timestamp = Date().timeIntervalSince1970
+                    
+                    // Save the RGB image
+                    let imageName = "rgb_\(timestamp).jpg"
+                    saveImage(image/*, withName: imageName*/, withName: imageName)
+                    
+                    // Save depth data
+                    let depthName = "depth_\(timestamp).png"
+                    saveDepthData(depthData, withName: depthName)
+                    
+                    
+                    
+                    
                     let imgData = cgImage.dataProvider?.data
                     let imgBytes = CFDataGetBytePtr(imgData)
                     
@@ -200,17 +214,6 @@ class ViewController: UIViewController, ARSessionDelegate {
                     else {
                         if lengthResult.fish_found {
                             print("We found a fish in swift! left (\(lengthResult.left.x), \(lengthResult.left.y)), right (\(lengthResult.right.x), \(lengthResult.right.y)) with length \(lengthResult.length)")
-                            
-                            let image = UIImage(cgImage: cgImage)
-                            let timestamp = Date().timeIntervalSince1970
-                            
-                            // Save the RGB image
-                            let imageName = "rgb_\(timestamp).jpg"
-                            saveImage(image/*, withName: imageName*/, withName: imageName)
-                            
-                            // Save depth data
-                            let depthName = "depth_\(timestamp).png"
-                            saveDepthData(depthData, withName: depthName)
                             
                             // Save the length data
                             saveLength(lengthResult, andTimeStamp: timestamp)
