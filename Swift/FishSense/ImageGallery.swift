@@ -16,6 +16,48 @@ struct ImageGallery: View {
                 LazyVGrid(columns: [
                     GridItem(.flexible(minimum: 100, maximum: .infinity), spacing: 2),
                 ], spacing: 2) {
+                    Button("Upload (\(dataList.count))", action: {
+                        let fileManager = FileManager.default;
+                        
+                        if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                            do {
+                                let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+                                let zipUrl = try documentsDirectory.zip(toFileAt: tmpURL)
+                                
+                                var fileSizeValue: UInt64 = 0
+                                        
+                                do {
+                                    
+                                    let fileAttribute: [FileAttributeKey : Any] = try FileManager.default.attributesOfItem(atPath: zipUrl.path)
+                                    
+                                    if let fileNumberSize: NSNumber = fileAttribute[FileAttributeKey.size] as? NSNumber {
+                                        fileSizeValue = UInt64(fileNumberSize)
+                                        
+                                        let byteCountFormatter: ByteCountFormatter = ByteCountFormatter()
+                                        byteCountFormatter.countStyle = ByteCountFormatter.CountStyle.file
+                                        
+                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useBytes
+                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+
+                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useKB
+                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+
+                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useMB
+                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+                                        
+                                        let timestamp = Date().timeIntervalSince1970
+                                        try fileManager.copyItem(at: zipUrl, to: documentsDirectory.appendingPathComponent("data_\(timestamp).zip"))
+                                    }
+                                    
+                                } catch {
+                                    print(error.localizedDescription)
+                                }
+                            }
+                            catch {
+                                print("Error occurred: \(error)")
+                            }
+                        }
+                    })
                     ForEach(dataList) { data in
                         HStack(spacing: 2) {
                             // Image on the left

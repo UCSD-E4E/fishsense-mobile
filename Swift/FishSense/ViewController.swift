@@ -182,9 +182,6 @@ class ViewController: UIViewController, ARSessionDelegate {
                     let depthName = "depth_\(timestamp).png"
                     saveDepthData(depthData, withName: depthName)
                     
-                    
-                    
-                    
                     let imgData = cgImage.dataProvider?.data
                     let imgBytes = CFDataGetBytePtr(imgData)
                     

@@ -72,6 +72,10 @@ class PhotoViewController: UIViewController {
 
                 // Loop through the sorted file URLs
                 for fileURL in sortedFileURLs {
+                    if !fileURL.lastPathComponent.starts(with: "rgb_") {
+                        continue
+                    }
+                    
                     // Load the image data and metadata from each file URL
                     if let imageData = try? Data(contentsOf: fileURL),
                        let image = UIImage(data: imageData),
