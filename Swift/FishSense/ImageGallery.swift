@@ -10,6 +10,10 @@ struct ImageGallery: View {
     @State private var selectedItem: DataTemp?
     @State private var position = CGSize.zero
 
+    // To display the length of the fish
+   // var fish_length: Int64
+    //
+    
     var body: some View {
         ZStack {
             ScrollView {
@@ -31,7 +35,7 @@ struct ImageGallery: View {
                                     let fileAttribute: [FileAttributeKey : Any] = try FileManager.default.attributesOfItem(atPath: zipUrl.path)
                                     
                                     if let fileNumberSize: NSNumber = fileAttribute[FileAttributeKey.size] as? NSNumber {
-                                        fileSizeValue = UInt64(fileNumberSize)
+                                        fileSizeValue = UInt64(truncating: fileNumberSize)
                                         
                                         let byteCountFormatter: ByteCountFormatter = ByteCountFormatter()
                                         byteCountFormatter.countStyle = ByteCountFormatter.CountStyle.file
@@ -57,7 +61,12 @@ struct ImageGallery: View {
                                 print("Error occurred: \(error)")
                             }
                         }
-                    })
+                    }
+                    //
+                    //THIS IS WHERE I WOULD LIKE TO PUT A DELETE BUTTON NEXT TO THE IMPORT BUTTON
+                    //I would like for it to display a message and ask, "Before proceeding, are you sure you want to delete all data?"  ( YES | NO )
+                    //
+                    )
                     ForEach(dataList) { data in
                         HStack(spacing: 2) {
                             // Image on the left
@@ -84,6 +93,7 @@ struct ImageGallery: View {
                                 Text("Time: \n\(data.creationDate, formatter: dateFormatter)\n ")
                                     .foregroundColor(Color.primary)
                                 Text("Fish Length: \(data.fishLen.map { "\($0)" } ?? "Unavailable")")
+                                //Text("Fish Length: \(fish_length)")
                                     .foregroundColor(Color.primary)
                             }
                             .padding(8)

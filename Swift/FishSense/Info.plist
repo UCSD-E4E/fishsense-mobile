@@ -2,57 +2,68 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>5.0</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSApplicationCategoryType</key>
-	<string></string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>FishSense uses the camera to take fish length measurements</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>AVCam uses your location to tag where photos and videos are taken.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>FishSense</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AVCam saves captured photos and videos to your photo library.</string>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>Launch Screen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>armv7</string>
-	</array>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UIStatusBarHidden</key>
-	<true/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>5.0</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSApplicationCategoryType</key>
+    <string></string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>FishSense uses the camera to take fish length measurements</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>AVCam uses your location to tag where photos and videos are taken.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>FishSense</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>AVCam saves captured photos and videos to your photo library.</string>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>Launch Screen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+    <key>UIRequiresFullScreen</key>
+    <true/>
+    <key>UIStatusBarHidden</key>
+    <true/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    
+    <!-- Disable state restoration -->
+    <key>UIApplicationStateRestorationEnabled</key>
+    <false/>
+    
+    <!-- Permissions -->
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>This app needs access to the Documents folder to store data.</string>
+    <key>NSFileProviderDomainUsageDescription</key>
+    <string>This app needs access to the FileProvider domain to manage files.</string>
+    
 </dict>
 </plist>
