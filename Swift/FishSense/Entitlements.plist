@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-   Entitlements.plist
-   FishSense Swift
-
-   Created by Allen Kan on 7/29/24.
-   Copyright (c) 2024 E4E. All rights reserved.
--->
 <plist version="1.0">
-<dict/>
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.documents</key>
+    <true/>
+</dict>
 </plist>
