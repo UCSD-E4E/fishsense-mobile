@@ -5,18 +5,25 @@ import FishSenseRS
 //For Database
 import UIKit
 import SQLite3
+import CoreLocation // for latitude and longitude
 //
 
 //For the database
     var db: DBHelper!
     var fishDataList: [FishData]!
     var fish_length = Int64()
-//
+    var lat: Double?
+    var lon: Double?
+
+//For the image gallery
 
 
-class ViewController: UIViewController, ARSessionDelegate {
+class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDelegate {
+    //For location management...
+    var locationManager: CLLocationManager?
+    var currentLatitude: CLLocationDegrees?
+    var currentLongitude: CLLocationDegrees?
     
-  
     @IBOutlet var arView: ARView!
     @IBOutlet weak var hideMeshButton: UIButton!
     @IBOutlet weak var resetButton: UIButton!
@@ -108,7 +115,14 @@ class ViewController: UIViewController, ARSessionDelegate {
         view.addSubview(lengthLabel)
         
         // Read data from the database
-        fishDataList = db.read(avg: 0)
+        //fishDataList = db.read(avg: 0)
+        
+        // Initialize the location manager
+            locationManager = CLLocationManager()
+            locationManager?.delegate = self
+            locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager?.requestWhenInUseAuthorization()
+            locationManager?.startUpdatingLocation()
     }
     
     override func viewDidLayoutSubviews() {
@@ -236,14 +250,16 @@ class ViewController: UIViewController, ARSessionDelegate {
                             // Save the length data
                             saveLength(lengthResult, andTimeStamp: timestamp)
                             
-                            // printing the database
-                            //printFishDataList(fishDataList)
+//                            //Printing the database for debugging
+//                            print(fishDataList)
                             
                         }
                         else {
                             print("We did not find a fish in swift!")
-                            
                             displayErrorMessage(title: "No fish was found in the image.", message: "No fish was found in the image. Please try again.")
+                            
+                            //If the app catchs no fish in the image, then insert a value of 0 into the database
+                            db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:0, headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", confidence: "confidence_map.jpg")
                         }
                     }
                 }
@@ -253,11 +269,74 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
     
+    // CLLocationManagerDelegate method to get updated location
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            currentLatitude = location.coordinate.latitude
+            currentLongitude = location.coordinate.longitude
+            
+            // Handle successful retrieval of location
+            handleLocationUpdate(success: true, latitude: currentLatitude, longitude: currentLongitude, error: nil)
+        }
+    }
+
+    // Handle location errors
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // Handle failure to retrieve location
+        handleLocationUpdate(success: false, latitude: nil, longitude: nil, error: error)
+    }
+    
+    // Function to handle both success and failure cases
+    func handleLocationUpdate(success: Bool, latitude: CLLocationDegrees?, longitude: CLLocationDegrees?, error: Error?) {
+        if success {
+            // Location was successfully retrieved
+            if let latitude = latitude, let longitude = longitude {
+                // Assign values to global variables (casting CLLocationDegrees to Double)
+                lat = Double(latitude)
+                lon = Double(longitude)
+
+                //print("Successfully retrieved location - Latitude: \(lat ?? 0), Longitude: \(lon ?? 0)")
+                // Pass these values to another function or upload them
+                uploadLocationData(latitude: lat ?? 0, longitude: lon ?? 0)
+            }
+        } else {
+            // Failed to retrieve location
+            if let error = error {
+                //print("Failed to get location: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // Example function that would handle the uploading or further processing of the location data
+       func uploadLocationData(latitude: CLLocationDegrees, longitude: CLLocationDegrees) {
+           // Code to upload or use the location data
+           //print("Uploading Latitude: \(latitude), Longitude: \(longitude)")
+       }
+    //
+    
     func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
         displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded())mm")
         
         // Insert the length data into the database
-        db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:Int64((lengthResult.length * 1000).rounded()), headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: 0.0, long: 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", mask: "temp_mask_data")
+        db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:Int64((lengthResult.length * 1000).rounded()), headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", confidence: "confidence_map.jpg")
+        
+//        let lengthdafish = db.fetchFishLength()
+//        print("Length of da fish \(lengthdafish!)")
+        
+     
+//        let LengthToGallery = Int(Int64((lengthResult.length * 1000).rounded()))    //DEBUGGING STUFF
+//        print(LengthToGallery)
+        // Call the function with the computed value
+        
+        
+        
+        /*
+        var imageData = ImageData(id: UUID(), ImageLength: Int64((lengthResult.length * 1000).rounded()))
+
+        imageData.ImageLength = Int64((lengthResult.length * 1000).rounded())
+        
+        print(imageData)
+         */
         
         /*
         if let imageGalleryVC = storyboard?.instantiateViewController(withIdentifier: "ImageGallery") as? ImageGallery {

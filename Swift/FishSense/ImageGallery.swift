@@ -5,14 +5,10 @@ import SwiftUI
 struct ImageGallery: View {
     @Namespace var namespace
     
-    let dataList: [DataTemp]
+    let dataList: [DataTemp] // Might need to swap out to [FishData] later
     
     @State private var selectedItem: DataTemp?
     @State private var position = CGSize.zero
-
-    // To display the length of the fish
-   // var fish_length: Int64
-    //
     
     var body: some View {
         ZStack {
@@ -74,7 +70,7 @@ struct ImageGallery: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                                 .frame(width: UIScreen.main.bounds.height/4, height: UIScreen.main.bounds.height/4)
-                                .clipped()
+                                .clipped()  
                                 .matchedGeometryEffect(
                                     id: data.id,
                                     in: namespace,
@@ -92,8 +88,7 @@ struct ImageGallery: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text("Time: \n\(data.creationDate, formatter: dateFormatter)\n ")
                                     .foregroundColor(Color.primary)
-                                Text("Fish Length: \(data.fishLen.map { "\($0)" } ?? "Unavailable")")
-                                //Text("Fish Length: \(fish_length)")
+                                Text("Fish Length: \(data.fishLen?.map { "\($0)" }.joined(separator: ", ") ?? "Unavailable")") // Adjusted the code, so it doesn't display brackets of the array
                                     .foregroundColor(Color.primary)
                             }
                             .padding(8)
@@ -149,7 +144,7 @@ struct ImageGallery: View {
                         VStack {
                             Text("Time: \(selectedItem.creationDate, formatter: dateFormatter)")
                                 .foregroundColor(.black)
-                            Text("Fish Length: \(selectedItem.fishLen.map { "\($0)" } ?? "Unavailable")")
+                            Text("Fish Length: \(selectedItem.fishLen?.map { "\($0)" }.joined(separator: ", ") ?? "Unavailable")") // Adjusted the code, so it doesn't display brackets of the array
                                 .foregroundColor(.black)
                         }
                     }
@@ -171,7 +166,7 @@ struct DataTemp: Identifiable, Equatable {
     let image: UIImage
     let creationDate: Date
     // let location: String?
-    let fishLen: Int?
+    let fishLen: [Int64]? // I modified fishLen to handle an optional int64 array, if you're wondering why optional, sometimes there are errors with capturing fish length and we get invalid lengths, so by having the optional, we can account for this error values
 }
 
 let dateFormatter: DateFormatter = {
