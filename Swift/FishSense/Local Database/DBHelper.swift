@@ -156,4 +156,29 @@ class DBHelper {
                 print(fishData.description)
          }
     }
+    
+    func deleteDB() {
+        // Close the database connection before deleting the file
+        if let db = db {
+            sqlite3_close(db)
+            self.db = nil
+            print("This is db \(db)")
+        }
+        
+        do {
+            // Get the path to the database file
+            let filePath = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent(path)
+
+            // Check if the file exists
+            if FileManager.default.fileExists(atPath: filePath.path) {
+                // Delete the database file
+                try FileManager.default.removeItem(at: filePath)
+                print("You have now successfully deleted the database.")
+            } else {
+                print("Database was just deleted.")
+            }
+        } catch {
+            print("Error deleting database: \(error.localizedDescription)")
+        }
+    }
 }

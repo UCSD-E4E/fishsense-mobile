@@ -207,7 +207,7 @@ class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDele
                 if let depthData = currentFrame.sceneDepth?.depthMap {
                     let image = UIImage(cgImage: cgImage)
                     
-                    let timestamp = Date().timeIntervalSince1970
+                    let timestamp = Int64(Date().timeIntervalSince1970)
                     
                     // Save the RGB image
                     let imageName = "rgb_\(timestamp).jpg"
@@ -248,7 +248,7 @@ class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDele
                             print("We found a fish in swift! left (\(lengthResult.left.x), \(lengthResult.left.y)), right (\(lengthResult.right.x), \(lengthResult.right.y)) with length \(lengthResult.length)")
                             
                             // Save the length data
-                            saveLength(lengthResult, andTimeStamp: timestamp)
+                            saveLength(lengthResult, andTimeStamp: TimeInterval(timestamp), andimageName: imageName, anddepthName: depthName)
                             
 //                            //Printing the database for debugging
 //                            print(fishDataList)
@@ -258,8 +258,10 @@ class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDele
                             print("We did not find a fish in swift!")
                             displayErrorMessage(title: "No fish was found in the image.", message: "No fish was found in the image. Please try again.")
                             
+                            //db.deleteDB()
+                            
                             //If the app catchs no fish in the image, then insert a value of 0 into the database
-                            db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:0, headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", confidence: "confidence_map.jpg")
+                            db.insert(timestamp: Int64(timestamp), fish_length:0, headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: imageName, depth: depthName, confidence: "confidence_map.jpg")
                         }
                     }
                 }
@@ -314,48 +316,15 @@ class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDele
        }
     //
     
-    func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
+    func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval, andimageName imageName: String, anddepthName depthName: String) {
         displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded())mm")
         
         // Insert the length data into the database
-        db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:Int64((lengthResult.length * 1000).rounded()), headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", confidence: "confidence_map.jpg")
         
-//        let lengthdafish = db.fetchFishLength()
-//        print("Length of da fish \(lengthdafish!)")
+        db.insert(timestamp: Int64(timestamp), fish_length:Int64((lengthResult.length * 1000).rounded()), headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: lat ?? 0.0, long: lon ?? 0.0, rgb: imageName, depth: depthName, confidence: "confidence_map.jpg")
         
-     
-//        let LengthToGallery = Int(Int64((lengthResult.length * 1000).rounded()))    //DEBUGGING STUFF
-//        print(LengthToGallery)
-        // Call the function with the computed value
-        
-        
-        
-        /*
-        var imageData = ImageData(id: UUID(), ImageLength: Int64((lengthResult.length * 1000).rounded()))
-
-        imageData.ImageLength = Int64((lengthResult.length * 1000).rounded())
-        
-        print(imageData)
-         */
-        
-        /*
-        if let imageGalleryVC = storyboard?.instantiateViewController(withIdentifier: "ImageGallery") as? ImageGallery {
-                   // Pass the calculated fish length
-                   imageGalleryVC.fish_length = fish_length
-                   
-                   // Present or push the ImageGallery
-                   self.present(imageGalleryVC, animated: true, completion: nil)
-        }
-         */
+        //Fixed error with timestamps
     }
-                
-    /*func saveImage(_ image: UIImage, withName name: String) {
-        if let imageData = image.jpegData(compressionQuality: 0.8) {
-            let filePath = getDocumentsDirectory().appendingPathComponent(name)
-            try? imageData.write(to: filePath)
-            print("Saved image to \(filePath)")
-        }
-    }*/
 
     func saveImage(_ image: UIImage, withName name: String) {
         // Get the URL for the document directory

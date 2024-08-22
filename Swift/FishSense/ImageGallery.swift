@@ -16,53 +16,109 @@ struct ImageGallery: View {
                 LazyVGrid(columns: [
                     GridItem(.flexible(minimum: 100, maximum: .infinity), spacing: 2),
                 ], spacing: 2) {
-                    Button("Upload (\(dataList.count))", action: {
-                        let fileManager = FileManager.default;
-                        
-                        if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-                            do {
-                                let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
-                                let zipUrl = try documentsDirectory.zip(toFileAt: tmpURL)
-                                
-                                var fileSizeValue: UInt64 = 0
-                                        
+                    HStack {
+                        Button("Upload (\(dataList.count))", action: {
+                            let fileManager = FileManager.default;
+                            
+                            if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
                                 do {
+                                    let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+                                    let zipUrl = try documentsDirectory.zip(toFileAt: tmpURL)
                                     
-                                    let fileAttribute: [FileAttributeKey : Any] = try FileManager.default.attributesOfItem(atPath: zipUrl.path)
+                                    var fileSizeValue: UInt64 = 0
                                     
-                                    if let fileNumberSize: NSNumber = fileAttribute[FileAttributeKey.size] as? NSNumber {
-                                        fileSizeValue = UInt64(truncating: fileNumberSize)
+                                    do {
                                         
-                                        let byteCountFormatter: ByteCountFormatter = ByteCountFormatter()
-                                        byteCountFormatter.countStyle = ByteCountFormatter.CountStyle.file
+                                        let fileAttribute: [FileAttributeKey : Any] = try FileManager.default.attributesOfItem(atPath: zipUrl.path)
                                         
-                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useBytes
-                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
-
-                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useKB
-                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
-
-                                        byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useMB
-                                        print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+                                        if let fileNumberSize: NSNumber = fileAttribute[FileAttributeKey.size] as? NSNumber {
+                                            fileSizeValue = UInt64(truncating: fileNumberSize)
+                                            
+                                            let byteCountFormatter: ByteCountFormatter = ByteCountFormatter()
+                                            byteCountFormatter.countStyle = ByteCountFormatter.CountStyle.file
+                                            
+                                            byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useBytes
+                                            print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+                                            
+                                            byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useKB
+                                            print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+                                            
+                                            byteCountFormatter.allowedUnits = ByteCountFormatter.Units.useMB
+                                            print(byteCountFormatter.string(fromByteCount: Int64(fileSizeValue)))
+                                            
+                                            let timestamp = Date().timeIntervalSince1970
+                                            try fileManager.copyItem(at: zipUrl, to: documentsDirectory.appendingPathComponent("data_\(timestamp).zip"))
+                                        }
                                         
-                                        let timestamp = Date().timeIntervalSince1970
-                                        try fileManager.copyItem(at: zipUrl, to: documentsDirectory.appendingPathComponent("data_\(timestamp).zip"))
+                                    } catch {
+                                        print(error.localizedDescription)
                                     }
-                                    
-                                } catch {
-                                    print(error.localizedDescription)
+                                }
+                                catch {
+                                    print("Error occurred: \(error)")
                                 }
                             }
-                            catch {
-                                print("Error occurred: \(error)")
+                        })
+
+                        Spacer()
+                            .frame(width: 100) // Spacer between the two buttons
+
+                        Button("Delete (\(dataList.count))", action: {
+                            let fileManager = FileManager.default
+                            
+                            // Define the path to the database and images directory
+                            guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                                print("Error getting documents directory.")
+                                return
                             }
-                        }
-                    }
-                    //
-                    //THIS IS WHERE I WOULD LIKE TO PUT A DELETE BUTTON NEXT TO THE IMPORT BUTTON
-                    //I would like for it to display a message and ask, "Before proceeding, are you sure you want to delete all data?"  ( YES | NO )
-                    //
-                    )
+                            
+                            let databasePath = documentsDirectory.appendingPathComponent("FishSenseDB.sqlite")
+
+                            // Initialize DBHelper instance to manage database
+                            var dbHelper = DBHelper()
+
+                            // Close the database connection
+                            dbHelper.deleteDB() // This is to ensure any open connections are closed properly
+
+                            // Delete the database file
+                            if fileManager.fileExists(atPath: databasePath.path) {
+                                do {
+                                    try fileManager.removeItem(at: databasePath)
+                                    print("Database deleted successfully.")
+                                } catch {
+                                    print("Error deleting database: \(error.localizedDescription)")
+                                }
+                            } else {
+                                print("Database file does not exist.")
+                            }
+
+//                            // Close the database connection
+//                            dbHelper.deleteDB() // This is to ensure any open connections are closed properly
+
+                            // Clear the images directory
+                            do {
+                                let fileURLs = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil, options: [])
+                                
+                                for fileURL in fileURLs {
+                                    if fileURL.pathExtension == "jpg" || fileURL.pathExtension == "png" {
+                                        do {
+                                            try fileManager.removeItem(at: fileURL)
+                                            print("Deleted image at \(fileURL.path)")
+                                        } catch {
+                                            print("Error occurred while deleting image at \(fileURL.path): \(error.localizedDescription)")
+                                        }
+                                    }
+                                }
+                            } catch {
+                                print("Error occurred while clearing images: \(error.localizedDescription)")
+                            }
+
+                            // Reinitialize the DBHelper to create a new database and table
+                            dbHelper = DBHelper() // This will automatically call `createTable()` in the initializer
+                        })
+
+                    }.padding() // Adding some padding around the buttons
+                                
                     ForEach(dataList) { data in
                         HStack(spacing: 2) {
                             // Image on the left

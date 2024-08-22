@@ -12,7 +12,9 @@ class PhotoViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // deleteAllSavedPhotos()
+        
+       // deleteAllSavedPhotos()
+        
         // Load saved photos when the view controller loads
         savedPhotos = loadSavedPhotos()
         
