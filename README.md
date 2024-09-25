@@ -76,5 +76,3 @@ For questions, feedback, or support, please email [Christopher Crutchfield](ccru
 
 - Developers: Kyle Tran, Will Hsu, Harish Vasanth, Darren Li, Christopher Crutchfield
 - Advisor: Ryan Kastner, Christopher Crutchfield
-
-[LICENSE]
