@@ -160,11 +160,13 @@ class ViewController: UIViewController, ARSessionDelegate {
         return (0..<3).flatMap { x in (0..<3).map { y in matrix3x3[x][y] } }
     }
        
+    // IMPORTANT FOR TAKING PHOTOS
     @IBAction func captureCurrentFrame() {
-        print("Capturing photo with ARKit\n")
+        print("Capturing photo with ARKit\n") // OUTPUTS MESSAGE IN TERMINAL
         guard let currentFrame = arView.session.currentFrame else { return }
         let pixelBuffer = currentFrame.capturedImage
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        // this uses CIImage (Core Image) basically formatting the image for processing and rendering
         let context = CIContext(options: nil)
 
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
@@ -228,6 +230,7 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
     
+    // IMPORTANT for displaying length
     func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
         displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded() / 10)cm")
     }
@@ -240,6 +243,7 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }*/
 
+    // IMPORTANT
     func saveImage(_ image: UIImage, withName name: String) {
         // Get the URL for the document directory
         if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
@@ -261,26 +265,32 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
 
-    
+    // IMPORTANT: After you take an image, it is then stored
     func saveDepthData(_ depthData: CVPixelBuffer, withName name: String) {
         let ciImage = CIImage(cvPixelBuffer: depthData)
         let context = CIContext()
-        if let depthCGImage = context.createCGImage(ciImage, from: ciImage.extent) {
+        if let depthCGImage = context.createCGImage(ciImage, from: ciImage.extent) { // Is this section for creating a depth map?
             let depthImage = UIImage(cgImage: depthCGImage)
             if let data = depthImage.pngData() {
                 let filePath = getDocumentsDirectory().appendingPathComponent(name)
+                // calls upon func getDocumentDirection(), retgurns the app's directory path
+                // name is a string from saveImage(), so this the filePath we created
                 try? data.write(to: filePath)
+                // ensures that if the depthImage data isn't able to write to the filePath, that the program doesn't crash
                 print("Saved depth data to \(filePath)")
+                // we then say where we wrote the depth data to.
             }
         }
     }
 
-
+    // I think this can be placed above func saveDepthData() for more logical ordering
+    // IMPORTANT
     private func getDocumentsDirectory() -> URL {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         return paths[0]
     }
     
+    //
     @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
         if let error = error {
             print("Error saving photo: \(error.localizedDescription)")

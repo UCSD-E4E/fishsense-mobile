@@ -5,11 +5,19 @@ Abstract:
 The app's photo capture delegate object.
 */
 
+// ALLEN
+// The purpose of the delegate by def: A helper object that responds to system events on behalf of another
+// Used to seperate some photo logic from the ViewController
+// > printing errors
+// > uploading
+// > loading
+
 import AVFoundation
 import Photos
 import UIKit
 
 class PhotoCaptureProcessor: NSObject {
+    
     private(set) var requestedPhotoSettings: AVCapturePhotoSettings
     
     private let willCapturePhotoAnimation: () -> Void

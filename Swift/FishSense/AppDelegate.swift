@@ -14,6 +14,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        // ALLEN
+        // I'm assuming the commented out section >> *guard ARWorldTrackingConfiguration <<
+        // was written for older test devices that lacked a LiDAR Scanner or didn’t support ARKit
+        // So do we need to keep the comments?
+        
         /*guard ARWorldTrackingConfiguration.isSupported else {
             fatalError("""
                 ARKit is not available on this device. For apps that require ARKit
@@ -32,6 +38,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             """)
         }*/
         
+        // ALLEN
+        // print("This is the App Delegate. \n")
+        // Testing the app delegate, it works (thumbs-up)
+        
+
         return true
     }
 }

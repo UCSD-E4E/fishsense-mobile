@@ -110,15 +110,15 @@
 			isa = PBXGroup;
 			children = (
 				7AA677141CFF765600B353FB /* AppDelegate.swift */,
-				7AA677281CFF7B5C00B353FB /* PreviewView.swift */,
 				7AA677161CFF765600B353FB /* CameraViewController.swift */,
 				EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */,
-				EFBFFD1C2C0791D30061AE66 /* SphereNode.swift */,
 				7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */,
 				EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */,
 				EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */,
 				EF9079472BE892D300EDEF43 /* PhotoViewController.swift */,
 				EFBFFD1A2C0790390061AE66 /* Extensions.swift */,
+				7AA677281CFF7B5C00B353FB /* PreviewView.swift */,
+				EFBFFD1C2C0791D30061AE66 /* SphereNode.swift */,
 				7AA677181CFF765600B353FB /* Main.storyboard */,
 				7AA6771B1CFF765600B353FB /* Assets.xcassets */,
 				7AA6771D1CFF765600B353FB /* LaunchScreen.storyboard */,
@@ -388,7 +388,7 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = J7APG66N2C;
+				DEVELOPMENT_TEAM = BV4K5476V9;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
@@ -417,7 +417,7 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = J7APG66N2C;
+				DEVELOPMENT_TEAM = BV4K5476V9;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
