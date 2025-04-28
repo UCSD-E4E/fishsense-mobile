@@ -111,6 +111,8 @@ class ViewController: UIViewController, ARSessionDelegate {
     override var prefersStatusBarHidden: Bool {
         return true
     }
+
+    // SHOULD be useless now that we don't use the old tap based approach. Can also likely remove SphereNode as a result.
     
     /// Places virtual-text of the classification at the touch-location's real-world intersection with a mesh.
     /// Note - because classification of the tapped-mesh is retrieved asynchronously, we visualize the intersection
