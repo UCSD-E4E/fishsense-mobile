@@ -2,6 +2,8 @@
 //  SphereNode.swift
 //
 
+// Entire file likely useless because we aren't using the tap stuff
+
 import SceneKit
 
 class SphereNode: SCNNode {
