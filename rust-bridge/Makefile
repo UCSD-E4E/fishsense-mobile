@@ -1,4 +1,4 @@
-nightly_version = 2024-05-01
+nightly_version = 2025-05-14
 arch = `./get_arch`
 onnxruntime_framework_location = ./third_party/lib/onnxruntime
 onnxruntime_build_location = ./third_party/onnxruntime/build/apple_framework/intermediates
@@ -46,7 +46,7 @@ onnxruntime: ./third_party/lib/onnxruntime/onnxruntime-c/onnxruntime.xcframework
 
 $(onnxruntime_framework_location)/onnxruntime-c/onnxruntime.xcframework/Info.plist:
 	@mkdir -p $(onnxruntime_framework_location)
-	@python3 ./third_party/onnxruntime/tools/ci_build/github/apple/build_and_assemble_apple_pods.py \
+	@CMAKE_POLICY_VERSION_MINIMUM=3.5 python3 ./third_party/onnxruntime/tools/ci_build/github/apple/build_and_assemble_apple_pods.py \
 		--staging-dir $(onnxruntime_framework_location) \
 		--build-settings-file ./third_party/onnx_ios_build_settings.json
 

@@ -399,7 +399,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-Chris";
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -428,7 +428,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = org.ucsd.e4e.FishSense;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.ucsd.e4e.FishSense-Chris";
 				PRODUCT_NAME = FishSense;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
