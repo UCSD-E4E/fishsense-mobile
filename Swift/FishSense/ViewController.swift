@@ -9,6 +9,8 @@ class ViewController: UIViewController, ARSessionDelegate {
     @IBOutlet weak var resetButton: UIButton!
     @IBOutlet weak var planeDetectionButton: UIButton!
     @IBOutlet private weak var photoButton: UIButton!
+    // Add a fish image on the upper right corner.
+    let imageView = UIImageView()
 
     let westjetTeal: UIColor = UIColor( red: CGFloat(0/255.0), green: CGFloat(170/255.0), blue: CGFloat(165/255.0), alpha: CGFloat(1.0) )
     let coachingOverlay = ARCoachingOverlayView()
@@ -50,6 +52,8 @@ class ViewController: UIViewController, ARSessionDelegate {
         
         setupCoachingOverlay()
         
+//      Testing Code.
+        
         // let captureButton = photoButton // UIButton(type: .system)
         /*captureButton.frame = CGRect(x: 20, y: view.bounds.height - 70, width: view.bounds.width - 40, height: 50)
         captureButton.backgroundColor = UIColor.blue
@@ -89,6 +93,27 @@ class ViewController: UIViewController, ARSessionDelegate {
         view.addSubview(greyView)
         view.addSubview(statusLabel)
         view.addSubview(lengthLabel)
+        
+        // Add a fish image on the upper right corner.
+        // Size of the image
+        let width: CGFloat = 180
+        let height: CGFloat = 240
+
+        // Position in upper-right corner with 16pt padding
+        imageView.frame = CGRect(
+            x: view.bounds.width - width - 16,
+            y: 16,
+            width: width,
+            height: height
+        )
+
+        imageView.contentMode = .scaleAspectFit
+        imageView.layer.borderColor = UIColor.white.cgColor
+        imageView.layer.borderWidth = 1
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+
+        view.addSubview(imageView)
     }
     
     override func viewDidLayoutSubviews() {
@@ -171,7 +196,15 @@ class ViewController: UIViewController, ARSessionDelegate {
             // Handle depth data
             if #available(iOS 14.0, *) {
                 if let depthData = currentFrame.sceneDepth?.depthMap {
+//                  Testing Code.
+//                    let depthImage = depthMapToUIImage(depthData)
+//                    DispatchQueue.main.async {
+//                                self.depthImageView.image = depthImage
+//                            }
+//                  Testing Code End.
                     let image = UIImage(cgImage: cgImage)
+                    // Add a fish image on the upper right corner.
+                    
                     let timestamp = Date().timeIntervalSince1970
                     
                     // Save the RGB image
@@ -210,8 +243,17 @@ class ViewController: UIViewController, ARSessionDelegate {
                     }
                     else {
                         if lengthResult.fish_found {
+// Adding the dotted image on the screen.
+                            let point1 = CGPoint(x: Int( UInt(cgImage.width) - lengthResult.left.y), y: Int(lengthResult.left.x))
+                            let point2 = CGPoint(x: Int(UInt(cgImage.width) - lengthResult.right.y), y: Int(lengthResult.right.x))
+                            var dotImage = drawDot(on: image, at: point1)
+                            dotImage = drawDot(on: dotImage!, at: point2)
+                            DispatchQueue.main.async {
+                                self.imageView.image = dotImage
+                            }
+// Adding the dotted image on the screen.
                             print("We found a fish in swift! left (\(lengthResult.left.x), \(lengthResult.left.y)), right (\(lengthResult.right.x), \(lengthResult.right.y)) with length \(lengthResult.length)")
-                            
+
                             // Save the length data
                             saveLength(lengthResult, andTimeStamp: timestamp)
                         }
@@ -479,6 +521,89 @@ class ViewController: UIViewController, ARSessionDelegate {
             status = "Camera Ready"
         }
         statusLabel.text = status
+    }
+    func depthMapToUIImage(_ depthMap: CVPixelBuffer) -> UIImage? {
+        CVPixelBufferLockBaseAddress(depthMap, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
+
+        let width = CVPixelBufferGetWidth(depthMap)
+        let height = CVPixelBufferGetHeight(depthMap)
+        let baseAddress = CVPixelBufferGetBaseAddress(depthMap)!
+        let floatBuffer = baseAddress.assumingMemoryBound(to: Float32.self)
+
+        // Find min and max values for normalization
+        var minDepth: Float32 = Float.greatestFiniteMagnitude
+        var maxDepth: Float32 = 0
+
+        for i in 0..<(width * height) {
+            let d = floatBuffer[i]
+            if d.isFinite {
+                minDepth = min(minDepth, d)
+                maxDepth = max(maxDepth, d)
+            }
+        }
+
+        let range = maxDepth - minDepth
+        let pixelData = UnsafeMutablePointer<UInt8>.allocate(capacity: width * height)
+        defer { pixelData.deallocate() }
+
+        for i in 0..<(width * height) {
+            let d = floatBuffer[i]
+            let normalized = ((d - minDepth) / range)
+            pixelData[i] = UInt8(max(0, min(255, normalized * 255)))
+        }
+
+        let grayColorSpace = CGColorSpaceCreateDeviceGray()
+        let context = CGContext(
+            data: pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: grayColorSpace,
+            bitmapInfo: 0
+        )
+
+        guard let cgImage = context?.makeImage() else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+    func drawDot(on image: UIImage, at point: CGPoint, color: UIColor = .red, radius: CGFloat = 20) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+
+        // Draw the original image
+        image.draw(at: .zero)
+
+        // Draw the dot
+        context.setFillColor(color.cgColor)
+        let dotRect = CGRect(x: point.x - radius, y: point.y - radius,
+                             width: radius * 2, height: radius * 2)
+        context.fillEllipse(in: dotRect)
+
+        // Get the new image
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return newImage
+    }
+    func rotateImage90DegreesClockwise(_ image: UIImage) -> UIImage? {
+        let size = CGSize(width: image.size.height, height: image.size.width)
+        
+        UIGraphicsBeginImageContextWithOptions(size, false, image.scale)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+
+        // Move origin and rotate
+        context.translateBy(x: size.width / 2, y: size.height / 2)
+        context.rotate(by: .pi / 2) // 90 degrees in radians
+
+        // Draw the image, offset by half its original size
+        context.translateBy(x: -image.size.width / 2, y: -image.size.height / 2)
+        image.draw(at: .zero)
+
+        let rotatedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return rotatedImage
     }
 }
 
