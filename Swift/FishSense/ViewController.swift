@@ -160,7 +160,8 @@ class ViewController: UIViewController, ARSessionDelegate {
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
             // Handle depth data
             if #available(iOS 14.0, *) {
-                if let depthData = currentFrame.sceneDepth?.depthMap {
+                if let depthData = currentFrame.sceneDepth?.depthMap,
+                    let confidenceData = currentFrame.sceneDepth?.confidenceMap {
 //                  Testing Code.
 //                    let depthImage = depthMapToUIImage(depthData)
 //                    DispatchQueue.main.async {
