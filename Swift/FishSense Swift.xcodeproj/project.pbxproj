@@ -10,15 +10,11 @@
 		42C6D5B22C3EFA94009711A1 /* Zipping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C6D5B12C3EFA94009711A1 /* Zipping.swift */; };
 		7697F939217A94FB0011862B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7697F938217A94FB0011862B /* README.md */; };
 		7AA677151CFF765600B353FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677141CFF765600B353FB /* AppDelegate.swift */; };
-		7AA677171CFF765600B353FB /* CameraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677161CFF765600B353FB /* CameraViewController.swift */; };
 		7AA6771A1CFF765600B353FB /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7AA677181CFF765600B353FB /* Main.storyboard */; };
 		7AA6771C1CFF765600B353FB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7AA6771B1CFF765600B353FB /* Assets.xcassets */; };
 		7AA6771F1CFF765600B353FB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7AA6771D1CFF765600B353FB /* LaunchScreen.storyboard */; };
-		7AA677271CFF774800B353FB /* PhotoCaptureDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */; };
-		7AA677291CFF7B5C00B353FB /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA677281CFF7B5C00B353FB /* PreviewView.swift */; };
 		EF9079482BE892D300EDEF43 /* PhotoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9079472BE892D300EDEF43 /* PhotoViewController.swift */; };
 		EFBFFD1B2C0790390061AE66 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD1A2C0790390061AE66 /* Extensions.swift */; };
-		EFBFFD1D2C0791D30061AE66 /* SphereNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD1C2C0791D30061AE66 /* SphereNode.swift */; };
 		EFBFFD1F2C0791EC0061AE66 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */; };
 		EFBFFD212C0791F10061AE66 /* ViewController+CoachingOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */; };
 		EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */; };
@@ -52,16 +48,12 @@
 		7697F938217A94FB0011862B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		7AA677111CFF765600B353FB /* FishSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FishSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7AA677141CFF765600B353FB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		7AA677161CFF765600B353FB /* CameraViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraViewController.swift; sourceTree = "<group>"; };
 		7AA677191CFF765600B353FB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		7AA6771B1CFF765600B353FB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7AA6771E1CFF765600B353FB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		7AA677201CFF765600B353FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
-		7AA677281CFF7B5C00B353FB /* PreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		EF9079472BE892D300EDEF43 /* PhotoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewController.swift; sourceTree = "<group>"; };
 		EFBFFD1A2C0790390061AE66 /* Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
-		EFBFFD1C2C0791D30061AE66 /* SphereNode.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SphereNode.swift; sourceTree = "<group>"; };
 		EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ViewController+CoachingOverlay.swift"; sourceTree = "<group>"; };
 		EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGallery.swift; sourceTree = "<group>"; };
@@ -110,11 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				7AA677141CFF765600B353FB /* AppDelegate.swift */,
-				7AA677281CFF7B5C00B353FB /* PreviewView.swift */,
-				7AA677161CFF765600B353FB /* CameraViewController.swift */,
 				EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */,
-				EFBFFD1C2C0791D30061AE66 /* SphereNode.swift */,
-				7AA677261CFF774800B353FB /* PhotoCaptureDelegate.swift */,
 				EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */,
 				EFDD07D42C04FCFC0029AA9C /* ImageGallery.swift */,
 				EF9079472BE892D300EDEF43 /* PhotoViewController.swift */,
@@ -223,13 +211,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EFBFFD1D2C0791D30061AE66 /* SphereNode.swift in Sources */,
 				EFBFFD212C0791F10061AE66 /* ViewController+CoachingOverlay.swift in Sources */,
 				EFDD07D52C04FCFC0029AA9C /* ImageGallery.swift in Sources */,
-				7AA677271CFF774800B353FB /* PhotoCaptureDelegate.swift in Sources */,
 				EFBFFD1F2C0791EC0061AE66 /* ViewController.swift in Sources */,
-				7AA677291CFF7B5C00B353FB /* PreviewView.swift in Sources */,
-				7AA677171CFF765600B353FB /* CameraViewController.swift in Sources */,
 				42C6D5B22C3EFA94009711A1 /* Zipping.swift in Sources */,
 				7AA677151CFF765600B353FB /* AppDelegate.swift in Sources */,
 				EF9079482BE892D300EDEF43 /* PhotoViewController.swift in Sources */,

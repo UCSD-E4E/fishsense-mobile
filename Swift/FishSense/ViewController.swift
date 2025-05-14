@@ -12,7 +12,6 @@ class ViewController: UIViewController, ARSessionDelegate {
 
     let westjetTeal: UIColor = UIColor( red: CGFloat(0/255.0), green: CGFloat(170/255.0), blue: CGFloat(165/255.0), alpha: CGFloat(1.0) )
     let coachingOverlay = ARCoachingOverlayView()
-    var nodes: [SphereNode] = []
     
     // Cache for 3D text geometries representing the classification values.
     var modelsForClassification: [ARMeshClassification: ModelEntity] = [:]
@@ -83,9 +82,6 @@ class ViewController: UIViewController, ARSessionDelegate {
         configuration.frameSemantics.insert(.sceneDepth)
         arView.session.run(configuration)
         
-        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-        arView.addGestureRecognizer(tapRecognizer)
-        
         view.addSubview(greyView)
         view.addSubview(statusLabel)
         view.addSubview(lengthLabel)
@@ -115,37 +111,6 @@ class ViewController: UIViewController, ARSessionDelegate {
     /// Places virtual-text of the classification at the touch-location's real-world intersection with a mesh.
     /// Note - because classification of the tapped-mesh is retrieved asynchronously, we visualize the intersection
     /// point immediately to give instant visual feedback of the tap.
-    @objc
-    func handleTap(_ sender: UITapGestureRecognizer) {
-        //arView.scene.removeAnchor(<#T##anchor: HasAnchoring##HasAnchoring#>)
-        if nodes.count > 1 {
-            nodes = []
-            arView.scene.anchors.removeAll()
-        }
-        // 1. Perform a ray cast against the mesh.
-        // Note: Ray-cast option ".estimatedPlane" with alignment ".any" also takes the mesh into account.
-        let tapLocation = sender.location(in: arView)  // 2D location on the screen
-        if let result = arView.raycast(from: tapLocation, allowing: .estimatedPlane, alignment: .any).first {
-            // ...
-            // 2. Visualize the intersection point of the ray with the ›real-world surface.
-            let pos = result.worldTransform // ARRaycastResult object
-            let resultAnchor = AnchorEntity(world: pos)
-            resultAnchor.addChild(sphere(radius: 0.01, color: .red))
-            //arView.scene.addAnchor(resultAnchor, removeAfter: 3)
-            arView.scene.addAnchor(resultAnchor)
-            
-            let position = SCNVector3.positionFrom(matrix: result.worldTransform)
-            let sphere = SphereNode(position: position)
-
-            let lastNode = nodes.last
-            nodes.append(sphere)
-            if lastNode != nil {
-                let distance = lastNode!.position.distance(to: sphere.position)
-                lengthLabel.text = String(format: "Distance: %.1f cm", distance * 100)
-                lengthLabel.textColor = .red
-            }
-        }
-    }
     
     func displayErrorMessage(title: String, message: String) {
         // Pop an error message to the user with the error.
