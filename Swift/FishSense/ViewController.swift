@@ -11,6 +11,8 @@ class ViewController: UIViewController, ARSessionDelegate {
     @IBOutlet private weak var photoButton: UIButton!
     // Add a fish image on the upper right corner.
     let imageView = UIImageView()
+    
+    let databaseModel = DatabaseModel()
 
     let westjetTeal: UIColor = UIColor( red: CGFloat(0/255.0), green: CGFloat(170/255.0), blue: CGFloat(165/255.0), alpha: CGFloat(1.0) )
     let coachingOverlay = ARCoachingOverlayView()
@@ -162,6 +164,7 @@ class ViewController: UIViewController, ARSessionDelegate {
             if #available(iOS 14.0, *) {
                 if let depthData = currentFrame.sceneDepth?.depthMap,
                     let confidenceData = currentFrame.sceneDepth?.confidenceMap {
+                    
 //                  Testing Code.
 //                    let depthImage = depthMapToUIImage(depthData)
 //                    DispatchQueue.main.async {
@@ -171,15 +174,11 @@ class ViewController: UIViewController, ARSessionDelegate {
                     let image = UIImage(cgImage: cgImage)
                     // Add a fish image on the upper right corner.
                     
-                    let timestamp = Date().timeIntervalSince1970
+                    let timestamp = Int64(Date().timeIntervalSince1970)
                     
                     // Save the RGB image
                     let imageName = "rgb_\(timestamp).jpg"
                     saveImage(image/*, withName: imageName*/, withName: imageName)
-                    
-                    // Save depth data
-                    let depthName = "depth_\(timestamp).png"
-                    saveDepthData(depthData, withName: depthName)
                     
                     let imgData = cgImage.dataProvider?.data
                     let imgBytes = CFDataGetBytePtr(imgData)
@@ -189,8 +188,17 @@ class ViewController: UIViewController, ARSessionDelegate {
                     let depthHeight = CVPixelBufferGetHeight(depthData)
                     let depthBytes = CVPixelBufferGetBaseAddress(depthData)
                     
+                    CVPixelBufferLockBaseAddress(confidenceData, .readOnly)
+                    let confidenceWidth = CVPixelBufferGetWidth(confidenceData)
+                    let confidenceHeight = CVPixelBufferGetHeight(confidenceData)
+                    let confidenceBytes = CVPixelBufferGetBaseAddress(confidenceData)
+                    
                     // Get a flat array
                     let cameraIntrinsicsInverted = matrix3x3ToArray(currentFrame.camera.intrinsics.inverse.transpose)
+                    
+                    if let depthMap = ByteMatrixModel(depthBytes, withWidth: depthWidth, andHeight: depthHeight), let confidenceMap = ByteMatrixModel(confidenceBytes, withWidth: confidenceWidth, andHeight: confidenceHeight), let photo = PhotoModel(withUtcUnixTimestamp: timestamp, rgbPath: imageName, depthMap: depthMap, confidenceMap: confidenceMap) {
+                        let _ = databaseModel?.insertPhoto(with: photo)
+                    }
                     
                     let lengthResult = FishSenseRS.compute_length(
                         imgBytes, UInt32(cgImage.width), UInt32(cgImage.height), // RGB
@@ -198,6 +206,7 @@ class ViewController: UIViewController, ARSessionDelegate {
                         cameraIntrinsicsInverted
                     )
                     
+                    defer { CVPixelBufferUnlockBaseAddress(confidenceData, .readOnly) }
                     defer { CVPixelBufferUnlockBaseAddress(depthData, .readOnly) }
                     
                     if lengthResult.error_string != nil {
@@ -236,7 +245,7 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
     
-    func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
+    func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: Int64) {
         displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded() / 10)cm")
     }
 

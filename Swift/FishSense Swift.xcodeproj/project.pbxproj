@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -64,6 +64,10 @@
 		FCCA078B2C213A0E00F87BA5 /* opencv2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = opencv2.xcframework; path = Frameworks/opencv2.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FC4541702DD569E800970822 /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		7AA6770E1CFF765500B353FB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -101,6 +105,7 @@
 		7AA677131CFF765600B353FB /* FishSense */ = {
 			isa = PBXGroup;
 			children = (
+				FC4541702DD569E800970822 /* Models */,
 				7AA677141CFF765600B353FB /* AppDelegate.swift */,
 				EFBFFD1E2C0791EC0061AE66 /* ViewController.swift */,
 				EFBFFD202C0791F10061AE66 /* ViewController+CoachingOverlay.swift */,
@@ -150,6 +155,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FC4541702DD569E800970822 /* Models */,
 			);
 			name = FishSense;
 			productName = AVCam;

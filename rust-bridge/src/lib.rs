@@ -185,7 +185,7 @@ fn do_compute_length(
 }
 
 #[no_mangle]
-pub extern fn compute_length(
+pub extern "C" fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
     camera_intrinsics_inverted_data: *const f32
