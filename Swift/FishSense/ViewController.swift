@@ -2,8 +2,21 @@ import ARKit
 import RealityKit
 import FishSenseRS
 
+//For Database
+import UIKit
+import SQLite3
+//
+
+//For the database
+    var db: DBHelper!
+    var fishDataList: [FishData]!
+    var fish_length = Int64()
+//
+
+
 class ViewController: UIViewController, ARSessionDelegate {
     
+  
     @IBOutlet var arView: ARView!
     @IBOutlet weak var hideMeshButton: UIButton!
     @IBOutlet weak var resetButton: UIButton!
@@ -46,6 +59,10 @@ class ViewController: UIViewController, ARSessionDelegate {
     /// - Tag: ViewDidLoad
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Initialize the database helper
+        db = DBHelper()
+        //
         
         arView.session.delegate = self
         
@@ -110,6 +127,8 @@ class ViewController: UIViewController, ARSessionDelegate {
         imageView.layer.cornerRadius = 8
 
         view.addSubview(imageView)
+        // Read data from the database
+        fishDataList = db.read(avg: 0)
     }
     
     override func viewDidLayoutSubviews() {
@@ -222,6 +241,10 @@ class ViewController: UIViewController, ARSessionDelegate {
 
                             // Save the length data
                             saveLength(lengthResult, andTimeStamp: timestamp)
+                            
+                            // printing the database
+                            //printFishDataList(fishDataList)
+                            
                         }
                         else {
                             print("We did not find a fish in swift!")
@@ -237,9 +260,22 @@ class ViewController: UIViewController, ARSessionDelegate {
     }
     
     func saveLength(_ lengthResult: ComputeLengthResult, andTimeStamp timestamp: TimeInterval) {
-        displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded() / 10)cm")
+        displayErrorMessage(title: "Fish Length", message: "\((lengthResult.length * 1000).rounded())mm")
+        
+        // Insert the length data into the database
+        db.insert(timestamp: Int64(Date().timeIntervalSince1970), fish_length:Int64((lengthResult.length * 1000).rounded()), headx: Int64(lengthResult.left.x), heady: Int64(lengthResult.left.y), tailx: Int64(lengthResult.right.x), taily: Int64(lengthResult.right.y), lat: 0.0, long: 0.0, rgb: "rgb_\(Int64(Date().timeIntervalSince1970)).jpg", depth: "depth_\(Int64(Date().timeIntervalSince1970)).png", mask: "temp_mask_data")
+        
+        /*
+        if let imageGalleryVC = storyboard?.instantiateViewController(withIdentifier: "ImageGallery") as? ImageGallery {
+                   // Pass the calculated fish length
+                   imageGalleryVC.fish_length = fish_length
+                   
+                   // Present or push the ImageGallery
+                   self.present(imageGalleryVC, animated: true, completion: nil)
+        }
+         */
     }
-
+                
     /*func saveImage(_ image: UIImage, withName name: String) {
         if let imageData = image.jpegData(compressionQuality: 0.8) {
             let filePath = getDocumentsDirectory().appendingPathComponent(name)
@@ -269,7 +305,6 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
 
-    
     func saveDepthData(_ depthData: CVPixelBuffer, withName name: String) {
         let ciImage = CIImage(cvPixelBuffer: depthData)
         let context = CIContext()
@@ -571,7 +606,18 @@ class ViewController: UIViewController, ARSessionDelegate {
         
         return rotatedImage
     }
+    
+    /*
+    //For the database
+    func printFishDataList(_ fishDataList: [FishData]) {
+        for fishData in fishDataList {
+            print(fishData.description)
+        }
+    }
+     */
 }
+
+
 
 extension SCNGeometry {
     convenience init(arGeometry: ARMeshGeometry) {
@@ -581,11 +627,13 @@ extension SCNGeometry {
        self.init(sources: [verticesSource, normalsSource], elements: [faces])
     }
 }
+
 extension SCNGeometrySource {
     convenience init(_ source: ARGeometrySource, semantic: Semantic) {
         self.init(buffer: source.buffer, vertexFormat: source.format, semantic: semantic, vertexCount: source.count, dataOffset: source.offset, dataStride: source.stride)
     }
 }
+
 extension SCNGeometryElement {
     convenience init(_ source: ARGeometryElement) {
        let pointer = source.buffer.contents()
@@ -594,6 +642,7 @@ extension SCNGeometryElement {
        self.init(data: data, primitiveType: .of(source.primitiveType), primitiveCount: source.count, bytesPerIndex: source.bytesPerIndex)
     }
 }
+
 extension SCNGeometryPrimitiveType {
     static  func  of(_ type: ARGeometryPrimitiveType) -> SCNGeometryPrimitiveType {
        switch type {
