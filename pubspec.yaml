@@ -17,7 +17,7 @@ dependencies:
   path_provider: ^2.1.1
 
   # Camera (start with basic camera, add ARCore later)
-  camera: ^0.10.5
+  # camera: ^0.10.5
   permission_handler: ^11.0.1
 
   # Image & File handling

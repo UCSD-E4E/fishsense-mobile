@@ -1,3 +1,0 @@
-cargo:rustc-env=PROFILE=release
-cargo:rustc-env=CARGO_CFG_TARGET_FEATURE=aes,crc,dpb,fcma,fp16,jsconv,lor,lse,neon,paca,pacg,pan,pmuv3,ras,rcpc,rdm,sha2,vh
-cargo:rustc-env=CARGO_ENCODED_RUSTFLAGS=

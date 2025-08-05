@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
-import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
@@ -44,7 +43,7 @@ static Future<ComputeLengthResult> computeLength({
       arguments,
     );
 
-    // ✅ FIXED: Use unified model factory method
+
     return ComputeLengthResult.fromMap(result);
 
   } catch (e) {
@@ -76,21 +75,21 @@ class DeviceInfoService {
   /// Get comprehensive device information with LiDAR status
   static Future<String> getDeviceInfo() async {
     try {
-      print('🔍 DEBUG: Calling platform channel for device info...');
+      print('DEBUG: Calling platform channel for device info...');
       
       // Use the existing fishsense_native channel
       final String? result = await _channel.invokeMethod('getDeviceInfo');
       
       if (result != null) {
-        print('🔍 DEBUG: Platform channel success: $result');
+        print(' DEBUG: Platform channel success: $result');
         return result;
       } else {
-        print('🔍 DEBUG: Platform channel returned null, using fallback');
+        print('DEBUG: Platform channel returned null, using fallback');
         return await _getFallbackDeviceInfo();
       }
       
     } catch (e) {
-      print('🔍 DEBUG: Platform channel failed: $e, using fallback');
+      print('DEBUG: Platform channel failed: $e, using fallback');
       return await _getFallbackDeviceInfo();
     }
   }
@@ -141,85 +140,45 @@ class DeviceInfoService {
 
 /// CameraService - Enhanced with REAL ARKit integration
 /// Automatically switches between real LiDAR data and mock data
+/// CameraService - ARKit ONLY (No Flutter Camera)
 class CameraService {
-  static List<CameraDescription>? _cameras;
-  static CameraController? _controller;
   static bool _useARKit = false;
   static bool _arkitSessionStarted = false;
   
-  /// Initialize cameras and ARKit - detects real LiDAR capabilities
+  /// Initialize ARKit ONLY - no Flutter camera at all
   static Future<bool> initializeCameras() async {
     try {
-      print('CameraService: Initializing camera system...');
+      print('CameraService: Initializing ARKit-only system...');
       
-      // Try to initialize ARKit first on iOS
-      if (Platform.isIOS) {
-        final arkitSuccess = await ARKitService.initializeARKit();
-        if (arkitSuccess) {
-          _useARKit = true;
-          print('CameraService: ✅ ARKit LiDAR initialized successfully');
-          return true;
-        } else {
-          print('CameraService: ⚠️ ARKit not available, falling back to Flutter camera');
-        }
+      if (!Platform.isIOS) {
+        print('CameraService: Not iOS platform, ARKit not supported');
+        return false;
       }
       
-      // Fallback to Flutter camera for non-LiDAR devices or Android
-      _cameras = await availableCameras();
-      final success = _cameras?.isNotEmpty ?? false;
-      
-      if (success) {
-        print('CameraService: ✅ Flutter camera initialized');
+      final arkitSuccess = await ARKitService.initializeARKit();
+      if (arkitSuccess) {
+        _useARKit = true;
+        print('CameraService: ARKit LiDAR initialized successfully');
+        return true;
       } else {
-        print('CameraService: ❌ No cameras available');
+        print('CameraService:  ARKit initialization failed');
+        return false;
       }
-      
-      return success;
       
     } catch (e) {
-      print('CameraService: Error initializing cameras: $e');
+      print('CameraService: Error initializing ARKit: $e');
       return false;
     }
   }
 
-  /// Get camera controller (Flutter camera only)
-  static Future<CameraController?> getCameraController() async {
-    if (_useARKit) {
-      // ARKit handles camera directly, no Flutter camera needed
-      return null;
-    }
-    
-    if (_cameras == null || _cameras!.isEmpty) {
-      await initializeCameras();
-    }
 
-    if (_cameras != null && _cameras!.isNotEmpty) {
-      _controller = CameraController(
-        _cameras![0], // Use first available camera
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-      
-      await _controller!.initialize();
-      return _controller;
-    }
-    
-    return null;
-  }
-  
   /// Check if using ARKit for camera
   static bool isUsingARKit() => _useARKit;
 
-  /// Check camera permissions
+  /// Check camera permissions - not needed for ARKit
   static Future<bool> checkCameraPermission() async {
-    final status = await Permission.camera.status;
-    
-    if (status.isDenied) {
-      final result = await Permission.camera.request();
-      return result.isGranted;
-    }
-    
-    return status.isGranted;
+    // ARKit handles permissions internally
+    return true;
   }
 
   /// Dispose camera controller
@@ -227,32 +186,24 @@ class CameraService {
     if (_useARKit) {
       await ARKitService.stopSession();
       _arkitSessionStarted = false;
-    } else {
-      await _controller?.dispose();
-      _controller = null;
     }
   }
   
-  /// Capture photo with depth data - REAL implementation
-  /// iOS: Real ARKit LiDAR data, Android: Mock data
+  /// Capture photo with depth data - ARKit ONLY
   static Future<CaptureResult?> capturePhotoWithDepth() async {
-    if (_useARKit) {
-      return await _captureARKitPhoto();
-    } else {
-      return await _captureFlutterPhoto();
-    }
+    return await _captureARKitPhoto();
   }
   
   /// Capture photo using REAL ARKit with LiDAR data
   static Future<CaptureResult?> _captureARKitPhoto() async {
     try {
-      print('CameraService: 📷 Capturing with real ARKit LiDAR...');
+      print('CameraService:  Capturing with real ARKit LiDAR...');
       
       // Start ARKit session if not already started
       if (!_arkitSessionStarted) {
         final sessionStarted = await ARKitService.startSession();
         if (!sessionStarted) {
-          print('CameraService: ❌ Failed to start ARKit session');
+          print('CameraService: Failed to start ARKit session');
           return null;
         }
         _arkitSessionStarted = true;
@@ -280,53 +231,8 @@ class CameraService {
       return null;
     }
   }
-  
-  /// Capture photo using Flutter camera (fallback with mock data)
-  static Future<CaptureResult?> _captureFlutterPhoto() async {
-    try {
-      print('CameraService: Capturing with Flutter camera (mock depth)...');
-      
-      if (_controller == null) {
-        print('CameraService:  Flutter camera not initialized');
-        return null;
-      }
-      
-      // Capture image
-      final XFile imageFile = await _controller!.takePicture();
-      final imageBytes = await imageFile.readAsBytes();
-
-      // Create mock depth and confidence maps (for non-LiDAR devices)
-      final mockDepthMap = ByteMatrixModel(
-        bytes: List.filled(1920 * 1080, 128), // Mock depth data
-        width: 1920,
-        height: 1080,
-      );
-
-      final mockConfidenceMap = ByteMatrixModel(
-        bytes: List.filled(1920 * 1080, 2), // High confidence
-        width: 1920,
-        height: 1080,
-      );
-      
-      // Default camera intrinsics
-      const defaultIntrinsics = [1000.0, 0.0, 960.0, 0.0, 1000.0, 540.0, 0.0, 0.0, 1.0];
-      
-      print('CameraService: Successfully captured Flutter photo with mock depth');
-      
-      return CaptureResult(
-        imageBytes: imageBytes,
-        depthMap: mockDepthMap,
-        confidenceMap: mockConfidenceMap,
-        cameraIntrinsics: defaultIntrinsics,
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
-      
-    } catch (e) {
-      print('CameraService:  Error capturing Flutter photo: $e');
-      return null;
-    }
-  }
 }
+  
 
 /// FileStorageService - Handles photo and data file operations
 /// No changes needed - same as before

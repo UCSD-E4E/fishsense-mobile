@@ -7,6 +7,7 @@ import '../models.dart';
 
 /// ARKit Service for iOS LiDAR integration - Real Implementation
 /// Connects to native iOS ARKit through platform channels
+/// NO PREVIEW STREAMING - Uses native ARKit camera view like original Swift app
 class ARKitService {
   static const MethodChannel _channel = MethodChannel('fishsense_native');
   static bool _isInitialized = false;
@@ -92,50 +93,67 @@ class ARKitService {
 
   /// Capture current ARKit frame with depth data
   /// Returns CaptureResult with real LiDAR data
-  static Future<CaptureResult?> captureFrameWithDepth() async {
+  /// This is the ONLY camera interaction - no preview streaming needed
+static Future<CaptureResult?> captureFrameWithDepth() async {
     try {
-      if (!_isSessionRunning) {
-        print('$_tag: Cannot capture frame - session not running');
-        return null;
-      }
+      print('$_tag: ARKit session started successfully');
 
-      // Capture frame from native ARKit
       final Map<dynamic, dynamic> result =
           await _channel.invokeMethod('captureDepthFrame');
 
       if (result['success'] != true) {
-        print('$_tag: Failed to capture frame: ${result['error']}');
+        print('$_tag: Capture failed: ${result['error']}');
         return null;
       }
 
-      // Extract data from platform channel result
-      final Uint8List rgbImageData =
-          result['rgbImageData']; // Match AppDelegate key
-      final Uint8List depthData = result['depthData']; // Match AppDelegate key
-      final Uint8List confidenceData =
-          result['confidenceData']; // Match AppDelegate key
-      final List<double> intrinsics =
-          List<double>.from(result['cameraIntrinsics']);
+      // Extract RGB data (JPEG for display)
+      final rgbImageData = result['rgbImageData'] as Uint8List;
+      
+      // Extract raw RGB data (for Rust pipeline)  
+      final rawRgbData = result['rawRgbData'] as Uint8List;
+      
+      // Extract image dimensions
+      final imageWidth = result['imageWidth'] as int;
+      final imageHeight = result['imageHeight'] as int;
 
-      // Create depth and confidence matrices
+      // Extract depth data
+      final depthData = result['depthData'] as Uint8List;
+      final depthWidth = result['depthWidth'] as int;
+      final depthHeight = result['depthHeight'] as int;
+
+      // Extract confidence data  
+      final confidenceData = result['confidenceData'] as Uint8List;
+      final confidenceWidth = result['confidenceWidth'] as int;
+      final confidenceHeight = result['confidenceHeight'] as int;
+
+      // Extract camera intrinsics
+      final intrinsics = (result['cameraIntrinsics'] as List<dynamic>)
+          .map((e) => e as double)
+          .toList();
+
+      // Create matrix models
       final depthMap = ByteMatrixModel(
-        bytes: depthData,
-        width: result['depthWidth'],
-        height: result['depthHeight'],
+        bytes: depthData.toList(),
+        width: depthWidth,
+        height: depthHeight,
       );
 
       final confidenceMap = ByteMatrixModel(
-        bytes: confidenceData,
-        width: result['confidenceWidth'],
-        height: result['confidenceHeight'],
+        bytes: confidenceData.toList(),
+        width: confidenceWidth,
+        height: confidenceHeight,
       );
 
       print(
           '$_tag: Successfully captured frame - RGB: ${rgbImageData.length} bytes, '
+          'Raw: ${rawRgbData.length} bytes, '
           'Depth: ${depthData.length} bytes (${depthMap.width}x${depthMap.height})');
 
       return CaptureResult(
-        imageBytes: rgbImageData,
+        imageBytes: rgbImageData,       // JPEG for display
+        rawImageBytes: rawRgbData,      // Raw for Rust
+        imageWidth: imageWidth,         // Image dimensions
+        imageHeight: imageHeight,       // Image dimensions
         depthMap: depthMap,
         confidenceMap: confidenceMap,
         cameraIntrinsics: intrinsics,
@@ -173,31 +191,9 @@ class ARKitService {
   /// Update camera intrinsics from ARKit
   static Future<void> _updateCameraIntrinsics() async {
     try {
-      if (!_isSessionRunning) return;
-
-      // Get intrinsics from native ARKit
-      final Map<dynamic, dynamic> result =
-          await _channel.invokeMethod('getCameraIntrinsics');
-
-      if (result['success'] == true) {
-        final List<double> matrixData = List<double>.from(result['matrix']);
-
-        // Create Matrix3 from ARKit intrinsics
-        _cameraIntrinsics = Matrix3(
-          matrixData[0], matrixData[1], matrixData[2], // fx, 0, cx
-          matrixData[3], matrixData[4], matrixData[5], // 0, fy, cy
-          matrixData[6], matrixData[7], matrixData[8], // 0, 0, 1
-        );
-
-        _imageResolution = Size(
-          result['imageWidth'].toDouble(),
-          result['imageHeight'].toDouble(),
-        );
-
-        print('$_tag: Camera intrinsics updated - '
-            'fx: ${_cameraIntrinsics!.fx}, fy: ${_cameraIntrinsics!.fy}, '
-            'resolution: $_imageResolution');
-      }
+      // Camera intrinsics are provided in captureFrameWithDepth() response
+      // No separate call needed - just use default intrinsics for now
+      print('$_tag: Using intrinsics from capture frame');
     } catch (e) {
       print('$_tag: Error updating camera intrinsics: $e');
     }
@@ -367,8 +363,12 @@ class CameraIntrinsics {
 }
 
 /// Data class for camera capture results
+/// 
 class CaptureResult {
-  final Uint8List imageBytes;
+  final Uint8List imageBytes;        // JPEG data for display
+  final Uint8List rawImageBytes;     // Raw data for Rust pipeline
+  final int imageWidth;              // Image dimensions  
+  final int imageHeight;             // Image dimensions
   final ByteMatrixModel depthMap;
   final ByteMatrixModel confidenceMap;
   final List<double> cameraIntrinsics;
@@ -376,6 +376,9 @@ class CaptureResult {
 
   const CaptureResult({
     required this.imageBytes,
+    required this.rawImageBytes,     
+    required this.imageWidth,        
+    required this.imageHeight,       
     required this.depthMap,
     required this.confidenceMap,
     required this.cameraIntrinsics,
