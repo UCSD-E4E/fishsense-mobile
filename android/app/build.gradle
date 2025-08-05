@@ -1,0 +1,96 @@
+// MANDATORY: Use declarative plugin syntax (Flutter 3.32+ requirement)
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+// Move all executable code AFTER plugins block
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new Exception("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+android {
+    namespace "com.example.fishsense_android"
+    compileSdk 36
+    ndkVersion "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    defaultConfig {
+        applicationId "com.example.fishsense_android"
+        minSdkVersion 26
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0.0"
+        
+        // Native library architecture support
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Custom native library packaging
+            packagingOptions {
+                pickFirst 'lib/arm64-v8a/librust_ml.so'
+                pickFirst 'lib/armeabi-v7a/librust_ml.so'
+            }
+        }
+    }
+    
+    // Native library integration paths
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    
+    // Add any Rust FFI dependencies here
+    implementation 'androidx.core:core-ktx:1.12.0'
+}
+
+// Custom task for Rust library compilation (DISABLED FOR INITIAL TESTING)
+// tasks.register('buildRustLibrary', Exec) {
+//     workingDir '../rust'
+//     
+//     if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+//         commandLine 'cmd', '/c', 'cargo', 'build', '--release', '--target', 'aarch64-linux-android'
+//     } else {
+//         commandLine 'cargo', 'build', '--release', '--target', 'aarch64-linux-android'
+//         commandLine 'cargo', 'build', '--release', '--target', 'armv7-linux-androideabi'
+//     }
+// }
+
+// Ensure Rust library builds before Android compilation (DISABLED)
+// preBuild.dependsOn buildRustLibrary

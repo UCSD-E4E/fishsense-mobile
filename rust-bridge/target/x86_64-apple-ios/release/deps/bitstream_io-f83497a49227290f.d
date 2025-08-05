@@ -1,0 +1,10 @@
+/Users/brendonalexander/fishsense-mobile/rust-bridge/target/x86_64-apple-ios/release/deps/libbitstream_io-f83497a49227290f.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/huffman.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/read.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/write.rs
+
+/Users/brendonalexander/fishsense-mobile/rust-bridge/target/x86_64-apple-ios/release/deps/libbitstream_io-f83497a49227290f.rlib: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/huffman.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/read.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/write.rs
+
+/Users/brendonalexander/fishsense-mobile/rust-bridge/target/x86_64-apple-ios/release/deps/bitstream_io-f83497a49227290f.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/huffman.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/read.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/write.rs
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/huffman.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/read.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bitstream-io-2.6.0/src/write.rs:

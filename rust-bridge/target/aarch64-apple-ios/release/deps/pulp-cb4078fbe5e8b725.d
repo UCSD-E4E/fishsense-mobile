@@ -1,0 +1,10 @@
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios/release/deps/libpulp-cb4078fbe5e8b725.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/aarch64/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/aarch64.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios/release/deps/libpulp-cb4078fbe5e8b725.rlib: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/aarch64/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/aarch64.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios/release/deps/pulp-cb4078fbe5e8b725.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/aarch64/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/aarch64.rs
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/mod.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/core_arch/aarch64/mod.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.18.22/src/aarch64.rs:

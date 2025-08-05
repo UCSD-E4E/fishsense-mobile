@@ -1,0 +1,51 @@
+name: fishsense_android
+description: FishSense Android app for fish length measurement and species classification
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  path_provider: ^2.1.1
+
+  # Camera (start with basic camera, add ARCore later)
+  camera: ^0.10.5
+  permission_handler: ^11.0.1
+
+  # Image & File handling
+  image: ^4.1.3
+  
+  # HTTP & Cloud sync
+  http: ^1.1.0
+  
+  # FFI for Rust integration
+  ffi: ^2.1.0
+  
+  # State management
+  provider: ^6.1.1
+  
+  # Utilities
+  archive: ^3.4.9
+
+  arkit_plugin: ^1.0.7
+
+  vector_math: ^2.1.4
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  

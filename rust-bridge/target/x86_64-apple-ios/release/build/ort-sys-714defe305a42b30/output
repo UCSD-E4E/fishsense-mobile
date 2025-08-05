@@ -1,0 +1,27 @@
+cargo:rerun-if-env-changed=LIBONNXRUNTIME_NO_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_CROSS_x86_64-apple-ios
+cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_CROSS_x86_64_apple_ios
+cargo:rerun-if-env-changed=TARGET_PKG_CONFIG_ALLOW_CROSS
+cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_CROSS
+cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-apple-ios
+cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_apple_ios
+cargo:rerun-if-env-changed=TARGET_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-apple-ios
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_apple_ios
+cargo:rerun-if-env-changed=TARGET_PKG_CONFIG_SYSROOT_DIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR
+onnxruntime not found using pkg-config, falling back to manual setup.
+cargo:rerun-if-env-changed=ORT_LIB_LOCATION
+cargo:rerun-if-env-changed=ORT_LIB_PROFILE
+cargo:rerun-if-env-changed=ORT_PREFER_DYNAMIC_LINK
+cargo:rerun-if-env-changed=ORT_SKIP_DOWNLOAD
+cargo:rerun-if-env-changed=ORT_CXX_STDLIB
+cargo:rerun-if-env-changed=CXXSTDLIB
+cargo:rustc-link-search=native=./third_party/onnxruntime/build/apple_framework/intermediates/iphonesimulator_x86_64
+cargo:rustc-link-lib=onnxruntime
+cargo:rustc-link-search=native=./third_party/onnxruntime/build/apple_framework/intermediates/iphonesimulator_x86_64
+cargo:rustc-link-lib=c++
+cargo:rustc-link-lib=framework=Foundation
+cargo:rustc-link-search=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/lib/darwin
+cargo:rustc-link-lib=clang_rt.osx

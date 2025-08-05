@@ -1,0 +1,12 @@
+[toolchain]
+# The default profile includes rustc, rust-std, cargo, rust-docs, rustfmt and clippy.
+# https://rust-lang.github.io/rustup/concepts/profiles.html
+profile = "default"
+channel = "1.86"
+targets = [
+	"aarch64-apple-darwin",
+	"x86_64-apple-darwin",
+	"aarch64-apple-ios",
+	"aarch64-apple-ios-sim",
+	"x86_64-apple-ios",
+]

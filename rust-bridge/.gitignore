@@ -1,0 +1,4 @@
+include/fishsense.h
+libs/
+third_party/lib/
+FishSenseRS.xcframework/

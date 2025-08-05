@@ -1,0 +1,490 @@
+cargo:rerun-if-env-changed=OPENCV4_NO_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG
+cargo:rerun-if-env-changed=OPENCV4_STATIC
+cargo:rerun-if-env-changed=OPENCV4_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR
+cargo:rerun-if-env-changed=OPENCV4_STATIC
+cargo:rerun-if-env-changed=OPENCV4_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG
+cargo:rerun-if-env-changed=OPENCV4_STATIC
+cargo:rerun-if-env-changed=OPENCV4_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR
+cargo:rustc-cfg=ocvrs_opencv_branch_4
+cargo:rerun-if-env-changed=OPENCV_PACKAGE_NAME
+cargo:rerun-if-env-changed=OPENCV_PKGCONFIG_NAME
+cargo:rerun-if-env-changed=OPENCV_CMAKE_NAME
+cargo:rerun-if-env-changed=OPENCV_CMAKE_BIN
+cargo:rerun-if-env-changed=OPENCV_VCPKG_NAME
+cargo:rerun-if-env-changed=OPENCV_LINK_LIBS
+cargo:rerun-if-env-changed=OPENCV_LINK_PATHS
+cargo:rerun-if-env-changed=OPENCV_INCLUDE_PATHS
+cargo:rerun-if-env-changed=OPENCV_DISABLE_PROBES
+cargo:rerun-if-env-changed=OPENCV_MSVC_CRT
+cargo:rerun-if-env-changed=CMAKE_PREFIX_PATH
+cargo:rerun-if-env-changed=OpenCV_DIR
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=VCPKG_ROOT
+cargo:rerun-if-env-changed=VCPKGRS_DYNAMIC
+cargo:rerun-if-env-changed=VCPKGRS_TRIPLET
+cargo:rerun-if-env-changed=OCVRS_DOCS_GENERATE_DIR
+cargo:rerun-if-env-changed=DOCS_RS
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/bioinspired.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/gapi.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/face.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/sfm.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/hdf.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/xfeatures2d.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/photo.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/alphamat.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/ccalib.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/dnn.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/videoio.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/manual-core.cpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/core.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/ocvrs_common.hpp
+cargo:rerun-if-changed=/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opencv-0.91.3/src_cpp/aruco.hpp
+cargo:rerun-if-changed=Cargo.toml
+OPT_LEVEL = Some(0)
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+TARGET = Some(aarch64-apple-darwin)
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXX_aarch64-apple-darwin
+CXX_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=CXX_aarch64_apple_darwin
+CXX_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_CXX
+HOST_CXX = None
+cargo:rerun-if-env-changed=CXX
+CXX = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+RUSTC_WRAPPER = Some(/Users/brendonalexander/.vscode/extensions/rust-lang.rust-analyzer-0.3.2319-darwin-arm64/server/rust-analyzer)
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some(true)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+CARGO_ENCODED_RUSTFLAGS = Some()
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+OUT_DIR = Some(/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out)
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+TARGET = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = None
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CXXFLAGS
+CXXFLAGS = None
+cargo:rerun-if-env-changed=HOST_CXXFLAGS
+HOST_CXXFLAGS = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64_apple_darwin
+CXXFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CXXFLAGS_aarch64-apple-darwin
+CXXFLAGS_aarch64-apple-darwin = None
+cargo:rustc-cfg=ocvrs_has_module_alphamat
+cargo:rustc-cfg=ocvrs_has_module_aruco
+cargo:rustc-cfg=ocvrs_has_module_bgsegm
+cargo:rustc-cfg=ocvrs_has_module_bioinspired
+cargo:rustc-cfg=ocvrs_has_module_calib3d
+cargo:rustc-cfg=ocvrs_has_module_ccalib
+cargo:rustc-cfg=ocvrs_has_module_core
+cargo:rustc-cfg=ocvrs_has_module_dnn
+cargo:rustc-cfg=ocvrs_has_module_dnn_superres
+cargo:rustc-cfg=ocvrs_has_module_dpm
+cargo:rustc-cfg=ocvrs_has_module_face
+cargo:rustc-cfg=ocvrs_has_module_features2d
+cargo:rustc-cfg=ocvrs_has_module_flann
+cargo:rustc-cfg=ocvrs_has_module_freetype
+cargo:rustc-cfg=ocvrs_has_module_fuzzy
+cargo:rustc-cfg=ocvrs_has_module_gapi
+cargo:rustc-cfg=ocvrs_has_module_hfs
+cargo:rustc-cfg=ocvrs_has_module_highgui
+cargo:rustc-cfg=ocvrs_has_module_img_hash
+cargo:rustc-cfg=ocvrs_has_module_imgcodecs
+cargo:rustc-cfg=ocvrs_has_module_imgproc
+cargo:rustc-cfg=ocvrs_has_module_intensity_transform
+cargo:rustc-cfg=ocvrs_has_module_line_descriptor
+cargo:rustc-cfg=ocvrs_has_module_mcc
+cargo:rustc-cfg=ocvrs_has_module_ml
+cargo:rustc-cfg=ocvrs_has_module_objdetect
+cargo:rustc-cfg=ocvrs_has_module_optflow
+cargo:rustc-cfg=ocvrs_has_module_phase_unwrapping
+cargo:rustc-cfg=ocvrs_has_module_photo
+cargo:rustc-cfg=ocvrs_has_module_plot
+cargo:rustc-cfg=ocvrs_has_module_quality
+cargo:rustc-cfg=ocvrs_has_module_rapid
+cargo:rustc-cfg=ocvrs_has_module_rgbd
+cargo:rustc-cfg=ocvrs_has_module_saliency
+cargo:rustc-cfg=ocvrs_has_module_sfm
+cargo:rustc-cfg=ocvrs_has_module_shape
+cargo:rustc-cfg=ocvrs_has_module_stereo
+cargo:rustc-cfg=ocvrs_has_module_stitching
+cargo:rustc-cfg=ocvrs_has_module_structured_light
+cargo:rustc-cfg=ocvrs_has_module_superres
+cargo:rustc-cfg=ocvrs_has_module_surface_matching
+cargo:rustc-cfg=ocvrs_has_module_text
+cargo:rustc-cfg=ocvrs_has_module_tracking
+cargo:rustc-cfg=ocvrs_has_module_video
+cargo:rustc-cfg=ocvrs_has_module_videoio
+cargo:rustc-cfg=ocvrs_has_module_videostab
+cargo:rustc-cfg=ocvrs_has_module_viz
+cargo:rustc-cfg=ocvrs_has_module_wechat_qrcode
+cargo:rustc-cfg=ocvrs_has_module_xfeatures2d
+cargo:rustc-cfg=ocvrs_has_module_ximgproc
+cargo:rustc-cfg=ocvrs_has_module_xobjdetect
+cargo:rustc-cfg=ocvrs_has_module_xphoto
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:rerun-if-env-changed=AR_aarch64-apple-darwin
+AR_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=AR_aarch64_apple_darwin
+AR_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = None
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64_apple_darwin
+ARFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
+ARFLAGS_aarch64-apple-darwin = None
+cargo:rustc-link-lib=static=ocvrs
+cargo:rustc-link-search=native=/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/build/opencv-58fe3f603c945d5f/out
+cargo:rerun-if-env-changed=CXXSTDLIB_aarch64-apple-darwin
+CXXSTDLIB_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=CXXSTDLIB_aarch64_apple_darwin
+CXXSTDLIB_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_CXXSTDLIB
+HOST_CXXSTDLIB = None
+cargo:rerun-if-env-changed=CXXSTDLIB
+CXXSTDLIB = None
+cargo:rustc-link-lib=c++
+cargo:rustc-link-search=/opt/homebrew/opt/opencv/lib
+cargo:rustc-link-search=framework=/opt/homebrew/opt/opencv/lib
+cargo:rustc-link-lib=opencv_gapi
+cargo:rustc-link-lib=opencv_stitching
+cargo:rustc-link-lib=opencv_alphamat
+cargo:rustc-link-lib=opencv_aruco
+cargo:rustc-link-lib=opencv_bgsegm
+cargo:rustc-link-lib=opencv_bioinspired
+cargo:rustc-link-lib=opencv_ccalib
+cargo:rustc-link-lib=opencv_dnn_objdetect
+cargo:rustc-link-lib=opencv_dnn_superres
+cargo:rustc-link-lib=opencv_dpm
+cargo:rustc-link-lib=opencv_face
+cargo:rustc-link-lib=opencv_freetype
+cargo:rustc-link-lib=opencv_fuzzy
+cargo:rustc-link-lib=opencv_hfs
+cargo:rustc-link-lib=opencv_img_hash
+cargo:rustc-link-lib=opencv_intensity_transform
+cargo:rustc-link-lib=opencv_line_descriptor
+cargo:rustc-link-lib=opencv_mcc
+cargo:rustc-link-lib=opencv_quality
+cargo:rustc-link-lib=opencv_rapid
+cargo:rustc-link-lib=opencv_reg
+cargo:rustc-link-lib=opencv_rgbd
+cargo:rustc-link-lib=opencv_saliency
+cargo:rustc-link-lib=opencv_sfm
+cargo:rustc-link-lib=opencv_signal
+cargo:rustc-link-lib=opencv_stereo
+cargo:rustc-link-lib=opencv_structured_light
+cargo:rustc-link-lib=opencv_phase_unwrapping
+cargo:rustc-link-lib=opencv_superres
+cargo:rustc-link-lib=opencv_optflow
+cargo:rustc-link-lib=opencv_surface_matching
+cargo:rustc-link-lib=opencv_tracking
+cargo:rustc-link-lib=opencv_highgui
+cargo:rustc-link-lib=opencv_datasets
+cargo:rustc-link-lib=opencv_text
+cargo:rustc-link-lib=opencv_plot
+cargo:rustc-link-lib=opencv_videostab
+cargo:rustc-link-lib=opencv_videoio
+cargo:rustc-link-lib=opencv_viz
+cargo:rustc-link-lib=opencv_wechat_qrcode
+cargo:rustc-link-lib=opencv_xfeatures2d
+cargo:rustc-link-lib=opencv_shape
+cargo:rustc-link-lib=opencv_ml
+cargo:rustc-link-lib=opencv_ximgproc
+cargo:rustc-link-lib=opencv_video
+cargo:rustc-link-lib=opencv_xobjdetect
+cargo:rustc-link-lib=opencv_objdetect
+cargo:rustc-link-lib=opencv_calib3d
+cargo:rustc-link-lib=opencv_imgcodecs
+cargo:rustc-link-lib=opencv_features2d
+cargo:rustc-link-lib=opencv_dnn
+cargo:rustc-link-lib=opencv_flann
+cargo:rustc-link-lib=opencv_xphoto
+cargo:rustc-link-lib=opencv_photo
+cargo:rustc-link-lib=opencv_imgproc
+cargo:rustc-link-lib=opencv_core

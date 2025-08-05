@@ -1,0 +1,8 @@
+cargo:rerun-if-env-changed=ORT_LIB_LOCATION
+cargo:rerun-if-env-changed=ORT_LIB_PROFILE
+cargo:rustc-link-lib=c++
+cargo:rustc-link-lib=framework=Foundation
+cargo:rustc-link-lib=onnxruntime
+cargo:rustc-link-search=native=/Users/brendonalexander/Library/Caches/ort.pyke.io/dfbin/aarch64-apple-darwin/4D3EFABA9B329900B400570FBC1A1F72899149EB3756F9540772701944DC5E49/onnxruntime/lib
+cargo:rustc-link-lib=c++
+cargo:rustc-link-lib=framework=Foundation

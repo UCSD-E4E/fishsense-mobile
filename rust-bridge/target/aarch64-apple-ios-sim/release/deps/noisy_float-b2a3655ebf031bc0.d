@@ -1,0 +1,10 @@
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios-sim/release/deps/libnoisy_float-b2a3655ebf031bc0.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/checkers.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/float_impl.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/types.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios-sim/release/deps/libnoisy_float-b2a3655ebf031bc0.rlib: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/checkers.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/float_impl.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/types.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/aarch64-apple-ios-sim/release/deps/noisy_float-b2a3655ebf031bc0.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/checkers.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/float_impl.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/types.rs
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/checkers.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/float_impl.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/noisy_float-0.2.0/src/types.rs:

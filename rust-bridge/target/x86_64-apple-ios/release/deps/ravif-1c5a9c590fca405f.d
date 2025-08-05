@@ -1,0 +1,10 @@
+/Users/brendonalexander/fishsense_android/rust-bridge/target/x86_64-apple-ios/release/deps/libravif-1c5a9c590fca405f.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/av1encoder.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/error.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/dirtyalpha.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/x86_64-apple-ios/release/deps/libravif-1c5a9c590fca405f.rlib: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/av1encoder.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/error.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/dirtyalpha.rs
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/x86_64-apple-ios/release/deps/ravif-1c5a9c590fca405f.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/av1encoder.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/error.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/dirtyalpha.rs
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/av1encoder.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/error.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ravif-0.11.20/src/dirtyalpha.rs:

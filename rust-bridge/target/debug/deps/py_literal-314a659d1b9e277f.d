@@ -1,0 +1,9 @@
+/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/deps/libpy_literal-314a659d1b9e277f.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/format.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse_macros.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/grammar.pest
+
+/Users/brendonalexander/fishsense_android/rust-bridge/target/debug/deps/py_literal-314a659d1b9e277f.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/format.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse_macros.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/grammar.pest
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/format.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse_macros.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/parse.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/py_literal-0.4.0/src/grammar.pest:

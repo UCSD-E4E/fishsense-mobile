@@ -1,0 +1,9 @@
+/Users/brendonalexander/fishsense-mobile/rust-bridge/target/debug/deps/libapp_dirs2-10c2d8a428369edb.rmeta: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/common.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/platform/macos.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/utils.rs
+
+/Users/brendonalexander/fishsense-mobile/rust-bridge/target/debug/deps/app_dirs2-10c2d8a428369edb.d: /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/lib.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/common.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/mod.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/platform/macos.rs /Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/utils.rs
+
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/lib.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/common.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/mod.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/imp/platform/macos.rs:
+/Users/brendonalexander/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/app_dirs2-2.5.5/src/utils.rs:
