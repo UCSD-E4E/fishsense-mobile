@@ -1,0 +1,7 @@
+#! /bin/bash
+
+if [[ $(uname -m) == 'arm64' ]]; then
+  echo aarch64
+else
+  uname -m
+fi

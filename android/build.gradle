@@ -1,0 +1,73 @@
+buildscript {
+    ext.kotlin_version = '2.0.21'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+
+// Single subprojects block with proper evaluation timing
+subprojects { subproject ->
+    // Configure build directory first
+    subproject.buildDir = "${rootProject.buildDir}/${subproject.name}"
+    
+    // Handle SDK/Java version enforcement BEFORE evaluation dependency
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                compileSdkVersion 35
+                
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+                
+                // Namespace requirement for Gradle 8+
+                if (namespace == null) {
+                    namespace = project.group ?: "com.example.${project.name}"
+                }
+                
+                // Native library configuration for Rust integration
+                sourceSets {
+                    main {
+                        jniLibs.srcDirs = ['src/main/jniLibs', '../rust/target/jniLibs']
+                    }
+                }
+                
+                // Ensure arm64-v8a and armeabi-v7a support
+                defaultConfig {
+                    ndk {
+                        abiFilters 'arm64-v8a', 'armeabi-v7a'
+                    }
+                }
+            }
+        }
+        
+        // Kotlin compilation settings
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = JavaVersion.VERSION_17.toString()
+            }
+        }
+    }
+    
+    //  Place evaluationDependsOn AFTER afterEvaluate to prevent conflicts
+    subproject.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

@@ -1,0 +1,18 @@
+[package]
+name = "rust-bridge"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fishsense = { git = "https://github.com/UCSD-E4E/fishsense.rs.git", version = "0.2.0" }
+libc = "0.2.155"
+ndarray = "0.15.6"
+opencv = { version = "0.91.3", features = ["clang-runtime"]}
+cv-convert = { git = "https://github.com/ccrutchf/rust-cv-convert.git", version = "0.25.0", default-features = false, features = ["opencv_0-91", "ndarray_0-15"], rev = "1ac6ea2b50f0b78da3f35207a54eaa9e8a9c1226" }
+ort = "2.0.0-rc.2"
+
+[lib]
+name = "fishsense_bridge"
+crate-type = ["staticlib"]
