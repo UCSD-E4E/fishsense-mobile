@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:fishsense_android/main.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'services.dart';
@@ -11,6 +11,7 @@ import 'extensions.dart';
 
 /// Camera screen with AR functionality
 /// Direct translation from Swift/FishSense/ViewController.swift
+/// Uses native ARKit camera view with Flutter UI overlays
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -21,7 +22,6 @@ class CameraScreen extends StatefulWidget {
 class _CameraScreenState extends State<CameraScreen>
     with WidgetsBindingObserver {
   // Camera and AR state
-  CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isProcessingPhoto = false;
 
@@ -48,372 +48,263 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
+  Future<void> _initializeCamera() async {
+    print(' DEBUG: Starting camera initialization...');
 
-    if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initializeCamera();
-    }
-  }
+    final success = await CameraService.initializeCameras();
+    print('CameraService.initializeCameras() returned: $success');
 
-  /// Initialize camera - equivalent to iOS viewDidLoad camera setup
-Future<void> _initializeCamera() async {
-  // Initialize the enhanced camera service
-  final success = await CameraService.initializeCameras();
-  
-  if (success) {
-    if (CameraService.isUsingARKit()) {
-      // iOS ARKit path
-      setState(() {
-        _isCameraInitialized = true;
-        _statusMessage = 'ARKit LiDAR Ready';
-      });
-    } else {
-      // Flutter camera path
-      _cameraController = await CameraService.getCameraController();
-      setState(() {
-        _isCameraInitialized = true;
-        _statusMessage = 'Camera Ready';
-      });
-    }
-  }
-}
-
- /// Capture photo with depth data - Phase 4: Real ARKit OR mock data automatically
-Future<void> _capturePhoto() async {
-  // Check if we can capture (different conditions for ARKit vs Flutter camera)
-  if (!_isCameraInitialized || _isProcessingPhoto) {
-    return;
-  }
-  
-  // For Flutter camera mode, also check camera controller
-  if (!CameraService.isUsingARKit() && _cameraController == null) {
-    return;
-  }
-
-  setState(() {
-    _isProcessingPhoto = true;
-    _statusMessage = 'Capturing Photo...';
-  });
-
-  try {
-   
-    final captureResult = await CameraService.capturePhotoWithDepth();
-    
-    if (captureResult == null) {
-      _showErrorDialog('Capture Error', 'Failed to capture photo data');
-      return;
-    }
-
-    // Save RGB image 
-    final imageName = 'rgb_${captureResult.timestamp}.jpg';
-    final savedImageName = await FileStorageService.saveImage(
-      captureResult.imageBytes,
-      customName: imageName,
-    );
-
-    if (savedImageName == null) {
-      _showErrorDialog('Save Error', 'Failed to save image');
-      return;
-    }
-
-    // Collect device information - enhanced with LiDAR detection
-    final deviceInfo = await DeviceInfoService.getDeviceInfo();
-    print('🔍 DEBUG: Device info collected: $deviceInfo');
-    
- 
-    if (CameraService.isUsingARKit()) {
-      print('📷 Using REAL ARKit LiDAR data');
-      print('📊 Depth map: ${captureResult.depthMap.width}x${captureResult.depthMap.height}');
-      print('📊 Real camera intrinsics: ${captureResult.cameraIntrinsics}');
-    } else {
-      print('📷 Using mock depth data (fallback)');
-    }
-
-    // Call Rust pipeline with REAL or mock data (automatically determined)
-    final result = await RustService.computeLength(
-      imageData: captureResult.imageBytes,
-      imageWidth: captureResult.depthMap.width,  
-      imageHeight: captureResult.depthMap.height,
-      depthData: Uint8List.fromList(captureResult.depthMap.bytes ?? []),
-      depthWidth: captureResult.depthMap.width,
-      depthHeight: captureResult.depthMap.height,
-      cameraIntrinsicsInverted: captureResult.cameraIntrinsics,
-    );
-
-    // Extract fish length from ML result - same as before
-    double? fishLength;
-    if (result.fishFound) {
-      fishLength = result.length;
-      print(' FISH LENGTH CAPTURED: ${fishLength}cm');
-      
-     
+    if (success) {
       if (CameraService.isUsingARKit()) {
-        print('Measurement uses REAL LiDAR depth data - higher accuracy expected!');
-      } else {
-        print('Measurement uses mock depth data - accuracy limited');
-      }
-    }
-
-    // Create photo model with fish length - same as before
-    final photo = PhotoModel.create(
-      utcUnixTimestamp: captureResult.timestamp,
-      rgbPath: savedImageName,
-      depthMap: captureResult.depthMap,          // Real or mock depth map
-      confidenceMap: captureResult.confidenceMap, // Real or mock confidence map
-      deviceInfo: deviceInfo,
-      fishLength: fishLength,
-    );
-
-    if (photo != null) {
-      print('PhotoModel created with fish length: ${photo.fishLength}cm');
-      
-      // Save to database - same as before
-      final dbSuccess = await DatabaseModel.insertPhoto(photo);
-      print(' Database insert success: $dbSuccess');
-
-      if (dbSuccess) {
-        // Handle UI updates based on ML result - same as before
-        if (result.fishFound) {
-          // Draw dots on image if result has the data
-          Uint8List? imageWithDots;
-          if (result.imageWithDots != null) {
-            imageWithDots = result.imageWithDots;
-          } else {
-            // Fallback: draw detection points manually
-            imageWithDots = await _drawDetectionPoints(captureResult.imageBytes, result);
-          }
-          
-          setState(() {
-            _currentImageWithDots = imageWithDots;
-            _lengthMessage = 'Fish Length: ${(result.length * 10).round() / 10}cm';
-            _statusMessage = CameraService.isUsingARKit() 
-                ? 'Fish Detected! (LiDAR)' 
-                : 'Fish Detected!';
-          });
-
-          // Show result dialog
-          _showFishLengthResult(result.length);
-        } else {
-          setState(() {
-            _statusMessage = 'No Fish Detected';
-          });
-          _showErrorDialog('No Fish Found', 'No fish was found in the image. Please try again.');
-        }
-
-        // Update photo count
-        context.read<AppStateProvider>().refreshPhotoCount();
-
+        print(
+            'Using ARKit - should see native camera via platform view');
         setState(() {
-          _statusMessage = CameraService.isUsingARKit() 
-              ? 'ARKit LiDAR Ready' 
-              : 'Camera Ready';
+          _isCameraInitialized = true;
+          _statusMessage = 'ARKit LiDAR Ready';
         });
       } else {
-        _showErrorDialog('Database Error', 'Failed to save photo to database');
+        print(' NOT using ARKit - problem here');
+        setState(() {
+          _isCameraInitialized = true;
+          _statusMessage = 'Camera Ready';
+        });
       }
+    } else {
+      print('🔍 DEBUG: Camera initialization FAILED');
     }
-  } catch (e) {
-    print('Error capturing photo: $e');
-    _showErrorDialog('Capture Error', 'Failed to capture photo: $e');
-  } finally {
+  }
+
+  /// Capture photo with depth data - Phase 4: Real ARKit OR mock data automatically
+  Future<void> _capturePhoto() async {
+    // Check if we can capture (different conditions for ARKit vs Flutter camera)
+    if (!_isCameraInitialized || _isProcessingPhoto) {
+      return;
+    }
+
     setState(() {
-      _isProcessingPhoto = false;
+      _isProcessingPhoto = true;
+      _statusMessage = 'Capturing Photo...';
     });
-  }
-}
 
-  /// Process photo with Rust ML pipeline - equivalent to iOS Rust integration
-  Future<void> _processPhotoWithRust(
-    Uint8List imageBytes,
-    ByteMatrixModel depthMap,
-    ByteMatrixModel confidenceMap,
-  ) async {
     try {
-      setState(() {
-        _statusMessage = 'Processing Fish...';
-      });
+      final captureResult = await CameraService.capturePhotoWithDepth();
 
-      // Mock camera 
-      final mockIntrinsics = [
-        1000.0,
-        0.0,
-        960.0,
-        0.0,
-        1000.0,
-        540.0,
-        0.0,
-        0.0,
-        1.0,
-      ];
+      if (captureResult == null) {
+        _showErrorDialog('Capture Error', 'Failed to capture photo data');
+        return;
+      }
 
-      // Call Rust pipeline - equivalent to iOS FishSenseRS.compute_length
+      // Save RGB image
+      final imageName = 'rgb_${captureResult.timestamp}.jpg';
+      final savedImageName = await FileStorageService.saveImage(
+        captureResult.imageBytes,
+        customName: imageName,
+      );
+
+      if (savedImageName == null) {
+        _showErrorDialog('Save Error', 'Failed to save image');
+        return;
+      }
+
+      // Collect device information - enhanced with LiDAR detection
+      final deviceInfo = await DeviceInfoService.getDeviceInfo();
+      print(' DEBUG: Device info collected: $deviceInfo');
+
+      if (CameraService.isUsingARKit()) {
+        print('Using REAL ARKit LiDAR data');
+        print(
+            'Depth map: ${captureResult.depthMap.width}x${captureResult.depthMap.height}');
+        print('Real camera intrinsics: ${captureResult.cameraIntrinsics}');
+      } else {
+        print('Using mock depth data (fallback)');
+      }
+
+      /// Convert camera intrinsics to inverted transpose format (like working Swift code)
+      /// Your working Swift code used: matrix3x3ToArray(currentFrame.camera.intrinsics.inverse.transpose)
+      List<double> _convertToInvertedTransposeFormat(List<double> intrinsics) {
+        // Input: [fx, 0, cx, 0, fy, cy, 0, 0, 1] (3x3 matrix in row-major)
+        // Convert to Matrix3x3, invert, transpose, then flatten
+
+        try {
+          // Extract intrinsics components
+          final fx = intrinsics[0];
+          final fy = intrinsics[4];
+          final cx = intrinsics[2];
+          final cy = intrinsics[5];
+
+          print(' Original intrinsics: fx=$fx, fy=$fy, cx=$cx, cy=$cy');
+
+          // Compute inverse of intrinsics matrix and transpose
+          // Based on your working Swift: currentFrame.camera.intrinsics.inverse.transpose
+          if (fx == 0 || fy == 0) {
+            print('Warning: Camera intrinsics have zero focal length');
+            return intrinsics; // Return original as fallback
+          }
+
+          // Inverse and transpose of camera intrinsics matrix:
+          // Original:    Inverse:           Transpose:
+          // [fx  0 cx]   [1/fx  0 -cx/fx]   [1/fx    0     0]
+          // [ 0 fy cy] → [  0 1/fy -cy/fy] → [  0   1/fy   0]
+          // [ 0  0  1]   [  0   0    1   ]   [-cx/fx -cy/fy 1]
+
+          final result = [
+            1.0 / fx, 0.0, 0.0, // Row 1 of transposed inverse
+            0.0, 1.0 / fy, 0.0, // Row 2 of transposed inverse
+            -cx / fx, -cy / fy, 1.0, // Row 3 of transposed inverse
+          ];
+
+          print(' Converted to inverted-transposed: $result');
+          return result;
+        } catch (e) {
+          print('Error converting camera intrinsics: $e');
+          return intrinsics; // Return original as fallback
+        }
+      }
+
+      // Call Rust pipeline with REAL or mock data (automatically determined)
       final result = await RustService.computeLength(
-        imageData: imageBytes,
-        imageWidth: 1920,
-        imageHeight: 1080,
-        depthData: Uint8List.fromList(depthMap.bytes ?? []),
-        depthWidth: depthMap.width,
-        depthHeight: depthMap.height,
-        cameraIntrinsicsInverted: mockIntrinsics,
+        imageData: captureResult.rawImageBytes, // Raw pixel data for Rust
+        imageWidth: captureResult.imageWidth, // Actual image dimensions
+        imageHeight: captureResult.imageHeight, // Actual image dimensions
+        depthData: Uint8List.fromList(captureResult.depthMap.bytes ?? []),
+        depthWidth: captureResult.depthMap.width,
+        depthHeight: captureResult.depthMap.height,
+        cameraIntrinsicsInverted: _convertToInvertedTransposeFormat(
+            captureResult.cameraIntrinsics), // Correct format
       );
 
-      if (result != null) {
-        _lastMeasurement = result;
-
-        if (result.fishFound) {
-          // Draw dots on image - equivalent to iOS drawDot functionality
-          final imageWithDots = await _drawDetectionPoints(imageBytes, result);
-
-          setState(() {
-            _currentImageWithDots = imageWithDots;
-            _lengthMessage =
-                'Fish Length: ${(result.length * 10).round() / 10}cm';
-            _statusMessage = 'Fish Detected!';
-          });
-
-          // Show result dialog - equivalent to iOS fish length popup
-          _showFishLengthResult(result.length);
-        } else {
-          setState(() {
-            _statusMessage = 'No Fish Detected';
-          });
-          _showErrorDialog('No Fish Found',
-              'No fish was found in the image. Please try again.');
-        }
-
-        if (result.errorString != null) {
-          _showErrorDialog('Processing Error', result.errorString!);
-        }
-      }
-    } catch (e) {
-      print('Error processing with Rust: $e');
-      _showErrorDialog('Processing Error', 'Failed to process image: $e');
-    }
-  }
-
-  /// Draw detection points on image - equivalent to iOS drawDot
-  Future<Uint8List?> _drawDetectionPoints(
-      Uint8List imageBytes, ComputeLengthResult result) async {
-    try {
-      // Convert coordinates (iOS uses different coordinate system)
-      final leftPoint = Offset(
-        1920 - result.left.y.toDouble(),
-        result.left.x.toDouble(),
-      );
-      final rightPoint = Offset(
-        1920 - result.right.y.toDouble(),
-        result.right.x.toDouble(),
+      // Create photo model for database storage using factory method
+      final photo = PhotoModel.create(
+        utcUnixTimestamp: captureResult.timestamp,
+        rgbPath: imageName,
+        depthMap: captureResult.depthMap,
+        confidenceMap: captureResult.confidenceMap,
+        deviceInfo: deviceInfo,
+        fishLength: result.fishFound ? result.length : null,
       );
 
-      // Draw first dot
-      var imageWithDots = await ImageUtils.drawDot(
-        imageBytes: imageBytes,
-        point: leftPoint,
-        color: Colors.red,
-        radius: 20.0,
-      );
-
-      // Draw second dot
-      if (imageWithDots != null) {
-        imageWithDots = await ImageUtils.drawDot(
-          imageBytes: imageWithDots,
-          point: rightPoint,
-          color: Colors.red,
-          radius: 20.0,
-        );
+      // Save to database - equivalent to iOS insertPhoto(with:)
+      if (photo != null) {
+        final success = await DatabaseModel.insertPhoto(photo);
+        print(' Database insert success: $success');
+      } else {
+        print(' Failed to create PhotoModel');
       }
 
-      return imageWithDots;
+      if (result.fishFound) {
+        setState(() {
+          _lastMeasurement = result;
+          _lengthMessage = 'Length: ${(result.length * 100).toStringAsFixed(1)}cm';
+          _currentImageWithDots = result.imageWithDots;
+        });
+
+        _showSuccessDialog('Fish Found!',
+            'Fish length: ${(result.length * 100).toStringAsFixed(1)}cm\n');
+      } else {
+        _showErrorDialog(
+            'No Fish Found',
+            result.errorString ??
+                'No fish detected in the image. Please try again.');
+      }
     } catch (e) {
-      print('Error drawing detection points: $e');
-      return null;
+      print('Error capturing photo: $e');
+      _showErrorDialog('Capture Error', 'An error occurred: $e');
+    } finally {
+      setState(() {
+        _isProcessingPhoto = false;
+        _statusMessage =
+            _isCameraInitialized ? 'ARKit LiDAR Ready' : 'Camera Ready';
+      });
     }
-  }
-
-  /// Show fish length result - equivalent to iOS fish length popup
-  void _showFishLengthResult(double lengthCm) {
-    final lengthDisplay = (lengthCm * 10).round() / 10; // Round to 1 decimal
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Fish Length',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Text(
-            '${lengthDisplay}cm',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Color(0xFF00AAA5)),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   /// Show error dialog - equivalent to iOS displayErrorMessage
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: Text(
-            title,
-            style: const TextStyle(color: Colors.white),
+/// Show error dialog - equivalent to iOS displayErrorMessage
+void _showErrorDialog(String title, String message) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        // Dark, semi-transparent background
+        backgroundColor: Colors.grey[900]?.withOpacity(0.9),
+         shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        // Title with a red accent color for errors
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.redAccent,
+            fontWeight: FontWeight.bold,
           ),
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Color(0xFF00AAA5)),
+        ),
+        // Content with light grey text
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+        ),
+        // Action button styled with your app's accent color
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                color: Color(0xFF00AAA5), // Your app's teal accent color
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ],
-        );
-      },
-    );
-  }
+          ),
+        ],
+      );
+    },
+  );
+}
 
-  /// Reset AR session - equivalent to iOS resetButtonPressed
-  void _resetSession() {
-    setState(() {
-      _currentImageWithDots = null;
-      _lastMeasurement = null;
-      _lengthMessage = 'Distance: ';
-      _statusMessage = 'Camera Ready';
-    });
-  }
+/// Show success dialog for fish detection
+void _showSuccessDialog(String title, String message) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        // Dark, semi-transparent background
+        backgroundColor: Colors.grey[900]?.withOpacity(0.9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        // Title with bold white text
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        // Content with light grey text
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+        ),
+        // Action button styled with your app's accent color
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                color: Color(0xFF00AAA5), // Your app's teal accent color
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   /// Toggle mesh visibility - equivalent to iOS toggleMeshButtonPressed
   void _toggleMesh() {
@@ -439,11 +330,12 @@ Future<void> _capturePhoto() async {
   }
 
   /// Build camera view - equivalent to iOS camera UI layout
+  /// Uses native ARKit camera underneath with Flutter UI overlays
   Widget _buildCameraView() {
     return Stack(
       children: [
-        // Camera preview - equivalent to iOS ARView
-        _buildCameraPreview(),
+        //  Native ARKit camera view via platform view
+        _buildNativeCameraBackground(),
 
         // Status overlay - equivalent to iOS status labels
         _buildStatusOverlay(),
@@ -460,9 +352,10 @@ Future<void> _capturePhoto() async {
     );
   }
 
-  /// Camera preview widget
-  Widget _buildCameraPreview() {
-    if (!_isCameraInitialized || _cameraController == null) {
+  ///  Native camera background using platform view
+
+  Widget _buildNativeCameraBackground() {
+    if (!_isCameraInitialized) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -470,7 +363,7 @@ Future<void> _capturePhoto() async {
             CircularProgressIndicator(color: Color(0xFF00AAA5)),
             SizedBox(height: 20),
             Text(
-              'Initializing Camera...',
+              'Initializing ARKit...',
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
@@ -478,8 +371,25 @@ Future<void> _capturePhoto() async {
       );
     }
 
-    return SizedBox.expand(
-      child: CameraPreview(_cameraController!),
+    // Use platform view to display native ARKit camera
+    if (Platform.isIOS) {
+      return const UiKitView(
+        viewType: 'arview_platform_view',
+        layoutDirection: TextDirection.ltr,
+      );
+    }
+
+    // Fallback for non-iOS (shouldn't happen in your case)
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: const Center(
+        child: Text(
+          'ARKit only available on iOS',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      ),
     );
   }
 
@@ -534,52 +444,52 @@ Future<void> _capturePhoto() async {
   /// Control buttons - equivalent to iOS AR control buttons
   Widget _buildControlButtons() {
     return Positioned(
-      bottom: 100,
-      left: 10,
-      right: 10,
+      bottom: 120, 
+      left: 20,
+      right: 20, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Hide/Show button - equivalent to iOS hideMeshButton
-          _buildControlButton(
-            title: _showMesh ? 'Hide' : 'Show',
-            onPressed: _toggleMesh,
-          ),
+          // _buildControlButton(
+          //   title: _showMesh ? 'Hide' : 'Show',
+          //   onPressed: _toggleMesh,
+          // ),
 
-          // Plane Detection button - equivalent to iOS planeDetectionButton
-          _buildControlButton(
-            title: _planeDetectionActive ? 'Stop Detection' : 'Start Detection',
-            onPressed: _togglePlaneDetection,
-          ),
-
-          // Reset button - equivalent to iOS resetButton
-          _buildControlButton(
-            title: 'Reset',
-            onPressed: _resetSession,
-          ),
+          // // Plane Detection button - equivalent to iOS planeDetectionButton
+          // _buildControlButton(
+          //   title: _planeDetectionActive ? 'Stop Detection' : 'Start Detection',
+          //   onPressed: _togglePlaneDetection,
+          // ),
         ],
       ),
     );
   }
 
   /// Individual control button
-  Widget _buildControlButton(
-      {required String title, required VoidCallback onPressed}) {
+  Widget _buildControlButton({
+    required String title,
+    required VoidCallback onPressed,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF00AAA5),
-        borderRadius: BorderRadius.circular(20),
+        color:
+            Colors.black.withOpacity(0.7), 
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF00AAA5), width: 1),
       ),
       child: TextButton(
         onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+              horizontal: 20, vertical: 12),
+        ),
         child: Text(
           title,
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+              fontSize: 16,
+              fontWeight: FontWeight.w600), 
         ),
       ),
     );
@@ -588,34 +498,47 @@ Future<void> _capturePhoto() async {
   /// Capture button - equivalent to iOS photo capture button
   Widget _buildCaptureButton() {
     return Positioned(
-      bottom: 30,
+      bottom: 40, 
       left: 0,
       right: 0,
       child: Center(
         child: GestureDetector(
           onTap: _isProcessingPhoto ? null : _capturePhoto,
           child: Container(
-            width: 70,
-            height: 70,
+            width: 80, 
+            height: 80,
             decoration: BoxDecoration(
-              color: _isProcessingPhoto ? Colors.grey : Colors.white,
               shape: BoxShape.circle,
+              color: _isProcessingPhoto
+                  ? Colors.grey.withOpacity(0.5)
+                  : const Color(0xFF00AAA5),
               border: Border.all(
-                color: const Color(0xFF00AAA5),
-                width: 4,
+                color: Colors.white,
+                width: 4, 
               ),
+              boxShadow: [
+                
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: _isProcessingPhoto
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF00AAA5),
-                      strokeWidth: 3,
+                    child: SizedBox(
+                      width: 28,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
                     ),
                   )
                 : const Icon(
-                    Icons.camera,
-                    color: Color(0xFF00AAA5),
-                    size: 35,
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 36, 
                   ),
           ),
         ),
@@ -625,8 +548,10 @@ Future<void> _capturePhoto() async {
 
   /// Fish image overlay - equivalent to iOS fish image display
   Widget _buildFishImageOverlay() {
+    if (_currentImageWithDots == null) return const SizedBox();
+
     return Positioned(
-      top: 140,
+      top: 16,
       right: 16,
       child: Container(
         width: 180,
@@ -639,7 +564,7 @@ Future<void> _capturePhoto() async {
           borderRadius: BorderRadius.circular(8),
           child: Image.memory(
             _currentImageWithDots!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
           ),
         ),
       ),

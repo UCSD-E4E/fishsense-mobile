@@ -281,7 +281,7 @@ class ComputeLengthResult {
       return 'ComputeLengthResult(fishFound: false, error: $errorString)';
     }
     return 'ComputeLengthResult(length: ${length.toStringAsFixed(2)}cm, '
-           'left: $left, right: $right, confidence: ${confidence.toStringAsFixed(2)})';
+           'left: $left, right: $right,})';
   }
 
   @override

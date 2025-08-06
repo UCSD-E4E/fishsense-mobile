@@ -26,36 +26,6 @@
       "languageVersion": "3.1"
     },
     {
-      "name": "camera",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/camera-0.10.6",
-      "packageUri": "lib/",
-      "languageVersion": "3.2"
-    },
-    {
-      "name": "camera_android",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/camera_android-0.10.10+4",
-      "packageUri": "lib/",
-      "languageVersion": "3.6"
-    },
-    {
-      "name": "camera_avfoundation",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.20+5",
-      "packageUri": "lib/",
-      "languageVersion": "3.6"
-    },
-    {
-      "name": "camera_platform_interface",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/camera_platform_interface-2.10.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.4"
-    },
-    {
-      "name": "camera_web",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/camera_web-0.3.5",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
-    },
-    {
       "name": "characters",
       "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/characters-1.4.0",
       "packageUri": "lib/",
@@ -72,12 +42,6 @@
       "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/collection-1.19.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
-    },
-    {
-      "name": "cross_file",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/cross_file-0.3.4+2",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
     },
     {
       "name": "crypto",
@@ -108,12 +72,6 @@
       "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/flutter_lints-2.0.3",
       "packageUri": "lib/",
       "languageVersion": "2.19"
-    },
-    {
-      "name": "flutter_plugin_android_lifecycle",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.28",
-      "packageUri": "lib/",
-      "languageVersion": "3.6"
     },
     {
       "name": "flutter_test",
@@ -354,12 +312,6 @@
       "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/stream_channel-2.1.4",
       "packageUri": "lib/",
       "languageVersion": "3.3"
-    },
-    {
-      "name": "stream_transform",
-      "rootUri": "file:///Users/brendonalexander/.pub-cache/hosted/pub.dev/stream_transform-2.1.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.1"
     },
     {
       "name": "string_scanner",

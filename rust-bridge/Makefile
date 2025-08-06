@@ -4,7 +4,7 @@ onnxruntime_framework_location = ./third_party/lib/onnxruntime
 onnxruntime_build_location = ./third_party/onnxruntime/build/apple_framework/intermediates
 opencv_location = ./third_party/lib/opencv
 opencv_realpath = `realpath $(opencv_location)`
-frameworks_out = ../Swift/Frameworks/
+frameworks_out = ../ios/Frameworks/
 
 export OPENCV_LINK_LIBS = "opencv2.framework"
 

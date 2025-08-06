@@ -2,39 +2,15 @@ import UIKit
 import Flutter
 import ARKit
 import AVFoundation
-
-// Rust FFI Declaration
-@_silgen_name("compute_length")
-func compute_length(
-    _ imageData: UnsafePointer<UInt8>,
-    _ imageWidth: UInt32,
-    _ imageHeight: UInt32,
-    _ depthData: UnsafePointer<UInt8>,
-    _ depthWidth: UInt32,
-    _ depthHeight: UInt32,
-    _ cameraIntrinsicsInverted: UnsafePointer<Float32>
-) -> ComputeLengthResult
-
-// Rust result structure 
-struct ComputeLengthResult {
-    let length: Float32
-    let left: Coordinate
-    let right: Coordinate
-    let fish_found: Bool
-    let error_string: UnsafePointer<UInt8>?
-}
-
-struct Coordinate {
-    let x: UInt
-    let y: UInt
-}
+import FishSenseRS
 
 @main
 class AppDelegate: FlutterAppDelegate {
     
     private var methodChannel: FlutterMethodChannel?
-    private var arSession: ARSession?
-    private var arConfiguration: ARWorldTrackingConfiguration?
+    
+    // Store reference to the platform view so we can access its session
+    private var arViewPlatformFactory: ARViewPlatformViewFactory?
     
     override func application(
         _ application: UIApplication,
@@ -44,8 +20,18 @@ class AppDelegate: FlutterAppDelegate {
         let controller = window?.rootViewController as! FlutterViewController
         setupMethodChannel(controller: controller)
         
+        //  Register ARView platform view
+        setupARViewPlatformView(controller: controller)
+        
         GeneratedPluginRegistrant.register(with: self)
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    //  Store reference to factory so we can access the platform view
+    private func setupARViewPlatformView(controller: FlutterViewController) {
+        arViewPlatformFactory = ARViewPlatformViewFactory(messenger: controller.binaryMessenger)
+        registrar(forPlugin: "ARViewPlatform")?.register(arViewPlatformFactory!, withId: "arview_platform_view")
+        print("✅ ARView platform view factory registered")
     }
     
     private func setupMethodChannel(controller: FlutterViewController) {
@@ -88,13 +74,14 @@ class AppDelegate: FlutterAppDelegate {
         
         let lidarStatus = hasLiDAR ? "LiDAR Enabled" : "No LiDAR"
         let deviceInfo = "Apple \(deviceName) (iOS \(systemVersion) - \(lidarStatus))"
+        
         result(deviceInfo)
     }
     
     private func checkLiDARSupport(result: @escaping FlutterResult) {
         if #available(iOS 14.0, *) {
-            let supported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
-            result(supported)
+            let hasLiDAR = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+            result(hasLiDAR)
         } else {
             result(false)
         }
@@ -103,110 +90,113 @@ class AppDelegate: FlutterAppDelegate {
     // ARKit Session Management
     
     private func initializeARKitSession(result: @escaping FlutterResult) {
-        guard #available(iOS 14.0, *) else {
-            result(["success": false, "error": "iOS 14.0+ required"])
-            return
+        // The ARView platform view handles session initialization
+        // This method now just confirms ARKit support
+        if #available(iOS 14.0, *) {
+            let hasLiDAR = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+            if hasLiDAR {
+                result(["success": true, "message": "ARKit session ready via platform view"])
+            } else {
+                result(["success": false, "error": "LiDAR not supported on this device"])
+            }
+        } else {
+            result(["success": false, "error": "iOS 14.0+ required for LiDAR support"])
         }
-        
-        guard ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) else {
-            result(["success": false, "error": "LiDAR not supported"])
-            return
-        }
-        
-        arSession = ARSession()
-        arConfiguration = ARWorldTrackingConfiguration()
-        arConfiguration?.frameSemantics = .sceneDepth
-        arConfiguration?.planeDetection = [.horizontal]
-        
-        arSession?.run(arConfiguration!)
-        
-        result(["success": true, "message": "ARKit session started"])
     }
     
     private func captureDepthFrame(result: @escaping FlutterResult) {
-        guard #available(iOS 14.0, *) else {
-            result(["success": false, "error": "iOS 14.0+ required"])
+
+        guard let currentFrame = getCurrentARFrame() else {
+            result(["success": false, "error": "No current ARKit frame available"])
             return
         }
         
-        guard let session = arSession,
-              let currentFrame = session.currentFrame else {
-            result(["success": false, "error": "No ARKit session or frame"])
-            return
-        }
-        
-        // Extract RGB image
         let pixelBuffer = currentFrame.capturedImage
-        guard let rgbData = pixelBufferToJPEG(pixelBuffer: pixelBuffer) else {
-            result(["success": false, "error": "Failed to extract RGB"])
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let context = CIContext(options: nil)
+        
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            result(["success": false, "error": "Failed to create CGImage from camera frame"])
             return
         }
         
-        guard let sceneDepth = currentFrame.sceneDepth else {
-            result(["success": false, "error": "No scene depth available"])
+        // For Rust pipeline - get RAW pixel data (like working code)
+        guard let rawRgbData = cgImage.dataProvider?.data as Data? else {
+            result(["success": false, "error": "Failed to extract raw RGB data from image"])
             return
         }
         
-        print(" DEBUG: sceneDepth exists")
-        print(" DEBUG: sceneDepth type: \(type(of: sceneDepth))")
+        // For Flutter display - convert to JPEG 
+        let uiImage = UIImage(cgImage: cgImage)
+        guard let jpegData = uiImage.jpegData(compressionQuality: 0.8) else {
+            result(["success": false, "error": "Failed to convert image to JPEG data"])
+            return
+        }
         
-        let depthMap: CVPixelBuffer
-        let confidenceMap: CVPixelBuffer
+        // Handle depth data using the EXACT same logic as your working ViewController.swift
+        guard #available(iOS 14.0, *),
+              let sceneDepth = currentFrame.sceneDepth else {
+            result(["success": false, "error": "Scene depth not available"])
+            return
+        }
         
-        if let tempDepthMap = sceneDepth.depthMap as CVPixelBuffer?,
-           let tempConfidenceMap = sceneDepth.confidenceMap as CVPixelBuffer? {
-            depthMap = tempDepthMap
-            confidenceMap = tempConfidenceMap
+        
+        if let depthData = currentFrame.sceneDepth?.depthMap,
+           let confidenceData = currentFrame.sceneDepth?.confidenceMap {
+            
+            print("DEBUG: Using EXACT working depth handling from ViewController.swift")
+            
+            // Convert depth data properly using your working helper methods
+            guard let depthDataBytes = convertDepthMapToBytes(depthMap: depthData),
+                  let confidenceDataBytes = convertConfidenceMapToBytes(confidenceMap: confidenceData) else {
+                result(["success": false, "error": "Failed to convert depth or confidence data"])
+                return
+            }
+            
+            // Get camera intrinsics (same as working code)
+            let intrinsics = currentFrame.camera.intrinsics
+            let cameraIntrinsics = [
+                Double(intrinsics.columns.0.x), Double(intrinsics.columns.1.x), Double(intrinsics.columns.2.x),
+                Double(intrinsics.columns.0.y), Double(intrinsics.columns.1.y), Double(intrinsics.columns.2.y),
+                Double(intrinsics.columns.0.z), Double(intrinsics.columns.1.z), Double(intrinsics.columns.2.z)
+            ]
+            
+            // Pass Data objects directly to Flutter
+            let frameData: [String: Any] = [
+                "success": true,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "rgbImageData": jpegData,        
+                "rawRgbData": rawRgbData,        
+                "imageWidth": cgImage.width,     
+                "imageHeight": cgImage.height,   
+                "depthData": depthDataBytes,
+                "depthWidth": CVPixelBufferGetWidth(depthData),
+                "depthHeight": CVPixelBufferGetHeight(depthData),
+                "confidenceData": confidenceDataBytes,
+                "confidenceWidth": CVPixelBufferGetWidth(confidenceData),
+                "confidenceHeight": CVPixelBufferGetHeight(confidenceData),
+                "cameraIntrinsics": cameraIntrinsics
+            ]
+            
+            print(" DEBUG: Successfully created frameData using working approach")
+            result(frameData)
         } else {
-            depthMap = sceneDepth.depthMap
-            confidenceMap = sceneDepth.confidenceMap!
-         
+            result(["success": false, "error": "Depth or confidence data not available"])
         }
-        
-        print("DEBUG: depthMap type: \(type(of: depthMap))")
-        print("DEBUG: confidenceMap type: \(type(of: confidenceMap))")
-        
-        // Convert depth data properly
-        guard let depthData = convertDepthMapToBytes(depthMap: depthMap),
-              let confidenceData = convertConfidenceMapToBytes(confidenceMap: confidenceMap) else {
-            result(["success": false, "error": "Failed to convert depth or confidence data"])
-            return
-        }
-        
-        // Get camera intrinsics
-        let intrinsics = currentFrame.camera.intrinsics
-        let cameraIntrinsics = [
-            Double(intrinsics.columns.0.x), Double(intrinsics.columns.1.x), Double(intrinsics.columns.2.x),
-            Double(intrinsics.columns.0.y), Double(intrinsics.columns.1.y), Double(intrinsics.columns.2.y),
-            Double(intrinsics.columns.0.z), Double(intrinsics.columns.1.z), Double(intrinsics.columns.2.z)
-        ]
-        
-        // Pass Data objects directly to Flutter
-        let frameData: [String: Any] = [
-            "success": true,
-            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            "rgbImageData": rgbData,
-            "depthData": depthData,
-            "depthWidth": CVPixelBufferGetWidth(depthMap),
-            "depthHeight": CVPixelBufferGetHeight(depthMap),
-            "confidenceData": confidenceData,
-            "confidenceWidth": CVPixelBufferGetWidth(confidenceMap),
-            "confidenceHeight": CVPixelBufferGetHeight(confidenceMap),
-            "cameraIntrinsics": cameraIntrinsics
-        ]
-        
-        print("🔍 DEBUG: Successfully created frameData")
-        result(frameData)
+    }
+    
+    /// Get current AR frame from the ACTUAL platform view session
+    private func getCurrentARFrame() -> ARFrame? {
+        // Get the active platform view and its session
+        return arViewPlatformFactory?.getActivePlatformView()?.getCurrentARSession()?.currentFrame
     }
     
     private func stopARKitSession(result: @escaping FlutterResult) {
-        arSession?.pause()
-        arSession = nil
-        arConfiguration = nil
-        result(["success": true, "message": "ARKit session stopped"])
+        // Platform view handles its own session cleanup
+        result(["success": true, "message": "ARKit session handled by platform view"])
     }
     
-    //  Rust Integration
+    // MARK: - Rust Integration
     
     private func computeLength(call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any] else {
@@ -220,11 +210,11 @@ class AppDelegate: FlutterAppDelegate {
               let depthWidth = args["depthWidth"] as? Int,
               let depthHeight = args["depthHeight"] as? Int,
               let cameraIntrinsicsInverted = args["cameraIntrinsicsInverted"] as? [Double] else {
-            result(["success": false, "error": "Missing required arguments"])
+            result(["success": false, "error": "Missing required parameters"])
             return
         }
         
-        //  Handle different data types from Flutter
+        // Extract binary data (handle both FlutterStandardTypedData and Data)
         var imageData: Data
         var depthData: Data
         
@@ -246,91 +236,63 @@ class AppDelegate: FlutterAppDelegate {
             return
         }
         
-        let intrinsicsFloat32 = cameraIntrinsicsInverted.map { Float32($0) }
+        print(" DEBUG: Calling Rust with image: \(imageData.count) bytes, depth: \(depthData.count) bytes")
         
-        let rustResult = compute_length(
-            imageData.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! },
-            UInt32(imageWidth),
-            UInt32(imageHeight),
-            depthData.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! },
-            UInt32(depthWidth),
-            UInt32(depthHeight),
-            intrinsicsFloat32.withUnsafeBufferPointer { $0.baseAddress! }
-        )
+        // Convert to the format expected by Rust
+        let cameraIntrinsicsFloat32 = cameraIntrinsicsInverted.map { Float32($0) }
         
-        var flutterResult: [String: Any] = [
-            "fishFound": rustResult.fish_found,
+        let rustResult = imageData.withUnsafeBytes { imageBytes in
+            depthData.withUnsafeBytes { depthBytes in
+                cameraIntrinsicsFloat32.withUnsafeBufferPointer { intrinsicsPtr in
+                    return FishSenseRS.compute_length(
+                        imageBytes.bindMemory(to: UInt8.self).baseAddress,
+                        UInt32(imageWidth),
+                        UInt32(imageHeight),
+                        depthBytes.bindMemory(to: UInt8.self).baseAddress,
+                        UInt32(depthWidth),
+                        UInt32(depthHeight),
+                        intrinsicsPtr.baseAddress
+                    )
+                }
+            }
+        }
+        
+        // Convert Rust result to Flutter format
+        let flutterResult: [String: Any] = [
+            "success": true,
             "length": Double(rustResult.length),
+            "fishFound": rustResult.fish_found,
             "leftX": Double(rustResult.left.x),
             "leftY": Double(rustResult.left.y),
             "rightX": Double(rustResult.right.x),
             "rightY": Double(rustResult.right.y),
-            "confidence": rustResult.fish_found ? 1.0 : 0.0
+            "confidence": 0.8, // Default confidence
+            "errorString": rustResult.error_string != nil ? String(cString: rustResult.error_string!) : nil
         ]
         
-        if let errorString = rustResult.error_string {
-            let errorCString = String(cString: errorString)
-            flutterResult["errorString"] = errorCString
-        } else {
-            flutterResult["errorString"] = nil
+        // Clean up Rust-allocated string if present
+        if rustResult.error_string != nil {
+            rustResult.error_string!.deallocate()
         }
         
         result(flutterResult)
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Helper Methods (COPIED FROM YOUR WORKING CODE)
     
-    private func pixelBufferToJPEG(pixelBuffer: CVPixelBuffer) -> Data? {
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-        
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            return nil
-        }
-        
-        let uiImage = UIImage(cgImage: cgImage)
-        return uiImage.jpegData(compressionQuality: 0.8)
-    }
-    
-   
     private func convertDepthMapToBytes(depthMap: CVPixelBuffer) -> Data? {
         CVPixelBufferLockBaseAddress(depthMap, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
         
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else { return nil }
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(depthMap)
         
-        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
-            return nil
-        }
-        
-        let floatBuffer = baseAddress.assumingMemoryBound(to: Float32.self)
-        var byteArray = [UInt8]()
-        byteArray.reserveCapacity(width * height)
-        
-        for i in 0..<(width * height) {
-            let depthValue = floatBuffer[i]
-            let clampedDepth = max(0.0, min(5.0, depthValue))
-            let scaledValue = UInt8(clampedDepth / 5.0 * 255.0)
-            byteArray.append(scaledValue)
-        }
-        
-        return Data(byteArray)
+        return Data(bytes: baseAddress, count: height * bytesPerRow)
     }
     
-
     private func convertConfidenceMapToBytes(confidenceMap: CVPixelBuffer) -> Data? {
-        CVPixelBufferLockBaseAddress(confidenceMap, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(confidenceMap, .readOnly) }
-        
-        let width = CVPixelBufferGetWidth(confidenceMap)
-        let height = CVPixelBufferGetHeight(confidenceMap)
-        
-        guard let baseAddress = CVPixelBufferGetBaseAddress(confidenceMap) else {
-            return nil
-        }
-        
-        let uint8Buffer = baseAddress.assumingMemoryBound(to: UInt8.self)
-        return Data(bytes: uint8Buffer, count: width * height)
+        return convertDepthMapToBytes(depthMap: confidenceMap)
     }
 }

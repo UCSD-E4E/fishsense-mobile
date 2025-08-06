@@ -450,7 +450,7 @@ class _PhotoGridItem extends StatelessWidget {
                     ),
                     Text(
                       photo.fishLen != null
-                          ? 'Fish Length: ${(photo.fishLen! * 10).round() / 10}cm'
+                          ? 'Fish Length: ${(photo.fishLen! * 100).toStringAsFixed(1)}cm'
                           : 'Fish Length: Unavailable',
                       style: TextStyle(
                         color: Colors.grey[400],
@@ -559,7 +559,7 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                     const SizedBox(height: 10),
                     Text(
                       widget.photo.fishLen != null
-                          ? 'Fish Length: ${(widget.photo.fishLen! * 10).round() / 10}cm'
+                          ? 'Fish Length: ${(widget.photo.fishLen! * 100).toStringAsFixed(1)}cm'
                           : 'Fish Length: Unavailable',
                       style: const TextStyle(
                         color: Colors.white,
