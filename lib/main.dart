@@ -89,7 +89,7 @@ class FishSenseApp extends StatelessWidget {
   }
 }
 
-/// Main tab navigation view
+/// Main tab navigation view with auto-refresh for PhotoGalleryScreen
 /// Direct translation from iOS Main.storyboard tab bar controller
 class MainTabView extends StatefulWidget {
   const MainTabView({super.key});
@@ -103,13 +103,17 @@ class _MainTabViewState extends State<MainTabView> {
   
   // Tab screens - equivalent to iOS tab view controllers
   late final List<Widget> _screens;
+  
+  // Use GlobalKey with public PhotoGalleryScreenState
+  final GlobalKey<PhotoGalleryScreenState> _photoGalleryKey = 
+      GlobalKey<PhotoGalleryScreenState>();
 
   @override
   void initState() {
     super.initState();
     _screens = [
-      const CameraScreen(),           // Camera tab (ViewController.swift)
-      const PhotoGalleryScreen(),     // Photos tab (PhotoViewController.swift)
+      const CameraScreen(),                                    // Camera tab (ViewController.swift)
+      PhotoGalleryScreen(key: _photoGalleryKey),              // Photos tab (PhotoViewController.swift)
     ];
   }
 
@@ -128,7 +132,14 @@ class _MainTabViewState extends State<MainTabView> {
   Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
       currentIndex: _currentIndex,
-      onTap: (index) {
+      onTap: (index) async {
+        if (index == 1 && _currentIndex != 1) { // Switching TO Photos tab
+          print('Switching to Photos tab - triggering auto-refresh');
+          
+
+          _photoGalleryKey.currentState?.refreshPhotos();
+        }
+        
         setState(() {
           _currentIndex = index;
         });
@@ -276,40 +287,4 @@ class AppUtils {
       },
     );
   }
-
-  /// Get app version info
-  static String getAppVersion() {
-    return '1.0.0'; // TODO: Get from package info
-  }
-
-  /// Check if device supports required features
-  static Future<bool> checkDeviceCapabilities() async {
-    // TODO: Check for ToF sensor availability
-    // For now, assume supported
-    return true;
-  }
-}
-
-/// Constants used throughout the app
-/// Equivalent to iOS constants and configuration
-class AppConstants {
-  // Colors - matching iOS color scheme
-  static const Color westjetTeal = Color(0xFF00AAA5);
-  static const Color errorColor = Colors.red;
-  static const Color successColor = Colors.green;
-  
-  // Measurement settings
-  static const double defaultDotRadius = 20.0;
-  static const int maxPhotoStorageCount = 1000;
-  
-  // API endpoints
-  static const String awsApiGatewayUrl = 'YOUR_AWS_URL_HERE';
-  
-  // File naming
-  static const String rgbFilePrefix = 'rgb_';
-  static const String dataZipPrefix = 'data_';
-  
-  // Database
-  static const String databaseName = 'database.sqlite';
-  static const String photosTableName = 'photos';
 }

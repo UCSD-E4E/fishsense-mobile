@@ -219,7 +219,7 @@ class CameraService {
         return null;
       }
       
-      print('CameraService: ✅ Successfully captured ARKit frame with real LiDAR data');
+      print('CameraService: Successfully captured ARKit frame with real LiDAR data');
       print('CameraService: - RGB image: ${captureResult.imageBytes.length} bytes');
       print('CameraService: - Depth map: ${captureResult.depthMap.width}x${captureResult.depthMap.height}');
       print('CameraService: - Confidence map: ${captureResult.confidenceMap.width}x${captureResult.confidenceMap.height}');
@@ -325,79 +325,3 @@ class FileStorageService {
   }
 }
 
-/// CloudSyncService - Handles AWS Lambda integration
-/// No changes needed - same as before
-class CloudSyncService {
-  static const String _awsApiUrl = 'YOUR_AWS_API_GATEWAY_URL'; // Replace with actual URL
-
-  /// Upload data to cloud
-  static Future<bool> uploadData(List<DataTemp> photoData) async {
-    try {
-      // Create zip file
-      final zipBytes = await _createDataZip(photoData);
-      if (zipBytes == null) return false;
-
-      // Upload to AWS Lambda
-      final response = await http.post(
-        Uri.parse(_awsApiUrl),
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: zipBytes,
-      );
-
-      if (response.statusCode == 200) {
-        print('Data uploaded successfully');
-        return true;
-      } else {
-        print('Upload failed with status: ${response.statusCode}');
-        return false;
-      }
-      
-    } catch (e) {
-      print('Error uploading data: $e');
-      return false;
-    }
-  }
-
-  /// Create zip file from photo data
-  static Future<Uint8List?> _createDataZip(List<DataTemp> photoData) async {
-    try {
-      final archive = Archive();
-      
-      for (final data in photoData) {
-        // Add image file to archive
-        final imageFile = ArchiveFile(
-          'image_${data.id}.jpg',
-          data.image.length,
-          data.image,
-        );
-        archive.addFile(imageFile);
-        
-        // Add metadata file including device info
-        final metadata = {
-          'id': data.id,
-          'creationDate': data.creationDate.toIso8601String(),
-          'fishLen': data.fishLen,
-          'deviceInfo': data.deviceInfo,
-        };
-        
-        final metadataBytes = utf8.encode(jsonEncode(metadata));
-        final metadataFile = ArchiveFile(
-          'metadata_${data.id}.json',
-          metadataBytes.length,
-          metadataBytes,
-        );
-        archive.addFile(metadataFile);
-      }
-      
-      // Create zip
-      final zipData = ZipEncoder().encode(archive);
-      return zipData != null ? Uint8List.fromList(zipData) : null;
-      
-    } catch (e) {
-      print('Error creating data zip: $e');
-      return null;
-    }
-  }
-}

@@ -73,7 +73,7 @@ class _CameraScreenState extends State<CameraScreen>
         });
       }
     } else {
-      print('🔍 DEBUG: Camera initialization FAILED');
+      print('DEBUG: Camera initialization FAILED');
     }
   }
 
@@ -334,7 +334,7 @@ void _showSuccessDialog(String title, String message) {
   Widget _buildCameraView() {
     return Stack(
       children: [
-        //  Native ARKit camera view via platform view
+        // Native ARKit camera view via platform view
         _buildNativeCameraBackground(),
 
         // Status overlay - equivalent to iOS status labels
@@ -348,12 +348,41 @@ void _showSuccessDialog(String title, String message) {
 
         // Fish image overlay - equivalent to iOS fish image display
         if (_currentImageWithDots != null) _buildFishImageOverlay(),
+
+        // Processing overlay when capturing
+        if (_isProcessingPhoto) _buildProcessingOverlay(),
       ],
     );
   }
 
-  ///  Native camera background using platform view
+  /// Processing overlay with spinner and message
+  Widget _buildProcessingOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.7),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: Color(0xFF00AAA5),
+              strokeWidth: 3,
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Capturing Photo...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  /// Native camera background using platform view
   Widget _buildNativeCameraBackground() {
     if (!_isCameraInitialized) {
       return const Center(
@@ -517,7 +546,6 @@ void _showSuccessDialog(String title, String message) {
                 width: 4, 
               ),
               boxShadow: [
-                
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
                   blurRadius: 8,
@@ -548,8 +576,6 @@ void _showSuccessDialog(String title, String message) {
 
   /// Fish image overlay - equivalent to iOS fish image display
   Widget _buildFishImageOverlay() {
-    if (_currentImageWithDots == null) return const SizedBox();
-
     return Positioned(
       top: 16,
       right: 16,

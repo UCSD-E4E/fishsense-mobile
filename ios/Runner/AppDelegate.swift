@@ -31,7 +31,7 @@ class AppDelegate: FlutterAppDelegate {
     private func setupARViewPlatformView(controller: FlutterViewController) {
         arViewPlatformFactory = ARViewPlatformViewFactory(messenger: controller.binaryMessenger)
         registrar(forPlugin: "ARViewPlatform")?.register(arViewPlatformFactory!, withId: "arview_platform_view")
-        print("✅ ARView platform view factory registered")
+        print("ARView platform view factory registered")
     }
     
     private func setupMethodChannel(controller: FlutterViewController) {
