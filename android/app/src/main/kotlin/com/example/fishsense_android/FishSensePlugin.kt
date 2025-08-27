@@ -60,7 +60,7 @@ class FishSensePlugin: FlutterPlugin, MethodCallHandler {
   "detectSpecies" -> {
     handleDetectSpecies(call, result)
   }
-  "getDeviceInfo" -> {  // NEW: Add device info method
+  "getDeviceInfo" -> {  // Add device info method
     handleGetDeviceInfo(result)
   }
   else -> {
@@ -112,7 +112,7 @@ class FishSensePlugin: FlutterPlugin, MethodCallHandler {
 
       Log.d(TAG, "Processing image: ${imageWidth}x${imageHeight}, depth: ${depthWidth}x${depthHeight}")
 
-      // 🎯 MOCK RESPONSE - Simulate realistic fish measurement results
+      // MOCK RESPONSE - Simulate realistic fish measurement results
       val mockResult = createMockFishMeasurementResult(imageWidth, imageHeight)
       
       // Parse mock result and return to Flutter

@@ -13,10 +13,11 @@ class PhotoGalleryScreen extends StatefulWidget {
   const PhotoGalleryScreen({super.key});
 
   @override
-  State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
+  State<PhotoGalleryScreen> createState() => PhotoGalleryScreenState(); 
 }
 
-class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
+
+class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   // Gallery state - equivalent to iOS PhotoViewController properties
   List<DataTemp> _savedPhotos = [];
   bool _isLoading = true;
@@ -29,6 +30,13 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     super.initState();
     _loadSavedPhotos();
     _debugCheckDatabase();
+  }
+
+  /// Public method to refresh photos (called from MainTabView)
+  /// Equivalent to iOS viewDidAppear functionality
+  void refreshPhotos() {
+    print(' PhotoGalleryScreen.refreshPhotos() called');
+    _loadSavedPhotos();
   }
 
   /// Load saved photos - equivalent to iOS loadSavedPhotos()
@@ -64,6 +72,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
       // Update photo count in app state
       context.read<AppStateProvider>().setPhotoCount(_savedPhotos.length);
+      
+      print(' Photos loaded: ${_savedPhotos.length} total');
     } catch (e) {
       print('Error loading saved photos: $e');
       setState(() {
@@ -72,20 +82,19 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
   }
 
-  // 🔍 ADD THE DEBUG METHOD HERE - RIGHT AFTER _loadSavedPhotos()
   /// Temporary debug method to check database contents
   Future<void> _debugCheckDatabase() async {
     try {
       final photos = await DatabaseModel.getAllPhotos();
-      print('🔍 DEBUG: Total photos in database: ${photos.length}');
+      print('DEBUG: Total photos in database: ${photos.length}');
 
       for (int i = 0; i < photos.length; i++) {
         final photo = photos[i];
         print(
-            '🔍 DEBUG: Photo $i - Device: ${photo.deviceInfo}, RGB: ${photo.rgbPath}');
+            'DEBUG: Photo $i - Device: ${photo.deviceInfo}, RGB: ${photo.rgbPath}');
       }
     } catch (e) {
-      print('🔍 DEBUG: Error checking database: $e');
+      print('DEBUG: Error checking database: $e');
     }
   }
 
@@ -131,37 +140,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
   }
 
-  /// Upload data to cloud - equivalent to iOS upload functionality
-  Future<void> _uploadData() async {
-    if (_savedPhotos.isEmpty) {
-      _showErrorDialog('Upload Error', 'No photos to upload');
-      return;
-    }
-
-    setState(() {
-      _isUploading = true;
-    });
-
-    try {
-      // Create zip and upload - equivalent to iOS cloud sync
-      final success = await CloudSyncService.uploadData(_savedPhotos);
-
-      if (success) {
-        _showSuccessMessage(
-            'Data uploaded successfully (${_savedPhotos.length} photos)');
-      } else {
-        _showErrorDialog('Upload Error', 'Failed to upload data to cloud');
-      }
-    } catch (e) {
-      print('Error uploading data: $e');
-      _showErrorDialog('Upload Error', 'Error uploading data: $e');
-    } finally {
-      setState(() {
-        _isUploading = false;
-      });
-    }
-  }
-
   /// Show delete confirmation dialog
   Future<bool> _showDeleteConfirmationDialog() async {
     return await showDialog<bool>(
@@ -188,7 +166,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   child: const Text(
-                    'Delete All',
+                    'Delete',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
@@ -277,7 +255,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         style: const TextStyle(color: Colors.white),
       ),
       actions: [
-       
+        // Manual refresh button (can be removed after testing auto-refresh)
         IconButton(
           onPressed: () async {
             print('Manual refresh triggered');
@@ -408,72 +386,73 @@ class _PhotoGridItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[700]!, width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Image
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.memory(
-                  Uint8List.fromList(photo.image),
-                  fit: BoxFit.cover,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            children: [
+              // Photo image
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  child: Image.memory(
+                    Uint8List.fromList(photo.image),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-
-            // Metadata
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
+              
+              // Photo metadata
+              Expanded(
+                flex: 1,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
                   color: Colors.grey[900],
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(12)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text(
-                      photo.creationDate.toDisplayString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Date
+                      Text(
+                        photo.creationDate.toDisplayString(),
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      photo.fishLen != null
-                          ? 'Fish Length: ${(photo.fishLen! * 100).toStringAsFixed(1)}cm'
-                          : 'Fish Length: Unavailable',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 9,
+                      const SizedBox(height: 2),
+                      // Fish length
+                      Text(
+                        photo.fishLen != null
+                            ? 'Fish Length: ${(photo.fishLen! * 100).toStringAsFixed(1)}cm'
+                            : 'Fish Length: Unavailable',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 9,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    // NEW: Device info display
-                    Text(
-                      'Device: ${photo.deviceInfo ?? 'Unknown'}',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 8,
+                      // Device info display
+                      Text(
+                        'Device: ${photo.deviceInfo ?? 'Unknown'}',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -563,16 +542,15 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                           : 'Fish Length: Unavailable',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    // Device info display in detail view
+                    const SizedBox(height: 8),
                     Text(
-                      'Device: ${widget.photo.deviceInfo ?? 'Unknown Device'}',
+                      'Device: ${widget.photo.deviceInfo ?? 'Unknown'}',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                        color: Colors.grey,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -584,12 +562,19 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
             Positioned(
               top: 50,
               right: 20,
-              child: IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
+              child: GestureDetector(
+                onTap: widget.onClose,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ),

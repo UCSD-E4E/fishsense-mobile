@@ -56,7 +56,7 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
         // Start the session
         _arView.session.run(configuration)
         
-        print("✅ ARView Platform View: ARKit session started with LiDAR (using EXACT working setup)")
+        print(" ARView Platform View: ARKit session started with LiDAR (using EXACT working setup)")
     }
     
     /// Provide access to the session for photo capture
@@ -70,7 +70,7 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
     }
 }
 
-// MARK: - ARSessionDelegate (COPIED FROM YOUR WORKING CODE)
+// MARK: - ARSessionDelegate 
 extension ARViewPlatformView: ARSessionDelegate {
     func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
         var status = "Camera Loading"
@@ -90,7 +90,7 @@ extension ARViewPlatformView: ARSessionDelegate {
     }
 }
 
-/// FIXED: Factory that tracks active platform views
+// Factory that tracks active platform views
 class ARViewPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
     
