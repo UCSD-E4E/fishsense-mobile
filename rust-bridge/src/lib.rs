@@ -123,13 +123,8 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
     let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
-    let img_arr: Result<Array3<u8>, _> = img_cv.try_into_cv();
-    let result = match img_arr {
-        Ok(img_arr) => {
-            do_inference(img_arr)
-        },
-        Err(error) => Err(ExecutionError::CVToNDArrayError8UC3(error))
-    };
+    let img_arr: Array3<u8> = img_cv.try_into_cv().map_err(ExecutionError::CVToNDArrayError8UC3)?;
+    let result = do_inference(img_arr);
 
     result
 }
@@ -184,7 +179,7 @@ fn do_compute_length(
     Ok((length, left, right))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map

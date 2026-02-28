@@ -1,0 +1,9 @@
+[project]
+name = "rust-bridge-build"
+version = "0.1.0"
+description = "Build script for the Rust bridge library used in the FishSense Mobile app."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.32.5",
+]
