@@ -63,6 +63,22 @@ You can build and run the app from the source code by following these steps:
    make
    ```
 
+### Apple Signing Setup (Per Developer)
+
+This repository is configured so each developer can use a personal Apple Developer account without committing signing changes.
+
+1. Copy example files:
+  ```bash
+  cp ios/Flutter/DeveloperSettings.example.xcconfig ios/Flutter/DeveloperSettings.xcconfig
+  cp macos/Runner/Configs/DeveloperSettings.example.xcconfig macos/Runner/Configs/DeveloperSettings.xcconfig
+  ```
+2. Open both copied files and set `PERSONAL_DEVELOPMENT_TEAM` to your Apple Team ID.
+3. (Optional) Change `FISHSENSE_BUNDLE_IDENTIFIER` if your account requires a unique bundle id.
+4. Open `ios/Runner.xcworkspace` in Xcode once and confirm your Apple ID is signed in under Xcode Accounts.
+5. Build/run as usual (`flutter run` or Xcode Run).
+
+`DeveloperSettings.xcconfig` files are git-ignored, so personal signing values stay local.
+
 5. **Run the application:**
  `flutter run`
 

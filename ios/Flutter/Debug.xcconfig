@@ -1,2 +1,7 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+PERSONAL_DEVELOPMENT_TEAM =
+FISHSENSE_BUNDLE_IDENTIFIER = com.example.fishsenseAndroid
+
+#include? "DeveloperSettings.xcconfig"

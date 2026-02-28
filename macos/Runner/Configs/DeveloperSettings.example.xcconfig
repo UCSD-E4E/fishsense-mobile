@@ -1,0 +1,8 @@
+// Copy this file to DeveloperSettings.xcconfig and set your own values.
+// This file is safe to commit; DeveloperSettings.xcconfig is ignored.
+
+// Your Apple Developer Team ID from Xcode account settings.
+PERSONAL_DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Optional: customize if needed per developer/team.
+FISHSENSE_BUNDLE_IDENTIFIER = com.example.fishsenseAndroid

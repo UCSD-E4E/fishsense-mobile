@@ -11,7 +11,7 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Set up Python
+    - name: 🐍 Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
@@ -24,17 +24,13 @@ jobs:
     - name: 📥 Get dependencies
       run: flutter pub get
 
-    # - name: Set up Fastlane
-    #   run: |
-    #     gem install fastlane -NV
-
-    - name: Build Dependencies
+    - name: 🧱 Build Dependencies
       run: |
         python -m pip install --upgrade pip uv
         cd rust-bridge
         make
 
-    - name: Build iOS App
+    - name: 📱 Build iOS App
       run: |
         flutter build ios --release --no-codesign
         
