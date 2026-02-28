@@ -23,9 +23,11 @@ header: toolchain
 	@cbindgen --lang c --output include/fishsense.h
 
 ios: ios-dependencies
+	@echo $(opencv_location)
+	@echo $(onnxruntime_build_location)
 	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64 OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64 ORT_LIB_LOCATION=$(onnxruntime_build_location)/iphoneos_arm64 cargo build --release --lib --target aarch64-apple-ios
-	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_LIB_LOCATION=$(onnxruntime_framework_location)/iphonesimulator_arm64 cargo build --release --lib --target aarch64-apple-ios-sim
-	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_LIB_LOCATION=$(onnxruntime_framework_location)/iphonesimulator_x86_64 cargo build --release --lib --target x86_64-apple-ios
+	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_LIB_LOCATION=$(onnxruntime_build_location)/iphonesimulator_arm64 cargo build --release --lib --target aarch64-apple-ios-sim
+	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_LIB_LOCATION=$(onnxruntime_build_location)/iphonesimulator_x86_64 cargo build --release --lib --target x86_64-apple-ios
 	@$(RM) -f libs/libfishsense-ios.a
 	@$(RM) -f libs/libfishsense-ios-sim.a
 	@cp target/aarch64-apple-ios/release/libfishsense_bridge.a libs/libfishsense-ios.a
