@@ -3,8 +3,6 @@ onnxruntime_framework_location = `realpath ./libs/onnxruntime.xcframework`
 opencv_location = `realpath ./libs/opencv2.xcframework`
 frameworks_out = ../ios/Frameworks/
 
-# export OPENCV_LINK_LIBS = "opencv2.framework"
-
 all: framework
 
 framework: header ios ios-dependencies
