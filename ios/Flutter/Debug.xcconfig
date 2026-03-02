@@ -2,6 +2,6 @@
 #include "Generated.xcconfig"
 
 PERSONAL_DEVELOPMENT_TEAM =
-FISHSENSE_BUNDLE_IDENTIFIER = com.example.fishsenseAndroid
+FISHSENSE_BUNDLE_IDENTIFIER = com.aqua3d.fishsense
 
 #include? "DeveloperSettings.xcconfig"
