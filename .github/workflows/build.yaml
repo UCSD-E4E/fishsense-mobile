@@ -37,4 +37,5 @@ jobs:
     - name: 🚀 Publish to TestFlight
       run: |
         cd ios
+        bundle install
         bundle exec fastlane beta
