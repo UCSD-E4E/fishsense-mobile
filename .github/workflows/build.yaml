@@ -34,3 +34,7 @@ jobs:
       run: |
         flutter build ios --release --no-codesign
         
+    - name: 🚀 Publish to TestFlight
+      run: |
+        cd ios
+        bundle exec fastlane beta
