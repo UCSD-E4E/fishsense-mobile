@@ -32,6 +32,8 @@ jobs:
 
     - name: 📱 Build iOS App
       run: |
+        echo "PERSONAL_DEVELOPMENT_TEAM = ${FASTLANE_TEAM_ID}" > ios/Flutter/DeveloperSettings.xcconfig
+        echo "FISHSENSE_BUNDLE_IDENTIFIER = com.aqua3d.fishsense" >> ios/Flutter/DeveloperSettings.xcconfig
         flutter build ios --release --no-codesign
         
     - name: 🚀 Publish to TestFlight
