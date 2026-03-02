@@ -25,8 +25,7 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         signingStyle: "automatic",
-      },
-      xcargs: "-allowProvisioningUpdates DEVELOPMENT_TEAM=#{ENV['FASTLANE_TEAM_ID']}"
+      }
     )
     upload_to_testflight
   end

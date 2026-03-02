@@ -7,6 +7,7 @@ jobs:
     runs-on: macos-latest
     env:
       FASTLANE_TEAM_ID: ${{ secrets.FASTLANE_TEAM_ID }}
+      ENABLE_TESTFLIGHT_UPLOAD: "false"
 
     steps:
     - uses: actions/checkout@v4
@@ -35,10 +36,9 @@ jobs:
     - name: 📱 Build iOS App
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
-          echo "FASTLANE_TEAM_ID is not set. Add it as a repository secret to enable iOS signing in CI."
-          exit 1
+          echo "FASTLANE_TEAM_ID is not set. Building iOS without signing-only settings."
         fi
-        TEAM_ID_LOWER="$(echo "${FASTLANE_TEAM_ID}" | tr '[:upper:]' '[:lower:]')"
+        TEAM_ID_LOWER="$(echo "${FASTLANE_TEAM_ID:-local}" | tr '[:upper:]' '[:lower:]')"
         BUNDLE_IDENTIFIER="${APP_IDENTIFIER:-com.aqua3d.fishsense.${TEAM_ID_LOWER}}"
         echo "PERSONAL_DEVELOPMENT_TEAM = ${FASTLANE_TEAM_ID}" > ios/Flutter/DeveloperSettings.xcconfig
         echo "FISHSENSE_BUNDLE_IDENTIFIER = ${BUNDLE_IDENTIFIER}" >> ios/Flutter/DeveloperSettings.xcconfig
@@ -46,6 +46,14 @@ jobs:
         
     - name: 🚀 Publish to TestFlight
       run: |
+        if [ "${ENABLE_TESTFLIGHT_UPLOAD}" != "true" ]; then
+          echo "Skipping TestFlight upload (ENABLE_TESTFLIGHT_UPLOAD != true)."
+          exit 0
+        fi
+        if [ -z "${FASTLANE_TEAM_ID}" ]; then
+          echo "FASTLANE_TEAM_ID is required for TestFlight upload."
+          exit 1
+        fi
         cd ios
         bundle install
         bundle exec fastlane beta
