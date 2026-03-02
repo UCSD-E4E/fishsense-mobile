@@ -45,6 +45,12 @@ jobs:
         echo "PERSONAL_DEVELOPMENT_TEAM = ${FASTLANE_TEAM_ID}" > ios/Flutter/DeveloperSettings.xcconfig
         echo "FISHSENSE_BUNDLE_IDENTIFIER = ${BUNDLE_IDENTIFIER}" >> ios/Flutter/DeveloperSettings.xcconfig
         flutter build ios --release --no-codesign
+
+    - name: 🔑 Prepare SSH Key for Fastlane Match
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.MATCH_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
         
     - name: 🔑 Sync Code Signing
       run: |
