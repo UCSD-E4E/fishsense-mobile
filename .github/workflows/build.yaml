@@ -46,10 +46,6 @@ jobs:
         
     - name: 🚀 Publish to TestFlight
       run: |
-        if [ "${ENABLE_TESTFLIGHT_UPLOAD}" != "true" ]; then
-          echo "Skipping TestFlight upload (ENABLE_TESTFLIGHT_UPLOAD != true)."
-          exit 0
-        fi
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
           echo "FASTLANE_TEAM_ID is required for TestFlight upload."
           exit 1
