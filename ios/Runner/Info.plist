@@ -27,7 +27,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MinimumOSVersion</key>
-	<string>14.0</string>
+	<string>17.0</string>
 	<key>NSCameraUsageDescription</key>
 	<string>FishSense uses the camera and LiDAR to measure fish length accurately</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
