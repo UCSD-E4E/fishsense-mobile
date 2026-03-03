@@ -16,7 +16,6 @@
 		525241382E42AADB0077EA5D /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241332E42AAC70077EA5D /* onnxruntime.xcframework */; };
 		525241392E42AADB0077EA5D /* onnxruntime.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 525241332E42AAC70077EA5D /* onnxruntime.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5252413A2E42AADF0077EA5D /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241322E42AAC70077EA5D /* FishSenseRS.xcframework */; };
-		5252413B2E42AADF0077EA5D /* FishSenseRS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 525241322E42AAC70077EA5D /* FishSenseRS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		525241412E42AD5B0077EA5D /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241402E42AD420077EA5D /* libc++.tbd */; };
 		525241432E43C5F80077EA5D /* ARViewPlatformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241422E43C5F80077EA5D /* ARViewPlatformView.swift */; };
 		6F5BCAFEC9B71456D0DB73AD /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEC613A8E7EAF7422D4D0086 /* Pods_Runner.framework */; };
@@ -43,7 +42,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				5252413B2E42AADF0077EA5D /* FishSenseRS.xcframework in Embed Frameworks */,
 				525241372E42AAD20077EA5D /* opencv2.xcframework in Embed Frameworks */,
 				525241392E42AADB0077EA5D /* onnxruntime.xcframework in Embed Frameworks */,
 			);
