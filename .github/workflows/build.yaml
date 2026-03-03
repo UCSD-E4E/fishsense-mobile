@@ -5,6 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 60
     env:
       FASTLANE_APPLE_ID: ${{ secrets.FASTLANE_APPLE_ID }}
       FASTLANE_ITC_TEAM_ID: ${{ secrets.FASTLANE_ITC_TEAM_ID }}
@@ -36,7 +37,7 @@ jobs:
         cd rust-bridge
         make
 
-    - name: 📱 Build iOS App
+    - name: 📱 Configure iOS App
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
           echo "FASTLANE_TEAM_ID is not set. Building iOS without signing-only settings."
@@ -44,7 +45,6 @@ jobs:
         BUNDLE_IDENTIFIER="${APP_IDENTIFIER:-com.aqua3d.fishsense}"
         echo "PERSONAL_DEVELOPMENT_TEAM = ${FASTLANE_TEAM_ID}" > ios/Flutter/DeveloperSettings.xcconfig
         echo "FISHSENSE_BUNDLE_IDENTIFIER = ${BUNDLE_IDENTIFIER}" >> ios/Flutter/DeveloperSettings.xcconfig
-        flutter build ios --release --no-codesign
 
     - name: 🔑 Prepare SSH Key for Fastlane Match
       run: |
