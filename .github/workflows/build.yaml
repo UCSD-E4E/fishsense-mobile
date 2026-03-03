@@ -111,6 +111,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-xcode-derived-data-
 
+    - name: 🏗️ Build Flutter iOS
+      run: flutter build ios --release --no-codesign
+
     - name: 🚀 Publish to TestFlight
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then

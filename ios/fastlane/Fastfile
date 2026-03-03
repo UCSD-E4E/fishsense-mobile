@@ -23,6 +23,7 @@ platform :ios do
 
   desc "Push a new beta build to TestFlight"
   lane :beta do
+    setup_ci if ENV["CI"]
     match(type: "appstore", readonly: true)
     app_id = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
     update_code_signing_settings(
