@@ -13,6 +13,7 @@ jobs:
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+      FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
 
     steps:
     - uses: actions/checkout@v4
