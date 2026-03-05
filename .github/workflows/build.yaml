@@ -94,12 +94,14 @@ jobs:
         bundle config set --local path vendor/bundle
 
     - name: 🔑 Prepare SSH Key for Fastlane Match
+      if: ${{ github.ref == 'refs/heads/main' }}
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.MATCH_SSH_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         
     - name: 🔑 Sync Code Signing
+      if: ${{ github.ref == 'refs/heads/main' }}
       run: |
         cd ios
         bundle install
@@ -117,6 +119,7 @@ jobs:
       run: flutter build ios --release --no-codesign
 
     - name: 🚀 Publish to TestFlight
+      if: ${{ github.ref == 'refs/heads/main' }}
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
           echo "FASTLANE_TEAM_ID is required for TestFlight upload."
