@@ -5,4 +5,4 @@
 PERSONAL_DEVELOPMENT_TEAM = YOUR_TEAM_ID
 
 // Optional: customize if needed per developer/team.
-FISHSENSE_BUNDLE_IDENTIFIER = com.aqua3d.fishsense
+FISHSENSE_BUNDLE_IDENTIFIER = com.aqua3d.fishsense.${PERSONAL_DEVELOPMENT_TEAM}

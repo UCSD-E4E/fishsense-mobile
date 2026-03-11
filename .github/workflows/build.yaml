@@ -5,6 +5,15 @@ on: [push]
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      FASTLANE_TEAM_ID: ${{ secrets.FASTLANE_TEAM_ID }}
+      FASTLANE_ITC_TEAM_ID: ${{ secrets.FASTLANE_ITC_TEAM_ID }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+      APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
 
     steps:
     - uses: actions/checkout@v4
@@ -21,8 +30,27 @@ jobs:
       with:
         channel: stable
 
+    - name: 📦 Cache Flutter pub packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.pub-cache
+        key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pub-
+
     - name: 📥 Get dependencies
       run: flutter pub get
+
+    - name: 📦 Cache Cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          rust-bridge/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('rust-bridge/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
 
     - name: 🧱 Build Dependencies
       run: |
@@ -30,7 +58,80 @@ jobs:
         cd rust-bridge
         make
 
-    - name: 📱 Build iOS App
+    - name: 📱 Configure iOS App
       run: |
-        flutter build ios --release --no-codesign
+        if [ -z "${FASTLANE_TEAM_ID}" ]; then
+          echo "FASTLANE_TEAM_ID is not set. Building iOS without signing-only settings."
+        fi
+        BUNDLE_IDENTIFIER="${APP_IDENTIFIER:-com.aqua3d.fishsense}"
+        echo "PERSONAL_DEVELOPMENT_TEAM = ${FASTLANE_TEAM_ID}" > ios/Flutter/DeveloperSettings.xcconfig
+        echo "FISHSENSE_BUNDLE_IDENTIFIER = ${BUNDLE_IDENTIFIER}" >> ios/Flutter/DeveloperSettings.xcconfig
+
+    - name: 📦 Cache CocoaPods
+      uses: actions/cache@v4
+      with:
+        path: ios/Pods
+        key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pods-
+
+    - name: 📦 Install CocoaPods
+      run: |
+        cd ios
+        pod install
+
+    - name: 📦 Cache Ruby Gems
+      uses: actions/cache@v4
+      with:
+        path: ios/vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('ios/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+
+    - name: ⚙️ Configure Bundler
+      run: |
+        cd ios
+        bundle config set --local path vendor/bundle
+
+    - name: 🔑 Prepare SSH Key for Fastlane Match
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.MATCH_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
         
+    - name: 🔑 Sync Code Signing
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        cd ios
+        bundle install
+        bundle exec fastlane sync_code_signing
+
+    - name: 📦 Cache Xcode DerivedData
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Developer/Xcode/DerivedData
+        key: ${{ runner.os }}-xcode-derived-data-${{ hashFiles('ios/Podfile.lock', 'pubspec.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-xcode-derived-data-
+
+    - name: 🏗️ Build Flutter iOS
+      run: flutter build ios --release --no-codesign
+
+    - name: 🔢 Increment iOS Build Number
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        cd ios
+        bundle install
+        bundle exec fastlane run increment_build_number build_number:${{ github.run_number }}
+
+    - name: 🚀 Publish to TestFlight
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        if [ -z "${FASTLANE_TEAM_ID}" ]; then
+          echo "FASTLANE_TEAM_ID is required for TestFlight upload."
+          exit 1
+        fi
+        cd ios
+        bundle install
+        bundle exec fastlane beta

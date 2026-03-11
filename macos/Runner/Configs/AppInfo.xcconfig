@@ -8,7 +8,7 @@
 PRODUCT_NAME = fishsense_android
 
 // The application's bundle identifier
-FISHSENSE_BUNDLE_IDENTIFIER = com.example.fishsenseAndroid
+FISHSENSE_BUNDLE_IDENTIFIER = com.aqua3d.fishsense
 PERSONAL_DEVELOPMENT_TEAM =
 PRODUCT_BUNDLE_IDENTIFIER = $(FISHSENSE_BUNDLE_IDENTIFIER)
 
