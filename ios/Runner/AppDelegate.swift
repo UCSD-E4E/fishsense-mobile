@@ -8,7 +8,6 @@ import FishSenseRS
 class AppDelegate: FlutterAppDelegate {
     
     private var methodChannel: FlutterMethodChannel?
-    private var hasSetupFlutterBindings = false
     
     // Store reference to the platform view so we can access its session
     private var arViewPlatformFactory: ARViewPlatformViewFactory?
@@ -17,48 +16,15 @@ class AppDelegate: FlutterAppDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        setupFlutterBindingsIfNeeded()
+        
+        let controller = window?.rootViewController as! FlutterViewController
+        setupMethodChannel(controller: controller)
+        
+        //  Register ARView platform view
+        setupARViewPlatformView(controller: controller)
         
         GeneratedPluginRegistrant.register(with: self)
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-    }
-
-    override func applicationDidBecomeActive(_ application: UIApplication) {
-        super.applicationDidBecomeActive(application)
-        setupFlutterBindingsIfNeeded()
-    }
-
-    private func setupFlutterBindingsIfNeeded() {
-        guard !hasSetupFlutterBindings,
-              let controller = findFlutterViewController() else {
-            return
-        }
-
-        setupMethodChannel(controller: controller)
-        setupARViewPlatformView(controller: controller)
-        hasSetupFlutterBindings = true
-    }
-
-    private func findFlutterViewController() -> FlutterViewController? {
-        if let controller = window?.rootViewController as? FlutterViewController {
-            return controller
-        }
-
-        if #available(iOS 13.0, *) {
-            for scene in UIApplication.shared.connectedScenes {
-                guard let windowScene = scene as? UIWindowScene else { continue }
-
-                if let controller = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController as? FlutterViewController {
-                    return controller
-                }
-
-                if let controller = windowScene.windows.first?.rootViewController as? FlutterViewController {
-                    return controller
-                }
-            }
-        }
-
-        return nil
     }
     
     //  Store reference to factory so we can access the platform view

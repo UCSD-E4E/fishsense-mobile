@@ -18,7 +18,7 @@ dependencies:
 
   # Camera (start with basic camera, add ARCore later)
   # camera: ^0.10.5
-  permission_handler: ^12.0.1
+  permission_handler: ^11.0.1
 
   # Image & File handling
   image: ^4.1.3
@@ -33,7 +33,7 @@ dependencies:
   provider: ^6.1.1
   
   # Utilities
-  archive: ^4.0.9
+  archive: ^3.4.9
 
   arkit_plugin: ^1.0.7
 
@@ -44,7 +44,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
