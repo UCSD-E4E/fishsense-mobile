@@ -41,8 +41,12 @@
 			<key>UIWindowSceneSessionRoleApplication</key>
 			<array>
 				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
 					<key>UISceneConfigurationName</key>
-					<string>Default Configuration</string>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
 				</dict>
