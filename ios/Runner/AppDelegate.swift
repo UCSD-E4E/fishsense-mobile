@@ -5,7 +5,7 @@ import AVFoundation
 import FishSenseRS
 
 @main
-class AppDelegate: FlutterAppDelegate {
+class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     
     private var methodChannel: FlutterMethodChannel?
     
@@ -16,28 +16,26 @@ class AppDelegate: FlutterAppDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        
-        let controller = window?.rootViewController as! FlutterViewController
-        setupMethodChannel(controller: controller)
-        
-        //  Register ARView platform view
-        setupARViewPlatformView(controller: controller)
-        
-        GeneratedPluginRegistrant.register(with: self)
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+
+    func didInitializeImplicitFlutterEngine(_ engineBridge: any FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        setupMethodChannel(messenger: engineBridge.applicationRegistrar.messenger())
+        setupARViewPlatformView(applicationRegistrar: engineBridge.applicationRegistrar)
     }
     
     //  Store reference to factory so we can access the platform view
-    private func setupARViewPlatformView(controller: FlutterViewController) {
-        arViewPlatformFactory = ARViewPlatformViewFactory(messenger: controller.binaryMessenger)
-        registrar(forPlugin: "ARViewPlatform")?.register(arViewPlatformFactory!, withId: "arview_platform_view")
+    private func setupARViewPlatformView(applicationRegistrar: any FlutterApplicationRegistrar) {
+        arViewPlatformFactory = ARViewPlatformViewFactory(messenger: applicationRegistrar.messenger())
+        applicationRegistrar.register(arViewPlatformFactory!, withId: "arview_platform_view")
         print("ARView platform view factory registered")
     }
     
-    private func setupMethodChannel(controller: FlutterViewController) {
+    private func setupMethodChannel(messenger: any FlutterBinaryMessenger) {
         methodChannel = FlutterMethodChannel(
             name: "fishsense_native",
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
         
         methodChannel?.setMethodCallHandler { [weak self] (call, result) in
