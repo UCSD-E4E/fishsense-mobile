@@ -61,9 +61,6 @@
 	<array>
 		<string>arkit</string>
 	</array>
-	<key>UIRequiredDeviceCapabilities~xros</key>
-	<array>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
