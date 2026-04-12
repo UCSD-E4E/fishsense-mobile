@@ -49,6 +49,9 @@ jobs:
     - name: 📥 Get dependencies
       run: flutter pub get
 
+    - name: 🧪 Run Flutter tests
+      run: flutter test
+
     - name: 📦 Cache Cargo registry
       uses: actions/cache@v4
       with:
@@ -65,6 +68,11 @@ jobs:
         python -m pip install --upgrade pip uv
         cd rust-bridge
         make
+
+    - name: 🧪 Run Rust tests
+      run: |
+        cd rust-bridge
+        cargo test
 
     - name: 📱 Configure iOS App
       run: |

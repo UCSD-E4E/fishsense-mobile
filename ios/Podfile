@@ -45,4 +45,29 @@ post_install do |installer|
       end
     end
   end
+
+  # Inject a Run Script build phase into the Runner target so that the
+  # Rust bridge is compiled (via rust-bridge/Makefile) before every iOS build.
+  # This phase is idempotent: it is only added once even across repeated
+  # `pod install` runs.
+  runner_project = installer.aggregate_targets
+    .find { |t| t.name == 'Pods-Runner' }
+    &.user_project
+
+  if runner_project
+    runner_target = runner_project.targets.find { |t| t.name == 'Runner' }
+
+    if runner_target
+      phase_name = 'Build Rust Bridge'
+      unless runner_target.shell_script_build_phases.any? { |p| p.name == phase_name }
+        phase = runner_target.new_shell_script_build_phase(phase_name)
+        phase.shell_script = 'cd "${SRCROOT}/../rust-bridge" && make'
+        phase.show_env_vars_in_log = '0'
+        # Place this phase before Compile Sources so the .a library is ready
+        runner_target.build_phases.delete(phase)
+        runner_target.build_phases.unshift(phase)
+        runner_project.save
+      end
+    end
+  end
 end

@@ -12,11 +12,10 @@ This project represents a successful migration from the original iOS-only Swift 
 
 ## Features
 
-- Take images with cross-platform camera integration.
+- Take images with LiDAR-assisted depth capture (iOS).
 - View images taken in a photo gallery with metadata display.
 - Select two points on the camera and get an estimated length measurement using LiDAR.
-- Cross-platform compatibility (iOS and Android).
-- Local SQLite database storage with cloud sync capabilities.
+- Local SQLite database storage.
 - [Watch demo video](https://youtube.com/shorts/he1tru-qiu0?feature=share)
 
 ## Repository Organization
@@ -29,7 +28,7 @@ The project is organized into several main directories:
   - `/lib/photo_gallery_screen.dart`: Photo gallery with grid display and metadata management.
   - `/lib/services.dart`: Platform services including camera, file storage, and cloud sync.
   - `/lib/database.dart`: SQLite database operations for photo and measurement data.
-  - `/lib/models.dart`: Data models (PhotoModel, DataTemp, ComputeLengthResult, etc.).
+  - `/lib/models.dart`: Data models (PhotoModel, ComputeLengthResult, Coordinate, ByteMatrixModel).
   - `/lib/services/arkit_service.dart`: Flutter-ARKit bridge service for LiDAR functionality.
 - `/ios`: Native iOS platform configuration
   - `/ios/Runner/AppDelegate.swift`: iOS app delegate with Flutter method channel setup.
@@ -63,24 +62,32 @@ You can build and run the app from the source code by following these steps:
    make
    ```
 
+5. **Install CocoaPods dependencies (iOS):**
+   ```bash
+   cd ios
+   pod install
+   ```
+
+6. **Run the application:**
+   ```bash
+   flutter run
+   ```
+
 ### Apple Signing Setup (Per Developer)
 
 This repository is configured so each developer can use a personal Apple Developer account without committing signing changes.
 
 1. Copy example files:
-  ```bash
-  cp ios/Flutter/DeveloperSettings.example.xcconfig ios/Flutter/DeveloperSettings.xcconfig
-  cp macos/Runner/Configs/DeveloperSettings.example.xcconfig macos/Runner/Configs/DeveloperSettings.xcconfig
-  ```
+   ```bash
+   cp ios/Flutter/DeveloperSettings.example.xcconfig ios/Flutter/DeveloperSettings.xcconfig
+   cp macos/Runner/Configs/DeveloperSettings.example.xcconfig macos/Runner/Configs/DeveloperSettings.xcconfig
+   ```
 2. Open both copied files and set `PERSONAL_DEVELOPMENT_TEAM` to your Apple Team ID.
 3. (Optional) Change `FISHSENSE_BUNDLE_IDENTIFIER` if your account requires a unique bundle id.
 4. Open `ios/Runner.xcworkspace` in Xcode once and confirm your Apple ID is signed in under Xcode Accounts.
 5. Build/run as usual (`flutter run` or Xcode Run).
 
 `DeveloperSettings.xcconfig` files are git-ignored, so personal signing values stay local.
-
-5. **Run the application:**
- `flutter run`
 
 ## Usage
 
@@ -92,7 +99,6 @@ Once installed, follow these steps to use FishSense:
 4. The app will automatically process the image and display length measurements.
 5. Tap the "Photos" tab to view the photo gallery.
 6. Tap on any image in the gallery to see detailed information and measurements.
-7. Use the upload feature to sync data to the cloud when available.
 
 ## Contributing
 
@@ -112,12 +118,6 @@ This project depends on:
 - Platform-specific dependencies:
   - iOS: Xcode, ARKit framework
   - Android: Android SDK, NDK for native libraries
-
-## Documentation
-
-- Project Specification: Our initial plan for the project migration and cross-platform development.
-- Migration Report: Documentation of the iOS to Flutter/Dart migration process and technical decisions.
-- Platform Integration Guide: Technical documentation for native platform view integration.
 
 ## Contact
 

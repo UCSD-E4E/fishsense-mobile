@@ -179,6 +179,107 @@ fn do_compute_length(
     Ok((length, left, right))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::array;
+
+    // rotate_arrayu8 / rotate_arrayf32
+    // The operation is: reverse columns ([:, ::-1]) then transpose (.t()).
+    // For a 2×3 input:
+    //   1 2 3       reverse cols→  3 2 1    transpose→  3 6
+    //   4 5 6                      6 5 4                2 5
+    //                                                   1 4
+    // Shape changes from (rows, cols) → (cols, rows).
+
+    #[test]
+    fn rotate_arrayu8_correct_values_and_shape() {
+        let input = array![[1u8, 2, 3], [4, 5, 6]];
+        let result = rotate_arrayu8(input);
+
+        assert_eq!(result.shape(), &[3, 2]);
+        assert_eq!(result[[0, 0]], 3);
+        assert_eq!(result[[0, 1]], 6);
+        assert_eq!(result[[1, 0]], 2);
+        assert_eq!(result[[1, 1]], 5);
+        assert_eq!(result[[2, 0]], 1);
+        assert_eq!(result[[2, 1]], 4);
+    }
+
+    #[test]
+    fn rotate_arrayf32_correct_values_and_shape() {
+        let input = array![[1.0f32, 2.0, 3.0], [4.0, 5.0, 6.0]];
+        let result = rotate_arrayf32(input);
+
+        assert_eq!(result.shape(), &[3, 2]);
+        assert!((result[[0, 0]] - 3.0).abs() < 1e-6);
+        assert!((result[[0, 1]] - 6.0).abs() < 1e-6);
+        assert!((result[[1, 0]] - 2.0).abs() < 1e-6);
+        assert!((result[[1, 1]] - 5.0).abs() < 1e-6);
+        assert!((result[[2, 0]] - 1.0).abs() < 1e-6);
+        assert!((result[[2, 1]] - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn rotate_arrayu8_identity_on_1x1() {
+        let input = array![[42u8]];
+        let result = rotate_arrayu8(input);
+        assert_eq!(result.shape(), &[1, 1]);
+        assert_eq!(result[[0, 0]], 42);
+    }
+
+    #[test]
+    fn rotate_arrayf32_single_row_becomes_column() {
+        // 1×3 → 3×1
+        let input = array![[1.0f32, 2.0, 3.0]];
+        let result = rotate_arrayf32(input);
+        assert_eq!(result.shape(), &[3, 1]);
+        assert!((result[[0, 0]] - 3.0).abs() < 1e-6);
+        assert!((result[[1, 0]] - 2.0).abs() < 1e-6);
+        assert!((result[[2, 0]] - 1.0).abs() < 1e-6);
+    }
+
+    // ios_f32_array_data_to_ndarray
+
+    #[test]
+    fn f32_array_to_ndarray_correct_shape_and_values() {
+        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 3, 2).unwrap();
+
+        assert_eq!(result.shape(), &[2, 3]); // (height, width)
+        assert!((result[[0, 0]] - 1.0).abs() < 1e-6);
+        assert!((result[[0, 1]] - 2.0).abs() < 1e-6);
+        assert!((result[[0, 2]] - 3.0).abs() < 1e-6);
+        assert!((result[[1, 0]] - 4.0).abs() < 1e-6);
+        assert!((result[[1, 2]] - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn f32_array_to_ndarray_1x1() {
+        let data: Vec<f32> = vec![99.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 1, 1).unwrap();
+        assert_eq!(result.shape(), &[1, 1]);
+        assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
+    }
+
+    // ExecutionError Display
+
+    #[test]
+    fn execution_error_fish_not_found_displays_correctly() {
+        let err = ExecutionError::FishNotFound;
+        assert_eq!(err.to_string(), "FishNotFound");
+    }
+
+    #[test]
+    fn execution_error_array_shape_error_is_non_empty() {
+        // Trigger a real ShapeError via mismatched dimensions
+        let shape_err = ndarray::Array2::<f32>::from_shape_vec((2, 3), vec![1.0, 2.0])
+            .unwrap_err();
+        let err = ExecutionError::ArrayShapeError(shape_err);
+        assert!(!err.to_string().is_empty());
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
