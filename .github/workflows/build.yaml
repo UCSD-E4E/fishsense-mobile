@@ -71,6 +71,7 @@ jobs:
 
     - name: 🧪 Run Rust tests
       run: |
+        brew install opencv
         cd rust-bridge
         cargo test
 
