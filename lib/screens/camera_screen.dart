@@ -1,13 +1,13 @@
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'models.dart';
-import 'services.dart';
-import 'database.dart';
-import 'extensions.dart';
+import '../models.dart';
+import '../services/camera_service.dart';
+import '../services/device_info_service.dart';
+import '../services/file_storage_service.dart';
+import '../services/rust_service.dart';
+import '../database.dart';
+import '../logger.dart';
 
 /// Camera screen with AR functionality
 /// Direct translation from Swift/FishSense/ViewController.swift
@@ -28,12 +28,9 @@ class _CameraScreenState extends State<CameraScreen>
   // UI state - equivalent to iOS ViewController properties
   String _statusMessage = 'Camera Loading';
   String _lengthMessage = 'Distance: ';
-  bool _showMesh = true;
-  bool _planeDetectionActive = false;
 
   // Fish measurement state
   Uint8List? _currentImageWithDots;
-  ComputeLengthResult? _lastMeasurement;
 
   // UI Controllers - equivalent to iOS IBOutlets
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -52,28 +49,27 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _initializeCamera() async {
-    print(' DEBUG: Starting camera initialization...');
+    log.d('Starting camera initialization');
 
     final success = await CameraService.initializeCameras();
-    print('CameraService.initializeCameras() returned: $success');
+    log.i('CameraService.initializeCameras() → $success');
 
     if (success) {
       if (CameraService.isUsingARKit()) {
-        print(
-            'Using ARKit - should see native camera via platform view');
+        log.i('Using ARKit — native camera view active');
         setState(() {
           _isCameraInitialized = true;
           _statusMessage = 'ARKit LiDAR Ready';
         });
       } else {
-        print(' NOT using ARKit - problem here');
+        log.w('ARKit not active despite successful init');
         setState(() {
           _isCameraInitialized = true;
           _statusMessage = 'Camera Ready';
         });
       }
     } else {
-      print('DEBUG: Camera initialization FAILED');
+      log.e('Camera initialization FAILED');
     }
   }
 
@@ -86,7 +82,7 @@ class _CameraScreenState extends State<CameraScreen>
 
     setState(() {
       _isProcessingPhoto = true;
-      _statusMessage = 'Capturing Photo...';
+      _statusMessage = 'Capturing photo...';
     });
 
     try {
@@ -109,60 +105,55 @@ class _CameraScreenState extends State<CameraScreen>
         return;
       }
 
-      // Collect device information - enhanced with LiDAR detection
       final deviceInfo = await DeviceInfoService.getDeviceInfo();
-      print(' DEBUG: Device info collected: $deviceInfo');
+      log.d('Device info: $deviceInfo');
 
       if (CameraService.isUsingARKit()) {
-        print('Using REAL ARKit LiDAR data');
-        print(
-            'Depth map: ${captureResult.depthMap.width}x${captureResult.depthMap.height}');
-        print('Real camera intrinsics: ${captureResult.cameraIntrinsics}');
+        log.d('Using ARKit LiDAR — '
+            'depth ${captureResult.depthMap.width}x${captureResult.depthMap.height}, '
+            'intrinsics: ${captureResult.cameraIntrinsics}');
       } else {
-        print('Using mock depth data (fallback)');
+        log.w('Not using ARKit — depth data may be mock');
       }
 
-      /// Convert camera intrinsics to inverted transpose format (like working Swift code)
-      /// Your working Swift code used: matrix3x3ToArray(currentFrame.camera.intrinsics.inverse.transpose)
-      List<double> _convertToInvertedTransposeFormat(List<double> intrinsics) {
-        // Input: [fx, 0, cx, 0, fy, cy, 0, 0, 1] (3x3 matrix in row-major)
-        // Convert to Matrix3x3, invert, transpose, then flatten
-
+      // Convert camera intrinsics to inverted-transpose format:
+      // matrix3x3ToArray(intrinsics.inverse.transpose)
+      List<double> convertToInvertedTransposeFormat(List<double> intrinsics) {
         try {
-          // Extract intrinsics components
           final fx = intrinsics[0];
           final fy = intrinsics[4];
           final cx = intrinsics[2];
           final cy = intrinsics[5];
 
-          print(' Original intrinsics: fx=$fx, fy=$fy, cx=$cx, cy=$cy');
+          log.d('Camera intrinsics — fx=$fx, fy=$fy, cx=$cx, cy=$cy');
 
-          // Compute inverse of intrinsics matrix and transpose
-          // Based on your working Swift: currentFrame.camera.intrinsics.inverse.transpose
           if (fx == 0 || fy == 0) {
-            print('Warning: Camera intrinsics have zero focal length');
-            return intrinsics; // Return original as fallback
+            log.w('Camera intrinsics have zero focal length — using identity');
+            return intrinsics;
           }
 
-          // Inverse and transpose of camera intrinsics matrix:
-          // Original:    Inverse:           Transpose:
-          // [fx  0 cx]   [1/fx  0 -cx/fx]   [1/fx    0     0]
-          // [ 0 fy cy] → [  0 1/fy -cy/fy] → [  0   1/fy   0]
-          // [ 0  0  1]   [  0   0    1   ]   [-cx/fx -cy/fy 1]
-
+          // Inverse and transpose of the camera intrinsics matrix:
+          // Original:    Inverse:           Transposed inverse:
+          // [fx  0 cx]   [1/fx  0 -cx/fx]   [1/fx    0     0  ]
+          // [ 0 fy cy] → [  0 1/fy -cy/fy] → [  0   1/fy   0  ]
+          // [ 0  0  1]   [  0   0    1   ]   [-cx/fx -cy/fy 1  ]
           final result = [
-            1.0 / fx, 0.0, 0.0, // Row 1 of transposed inverse
-            0.0, 1.0 / fy, 0.0, // Row 2 of transposed inverse
-            -cx / fx, -cy / fy, 1.0, // Row 3 of transposed inverse
+            1.0 / fx, 0.0,       0.0,
+            0.0,      1.0 / fy,  0.0,
+            -cx / fx, -cy / fy,  1.0,
           ];
 
-          print(' Converted to inverted-transposed: $result');
+          log.d('Inverted-transposed intrinsics: $result');
           return result;
         } catch (e) {
-          print('Error converting camera intrinsics: $e');
-          return intrinsics; // Return original as fallback
+          log.e('Error converting camera intrinsics', error: e);
+          return intrinsics;
         }
       }
+
+      setState(() {
+        _statusMessage = 'Analyzing fish...';
+      });
 
       // Call Rust pipeline with REAL or mock data (automatically determined)
       final result = await RustService.computeLength(
@@ -172,7 +163,7 @@ class _CameraScreenState extends State<CameraScreen>
         depthData: Uint8List.fromList(captureResult.depthMap.bytes ?? []),
         depthWidth: captureResult.depthMap.width,
         depthHeight: captureResult.depthMap.height,
-        cameraIntrinsicsInverted: _convertToInvertedTransposeFormat(
+        cameraIntrinsicsInverted: convertToInvertedTransposeFormat(
             captureResult.cameraIntrinsics), // Correct format
       );
 
@@ -188,15 +179,14 @@ class _CameraScreenState extends State<CameraScreen>
 
       // Save to database - equivalent to iOS insertPhoto(with:)
       if (photo != null) {
-        final success = await DatabaseModel.insertPhoto(photo);
-        print(' Database insert success: $success');
+        final dbSuccess = await DatabaseModel.insertPhoto(photo);
+        log.i('DB insert: $dbSuccess');
       } else {
-        print(' Failed to create PhotoModel');
+        log.e('Failed to create PhotoModel from capture result');
       }
 
       if (result.fishFound) {
         setState(() {
-          _lastMeasurement = result;
           _lengthMessage = 'Length: ${(result.length * 100).toStringAsFixed(1)}cm';
           _currentImageWithDots = result.imageWithDots;
         });
@@ -210,7 +200,7 @@ class _CameraScreenState extends State<CameraScreen>
                 'No fish detected in the image. Please try again.');
       }
     } catch (e) {
-      print('Error capturing photo: $e');
+      log.e('Error in _capturePhoto', error: e);
       _showErrorDialog('Capture Error', 'An error occurred: $e');
     } finally {
       setState(() {
@@ -229,7 +219,7 @@ void _showErrorDialog(String title, String message) {
     builder: (BuildContext context) {
       return AlertDialog(
         // Dark, semi-transparent background
-        backgroundColor: Colors.grey[900]?.withOpacity(0.9),
+        backgroundColor: Colors.grey[900]?.withValues(alpha: 0.9),
          shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
@@ -244,7 +234,7 @@ void _showErrorDialog(String title, String message) {
         // Content with light grey text
         content: Text(
           message,
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
         ),
         // Action button styled with your app's accent color
         actions: [
@@ -271,7 +261,7 @@ void _showSuccessDialog(String title, String message) {
     builder: (BuildContext context) {
       return AlertDialog(
         // Dark, semi-transparent background
-        backgroundColor: Colors.grey[900]?.withOpacity(0.9),
+        backgroundColor: Colors.grey[900]?.withValues(alpha: 0.9),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),
         ),
@@ -286,7 +276,7 @@ void _showSuccessDialog(String title, String message) {
         // Content with light grey text
         content: Text(
           message,
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
         ),
         // Action button styled with your app's accent color
         actions: [
@@ -305,20 +295,6 @@ void _showSuccessDialog(String title, String message) {
     },
   );
 }
-
-  /// Toggle mesh visibility - equivalent to iOS toggleMeshButtonPressed
-  void _toggleMesh() {
-    setState(() {
-      _showMesh = !_showMesh;
-    });
-  }
-
-  /// Toggle plane detection - equivalent to iOS togglePlaneDetectionButtonPressed
-  void _togglePlaneDetection() {
-    setState(() {
-      _planeDetectionActive = !_planeDetectionActive;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -340,9 +316,6 @@ void _showSuccessDialog(String title, String message) {
         // Status overlay - equivalent to iOS status labels
         _buildStatusOverlay(),
 
-        // Control buttons - equivalent to iOS control buttons
-        _buildControlButtons(),
-
         // Capture button - equivalent to iOS photo capture button
         _buildCaptureButton(),
 
@@ -355,22 +328,22 @@ void _showSuccessDialog(String title, String message) {
     );
   }
 
-  /// Processing overlay with spinner and message
+  /// Processing overlay with spinner and current stage message.
   Widget _buildProcessingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.7),
-      child: const Center(
+      color: Colors.black.withValues(alpha: 0.7),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
+            const CircularProgressIndicator(
               color: Color(0xFF00AAA5),
               strokeWidth: 3,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
-              'Capturing Photo...',
-              style: TextStyle(
+              _statusMessage,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
@@ -435,7 +408,7 @@ void _showSuccessDialog(String title, String message) {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
               Colors.transparent,
             ],
           ),
@@ -470,60 +443,6 @@ void _showSuccessDialog(String title, String message) {
     );
   }
 
-  /// Control buttons - equivalent to iOS AR control buttons
-  Widget _buildControlButtons() {
-    return Positioned(
-      bottom: 120, 
-      left: 20,
-      right: 20, 
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Hide/Show button - equivalent to iOS hideMeshButton
-          // _buildControlButton(
-          //   title: _showMesh ? 'Hide' : 'Show',
-          //   onPressed: _toggleMesh,
-          // ),
-
-          // // Plane Detection button - equivalent to iOS planeDetectionButton
-          // _buildControlButton(
-          //   title: _planeDetectionActive ? 'Stop Detection' : 'Start Detection',
-          //   onPressed: _togglePlaneDetection,
-          // ),
-        ],
-      ),
-    );
-  }
-
-  /// Individual control button
-  Widget _buildControlButton({
-    required String title,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            Colors.black.withOpacity(0.7), 
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF00AAA5), width: 1),
-      ),
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(
-              horizontal: 20, vertical: 12),
-        ),
-        child: Text(
-          title,
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600), 
-        ),
-      ),
-    );
-  }
-
   /// Capture button - equivalent to iOS photo capture button
   Widget _buildCaptureButton() {
     return Positioned(
@@ -539,7 +458,7 @@ void _showSuccessDialog(String title, String message) {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _isProcessingPhoto
-                  ? Colors.grey.withOpacity(0.5)
+                  ? Colors.grey.withValues(alpha: 0.5)
                   : const Color(0xFF00AAA5),
               border: Border.all(
                 color: Colors.white,
@@ -547,7 +466,7 @@ void _showSuccessDialog(String title, String message) {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),

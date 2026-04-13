@@ -2,6 +2,9 @@ import UIKit
 import Flutter
 import ARKit
 import RealityKit
+import OSLog
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fishsense", category: "ARView")
 
 /// Native ARView that can be embedded in Flutter
 class ARViewPlatformView: NSObject, FlutterPlatformView {
@@ -55,8 +58,8 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
         
         // Start the session
         _arView.session.run(configuration)
-        
-        print(" ARView Platform View: ARKit session started with LiDAR (using EXACT working setup)")
+
+        logger.info("ARKit session started with LiDAR + mesh classification")
     }
     
     /// Provide access to the session for photo capture
@@ -82,11 +85,11 @@ extension ARViewPlatformView: ARSessionDelegate {
         case ARCamera.TrackingState.normal:
             status = "Camera Ready"
         }
-        print("ARView Platform View - Camera Status: \(status)")
+        logger.info("Camera tracking state: \(status)")
     }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
-        print("ARView Platform View - Session failed: \(error.localizedDescription)")
+        logger.error("ARKit session failed: \(error.localizedDescription)")
     }
 }
 
@@ -116,7 +119,7 @@ class ARViewPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
         
         // Store reference so AppDelegate can access the session
         activePlatformView = platformView
-        print("Platform view created and stored for AppDelegate access")
+        logger.debug("ARViewPlatformView created (id=\(viewId))")
         
         return platformView
     }

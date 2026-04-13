@@ -1,6 +1,6 @@
 extern crate libc;
 use core::slice;
-use std::{ffi::{c_uchar, CString}, fmt::Display, mem::transmute, ptr::null};
+use std::{ffi::{c_char, c_uchar}, fmt::Display, sync::Once};
 
 use fishsense_core::errors::FishSenseError;
 use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
@@ -10,6 +10,23 @@ use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{s, Array1, Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
 use opencv::prelude::MatTraitConst;
+use tracing::{debug, error, info, warn};
+
+static TRACING_INIT: Once = Once::new();
+
+/// Initialize the tracing subscriber once per process lifetime.
+/// On iOS the output goes to stdout, visible in Xcode's console and `Console.app`.
+/// Respects the `RUST_LOG` environment variable (e.g. `RUST_LOG=debug`).
+fn init_tracing() {
+    TRACING_INIT.call_once(|| {
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+            )
+            .init();
+    });
+}
 
 #[derive(Debug)]
 enum ExecutionError {
@@ -32,7 +49,17 @@ pub struct ComputeLengthResult {
     left: Coordinate,
     right: Coordinate,
     fish_found: bool,
-    error_string: *const c_uchar
+    /// Null-terminated UTF-8 error message, or all-zeros when there is no error.
+    /// Inline buffer eliminates cross-language heap ownership.
+    error_string: [c_char; 256],
+}
+
+fn write_error_string(msg: &str) -> [c_char; 256] {
+    let mut buf = [0i8; 256];
+    for (i, b) in msg.bytes().take(255).enumerate() {
+        buf[i] = b as c_char;
+    }
+    buf
 }
 
 impl Display for ExecutionError {
@@ -95,45 +122,64 @@ fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: u
 }
 
 fn segmentation_factory() -> Result<FishSegmentation, ExecutionError> {
+    debug!("Loading segmentation model");
     let mut segmentation = FishSegmentation::new();
     match segmentation.load_model() {
-        Ok(_) => Ok(segmentation),
-        Err(err) => Err(ExecutionError::SegmentationError(err))
+        Ok(_) => {
+            debug!("Segmentation model loaded");
+            Ok(segmentation)
+        },
+        Err(err) => {
+            error!("Failed to load segmentation model: {}", err);
+            Err(ExecutionError::SegmentationError(err))
+        }
     }
 }
 
 fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
+    debug!("Running fish segmentation inference on {}x{} image", img.shape()[1], img.shape()[0]);
     let mut segmentation = segmentation_factory()?;
 
     match segmentation.inference(&img) {
         Ok(mask) => {
-            if mask.sum() > 0 {
+            let nonzero = mask.sum();
+            if nonzero > 0 {
+                info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
                 Ok(mask)
-            }
-            else {
+            } else {
+                info!("Segmentation returned empty mask — no fish detected");
                 Err(ExecutionError::FishNotFound)
             }
         },
-        Err(err) => Err(ExecutionError::SegmentationError(err))
+        Err(err) => {
+            error!("Segmentation inference failed: {}", err);
+            Err(ExecutionError::SegmentationError(err))
+        }
     }
 }
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
+    debug!("Converting iOS RGBA image {}x{} to BGR", img_width, img_height);
     let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
     let (rows, cols) = (img_cv.rows() as usize, img_cv.cols() as usize);
     let data = unsafe { slice::from_raw_parts(img_cv.data(), rows * cols * 3) };
     let img_arr = Array3::from_shape_vec((rows, cols, 3), data.to_vec())
         .map_err(ExecutionError::ArrayShapeError)?;
-    let result = do_inference(img_arr);
-
-    result
+    do_inference(img_arr)
 }
 
 fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), ExecutionError> {
+    debug!("Detecting head/tail in mask {}x{}", mask.shape()[1], mask.shape()[0]);
     let detector = FishHeadTailDetector {};
     match detector.find_head_tail_img(mask) {
-        Ok(coords) => Ok((coords.head.0, coords.tail.0)),
-        Err(error) => Err(ExecutionError::HeadTailError(error))
+        Ok(coords) => {
+            info!("Head/tail detected — head={:?}, tail={:?}", coords.head.0, coords.tail.0);
+            Ok((coords.head.0, coords.tail.0))
+        },
+        Err(error) => {
+            error!("Head/tail detection failed: {}", error);
+            Err(ExecutionError::HeadTailError(error))
+        }
     }
 }
 
@@ -148,29 +194,34 @@ fn rotate_arrayu8(arr: Array2<u8>) -> Array2<u8> {
 }
 
 fn do_compute_length(
-    img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
-    depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
+    img_data: *const c_uchar, img_width: u32, img_height: u32,
+    depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
     camera_intrinsics_inverted_data: *const f32
 ) -> Result<(f32, Array1<f32>, Array1<f32>), ExecutionError> {
+    info!("compute_length: image={}x{} depth={}x{}", img_width, img_height, depth_width, depth_height);
+
     let mask = inference(img_data, img_width, img_height)?;
     let mask = rotate_arrayu8(mask);
     let (left, right) = find_head_tail(&mask)?;
 
-    let depth_map = ios_f32_array_data_to_ndarray(depth_data as *const f32, depth_width as usize, depth_height as usize)?.t().mapv(|v| v as f32);
+    debug!("Loading depth map {}x{}", depth_width, depth_height);
+    let depth_map = ios_f32_array_data_to_ndarray(
+        depth_data as *const f32,
+        depth_width as usize,
+        depth_height as usize,
+    )?.t().mapv(|v| v as f32);
     let depth_map = rotate_arrayf32(depth_map);
     let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
 
-    let world_point_handler = WorldPointHandler {
-        camera_intrinsics_inverted
-    };
-
+    let world_point_handler = WorldPointHandler { camera_intrinsics_inverted };
     let fish_length_calculator = FishLengthCalculator {
         image_height: img_height as usize,
         image_width: img_width as usize,
-        world_point_handler
+        world_point_handler,
     };
 
     let length = fish_length_calculator.calculate_fish_length(&depth_map, &left, &right);
+    info!("Fish length calculated: {:.4}m", length);
 
     Ok((length, left, right))
 }
@@ -282,53 +333,44 @@ pub extern "C" fn compute_length(
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
     camera_intrinsics_inverted_data: *const f32
 ) -> ComputeLengthResult {
+    init_tracing();
     match do_compute_length(
         img_data, img_width, img_height, // RGB
         depth_data, depth_width, depth_height, // Depth Map
         camera_intrinsics_inverted_data
     ) {
-        Ok((length, left, right)) => ComputeLengthResult {
-            length,
-            left: Coordinate { x: left[0] as usize, y: left[1] as usize },
-            right: Coordinate { x: right[0] as usize, y: right[1] as usize },
-            fish_found: true,
-            error_string: null()
+        Ok((length, left, right)) => {
+            info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right);
+            ComputeLengthResult {
+                length,
+                left: Coordinate { x: left[0] as usize, y: left[1] as usize },
+                right: Coordinate { x: right[0] as usize, y: right[1] as usize },
+                fish_found: true,
+                error_string: [0i8; 256],
+            }
         },
         Err(error) => {
             match error {
-                ExecutionError::FishNotFound => ComputeLengthResult {
-                    length: 0f32,
-                    left: Coordinate { x: 0, y: 0 },
-                    right: Coordinate { x: 0, y: 0 },
-                    fish_found: false,
-                    error_string: null()
-                },
-                other => {
-                    let cstring_ptr = unsafe {
-                        // By boxing this, we move it to the heap.
-                        // It is still owned by Rust.
-                        let cstring_heap = Box::new(
-                            // This cannot be null here, so unwrap should be safe.
-                            // This is part of the error handling, if we can't fail
-                            // gracefully, it's okay to crash.
-                            CString::new(other.to_string()).unwrap()
-                        );
-
-                        // Rust no longer has ownership of this data.
-                        // It is now Swift's responsibility to clean up correctly!
-                        let data:*const CString = transmute(cstring_heap);
-
-                        (&*data).as_ptr()
-                    };
-
+                ExecutionError::FishNotFound => {
+                    warn!("compute_length: no fish found in image");
                     ComputeLengthResult {
                         length: 0f32,
                         left: Coordinate { x: 0, y: 0 },
                         right: Coordinate { x: 0, y: 0 },
                         fish_found: false,
-                        error_string: cstring_ptr as *const c_uchar
+                        error_string: [0i8; 256],
                     }
-                }
+                },
+                other => {
+                    error!("compute_length error: {}", other);
+                    ComputeLengthResult {
+                        length: 0f32,
+                        left: Coordinate { x: 0, y: 0 },
+                        right: Coordinate { x: 0, y: 0 },
+                        fish_found: false,
+                        error_string: write_error_string(&other.to_string()),
+                    }
+                },
             }
         }
     }

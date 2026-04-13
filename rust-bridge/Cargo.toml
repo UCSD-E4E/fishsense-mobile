@@ -10,6 +10,8 @@ fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fi
 libc = "0.2.184"
 ndarray = "0.17.2"
 opencv = "0.98.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [lib]
 name = "fishsense_bridge"

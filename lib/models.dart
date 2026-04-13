@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 /// PhotoModel - Main entity for storing photo data with depth information

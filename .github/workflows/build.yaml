@@ -49,6 +49,9 @@ jobs:
     - name: 📥 Get dependencies
       run: flutter pub get
 
+    - name: 🔍 Flutter analyze
+      run: flutter analyze --no-fatal-infos
+
     - name: 🧪 Run Flutter tests
       run: flutter test
 
@@ -69,11 +72,21 @@ jobs:
         cd rust-bridge
         make
 
-    - name: 🧪 Run Rust tests
+    - name: 🔍 Rust lint (clippy)
       run: |
         brew install opencv
         cd rust-bridge
+        cargo clippy -- -D warnings
+
+    - name: 🧪 Run Rust tests
+      run: |
+        cd rust-bridge
         cargo test
+
+    - name: 🔍 Swift lint (SwiftLint)
+      run: |
+        brew install swiftlint
+        swiftlint lint --strict ios/Runner
 
     - name: 📱 Configure iOS App
       run: |
@@ -131,6 +144,16 @@ jobs:
         key: ${{ runner.os }}-xcode-derived-data-${{ hashFiles('ios/Podfile.lock', 'pubspec.yaml') }}
         restore-keys: |
           ${{ runner.os }}-xcode-derived-data-
+
+    - name: 🧪 Run Swift unit tests
+      run: |
+        xcodebuild test \
+          -workspace ios/Runner.xcworkspace \
+          -scheme Runner \
+          -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
+          -only-testing RunnerTests \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO
 
     - name: 🏗️ Build Flutter iOS
       run: flutter build ios --release --no-codesign

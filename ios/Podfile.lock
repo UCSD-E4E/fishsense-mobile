@@ -1,9 +1,5 @@
 PODS:
-  - arkit_plugin (0.0.1):
-    - Flutter
-    - GLTFSceneKit
   - Flutter (1.0.0)
-  - GLTFSceneKit (0.3.0)
   - permission_handler_apple (9.3.0):
     - Flutter
   - sqflite_darwin (0.0.4):
@@ -11,18 +7,11 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - arkit_plugin (from `.symlinks/plugins/arkit_plugin/ios`)
   - Flutter (from `Flutter`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
 
-SPEC REPOS:
-  trunk:
-    - GLTFSceneKit
-
 EXTERNAL SOURCES:
-  arkit_plugin:
-    :path: ".symlinks/plugins/arkit_plugin/ios"
   Flutter:
     :path: Flutter
   permission_handler_apple:
@@ -31,12 +20,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
 
 SPEC CHECKSUMS:
-  arkit_plugin: 82331267ea3c39ff432223c1ecf38d818b4897ba
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  GLTFSceneKit: d1b437c514ba2aed5555afb0fddd64e030612d57
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
 
-PODFILE CHECKSUM: 2b829fecaf324e2d151815c008874fcc34b03016
+PODFILE CHECKSUM: 43c3c1730cdcce4b57f4a23d5a45360e694a29df
 
 COCOAPODS: 1.16.2

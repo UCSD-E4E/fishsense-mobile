@@ -2,10 +2,11 @@ import 'dart:typed_data';
 import 'package:fishsense_android/main.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'models.dart';
-import 'services.dart';
-import 'database.dart';
-import 'extensions.dart';
+import '../models.dart';
+import '../services/file_storage_service.dart';
+import '../database.dart';
+import '../extensions.dart';
+import '../logger.dart';
 
 /// Photo gallery screen with grid display and photo management
 /// Direct translation from Swift/FishSense/PhotoViewController.swift and ImageGallery.swift
@@ -22,8 +23,6 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   List<DataTemp> _savedPhotos = [];
   bool _isLoading = true;
   bool _isDeleting = false;
-  bool _isUploading = false;
-  DataTemp? _selectedPhoto;
 
   @override
   void initState() {
@@ -35,7 +34,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   /// Public method to refresh photos (called from MainTabView)
   /// Equivalent to iOS viewDidAppear functionality
   void refreshPhotos() {
-    print(' PhotoGalleryScreen.refreshPhotos() called');
+    log.d('PhotoGalleryScreen: refreshPhotos triggered');
     _loadSavedPhotos();
   }
 
@@ -71,11 +70,12 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       });
 
       // Update photo count in app state
+      if (!mounted) return;
       context.read<AppStateProvider>().setPhotoCount(_savedPhotos.length);
       
-      print(' Photos loaded: ${_savedPhotos.length} total');
+      log.i('Gallery loaded ${_savedPhotos.length} photos');
     } catch (e) {
-      print('Error loading saved photos: $e');
+      log.e('Error loading saved photos', error: e);
       setState(() {
         _isLoading = false;
       });
@@ -86,15 +86,13 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   Future<void> _debugCheckDatabase() async {
     try {
       final photos = await DatabaseModel.getAllPhotos();
-      print('DEBUG: Total photos in database: ${photos.length}');
-
+      log.d('DB check: ${photos.length} photos');
       for (int i = 0; i < photos.length; i++) {
         final photo = photos[i];
-        print(
-            'DEBUG: Photo $i - Device: ${photo.deviceInfo}, RGB: ${photo.rgbPath}');
+        log.d('  [$i] device=${photo.deviceInfo}, rgb=${photo.rgbPath}');
       }
     } catch (e) {
-      print('DEBUG: Error checking database: $e');
+      log.e('Error checking database', error: e);
     }
   }
 
@@ -109,7 +107,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     });
 
     try {
-      print('Deleting all photos');
+      log.i('Deleting all photos');
 
       // Delete from database
       final dbSuccess = await DatabaseModel.deleteAllPhotos();
@@ -124,6 +122,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         });
 
         // Update photo count
+        if (!mounted) return;
         context.read<AppStateProvider>().setPhotoCount(0);
 
         _showSuccessMessage('All photos deleted successfully');
@@ -131,8 +130,8 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         _showErrorDialog('Delete Error', 'Failed to delete all photos');
       }
     } catch (e) {
-      print('Error deleting all photos: $e');
-      _showErrorDialog('Delete Error', 'Error deleting photos: $e');
+      log.e('Error deleting all photos', error: e);
+      if (mounted) _showErrorDialog('Delete Error', 'Error deleting photos: $e');
     } finally {
       setState(() {
         _isDeleting = false;
@@ -179,20 +178,11 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   /// Show photo detail modal - equivalent to iOS photo detail view
   void _showPhotoDetail(DataTemp photo) {
-    setState(() {
-      _selectedPhoto = photo;
-    });
-
     showDialog(
       context: context,
       builder: (context) => _PhotoDetailModal(
         photo: photo,
-        onClose: () {
-          setState(() {
-            _selectedPhoto = null;
-          });
-          Navigator.of(context).pop();
-        },
+        onClose: () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -258,7 +248,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         // Manual refresh button (can be removed after testing auto-refresh)
         IconButton(
           onPressed: () async {
-            print('Manual refresh triggered');
+            log.d('Manual gallery refresh triggered');
             await _loadSavedPhotos();
             await _debugCheckDatabase();
           },
@@ -393,7 +383,7 @@ class _PhotoGridItem extends StatelessWidget {
               // Photo image
               Expanded(
                 flex: 3,
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: Image.memory(
                     Uint8List.fromList(photo.image),
@@ -479,7 +469,7 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
-      backgroundColor: Colors.black.withOpacity(0.9),
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
       child: GestureDetector(
         onTap: widget.onClose,
         onPanUpdate: (details) {
@@ -521,7 +511,7 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
+                  color: Colors.black.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -567,7 +557,7 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(

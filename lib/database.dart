@@ -1,16 +1,16 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'models.dart';
+import 'logger.dart';
 
 /// DatabaseModel - Handles all SQLite operations
 /// Direct translation from Swift/FishSense/Models/DatabaseModel.swift
 class DatabaseModel {
   static Database? _database;
-  static const String _databaseName = "database.sqlite";
-  static const String _tableName = "photos";
+  static const String _databaseName = 'database.sqlite';
+  static const String _tableName = 'photos';
 
   /// Singleton pattern - get database instance
   static Future<Database> get database async {
@@ -70,9 +70,9 @@ class DatabaseModel {
 
     try {
       await db.execute(query);
-      print('Photos table created successfully');
+      log.i('Photos table created successfully');
     } catch (e) {
-      print('SQLite Error creating table: $e');
+      log.e('SQLite Error creating table', error: e);
       rethrow;
     }
   }
@@ -105,11 +105,11 @@ class DatabaseModel {
       };
 
       final id = await db.insert(_tableName, values);
-      print('Photo inserted with ID: $id');
+      log.i('Photo inserted with ID: $id');
       return true;
       
     } catch (e) {
-      print('SQLite Error inserting photo: $e');
+      log.e('SQLite Error inserting photo', error: e);
       return false;
     }
   }
@@ -157,7 +157,7 @@ class DatabaseModel {
       });
       
     } catch (e) {
-      print('SQLite Error getting photos for gallery: $e');
+      log.e('SQLite Error getting gallery photos', error: e);
       return [];
     }
   }
@@ -179,7 +179,7 @@ class DatabaseModel {
       return null;
       
     } catch (e) {
-      print('SQLite Error getting photo details: $e');
+      log.e('SQLite Error getting photo details', error: e);
       return null;
     }
   }
@@ -201,7 +201,7 @@ class DatabaseModel {
       return count > 0;
       
     } catch (e) {
-      print('SQLite Error deleting photo: $e');
+      log.e('SQLite Error deleting photo', error: e);
       return false;
     }
   }
@@ -211,11 +211,11 @@ class DatabaseModel {
     try {
       final db = await database;
       await db.delete(_tableName);
-      print('All photos deleted');
+      log.i('All photos deleted');
       return true;
       
     } catch (e) {
-      print('SQLite Error deleting all photos: $e');
+      log.e('SQLite Error deleting all photos', error: e);
       return false;
     }
   }
@@ -228,7 +228,7 @@ class DatabaseModel {
       return Sqflite.firstIntValue(result) ?? 0;
       
     } catch (e) {
-      print('SQLite Error getting count: $e');
+      log.e('SQLite Error getting photo count', error: e);
       return 0;
     }
   }
@@ -249,7 +249,7 @@ class DatabaseModel {
       await db.rawQuery('SELECT 1');
       return true;
     } catch (e) {
-      print('Database health check failed: $e');
+      log.e('Database health check failed', error: e);
       return false;
     }
   }

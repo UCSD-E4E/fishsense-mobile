@@ -1,0 +1,12 @@
+included:
+  - ios/Runner
+
+excluded:
+  - ios/Pods
+  - ios/Flutter
+  - ios/Runner/GeneratedPluginRegistrant.swift
+
+disabled_rules:
+  - trailing_whitespace   # not meaningful in CI
+  - line_length           # long ARKit lines are unavoidable
+  - force_unwrapping      # ARKit factory init requires it at startup
