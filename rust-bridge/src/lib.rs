@@ -2,18 +2,21 @@ extern crate libc;
 use core::slice;
 use std::{ffi::{c_uchar, CString}, fmt::Display, mem::transmute, ptr::null};
 
-use cv_convert::TryIntoCv;
-use fishsense::{fish::{FishHeadTailDetector, FishLengthCalculator, FishSegmentation, HeadTailError, SegmentationError}, WorldPointHandler};
+use fishsense_core::errors::FishSenseError;
+use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
+use fishsense_core::fish::fish_length_calculator::FishLengthCalculator;
+use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationError};
+use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{s, Array1, Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
+use opencv::prelude::MatTraitConst;
 
 #[derive(Debug)]
 enum ExecutionError {
     OpenCVError(opencv::Error),
     FishNotFound,
     SegmentationError(SegmentationError),
-    CVToNDArrayError8UC3(<Mat as TryIntoCv<Array3<u8>>>::Error),
-    HeadTailError(HeadTailError),
+    HeadTailError(FishSenseError),
     ArrayShapeError(ndarray::ShapeError),
 }
 
@@ -41,9 +44,7 @@ impl Display for ExecutionError {
                 write!(f, "FishNotFound"),
             ExecutionError::SegmentationError(error) => 
                 write!(f, "{}", error),
-            ExecutionError::CVToNDArrayError8UC3(error) => 
-                write!(f, "{}", error),
-            ExecutionError::HeadTailError(error) => 
+            ExecutionError::HeadTailError(error) =>
                 write!(f, "{}", error),
             ExecutionError::ArrayShapeError(error) => 
                 write!(f, "{}", error),
@@ -94,19 +95,15 @@ fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: u
 }
 
 fn segmentation_factory() -> Result<FishSegmentation, ExecutionError> {
-    match FishSegmentation::from_web() {
-        Ok(mut segmentation) => {
-            match segmentation.load_model() {
-                Ok(_) => Ok(segmentation),
-                Err(err) => Err(ExecutionError::SegmentationError(err))
-            }
-        },
+    let mut segmentation = FishSegmentation::new();
+    match segmentation.load_model() {
+        Ok(_) => Ok(segmentation),
         Err(err) => Err(ExecutionError::SegmentationError(err))
     }
 }
 
 fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
-    let segmentation = segmentation_factory()?;
+    let mut segmentation = segmentation_factory()?;
 
     match segmentation.inference(&img) {
         Ok(mask) => {
@@ -123,21 +120,21 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
     let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
-    let img_arr: Array3<u8> = img_cv.try_into_cv().map_err(ExecutionError::CVToNDArrayError8UC3)?;
+    let (rows, cols) = (img_cv.rows() as usize, img_cv.cols() as usize);
+    let data = unsafe { slice::from_raw_parts(img_cv.data(), rows * cols * 3) };
+    let img_arr = Array3::from_shape_vec((rows, cols, 3), data.to_vec())
+        .map_err(ExecutionError::ArrayShapeError)?;
     let result = do_inference(img_arr);
 
     result
 }
 
-fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<usize>, Array1<usize>), ExecutionError> {
-    let result = match FishHeadTailDetector::find_head_tail(&mask) {
-        Ok((left, right)) => {
-            Ok((left, right))
-        },
+fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), ExecutionError> {
+    let detector = FishHeadTailDetector {};
+    match detector.find_head_tail_img(mask) {
+        Ok(coords) => Ok((coords.head.0, coords.tail.0)),
         Err(error) => Err(ExecutionError::HeadTailError(error))
-    };
-
-    result
+    }
 }
 
 fn rotate_arrayf32(arr: Array2<f32>) -> Array2<f32> {
@@ -154,7 +151,7 @@ fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
     camera_intrinsics_inverted_data: *const f32
-) -> Result<(f32, Array1<usize>, Array1<usize>), ExecutionError> {
+) -> Result<(f32, Array1<f32>, Array1<f32>), ExecutionError> {
     let mask = inference(img_data, img_width, img_height)?;
     let mask = rotate_arrayu8(mask);
     let (left, right) = find_head_tail(&mask)?;
@@ -173,8 +170,7 @@ fn do_compute_length(
         world_point_handler
     };
 
-    let length = fish_length_calculator.calculate_fish_length(
-        &depth_map, &left.mapv(|v| v as f32), &right.mapv(|v| v as f32));
+    let length = fish_length_calculator.calculate_fish_length(&depth_map, &left, &right);
 
     Ok((length, left, right))
 }
@@ -293,8 +289,8 @@ pub extern "C" fn compute_length(
     ) {
         Ok((length, left, right)) => ComputeLengthResult {
             length,
-            left: Coordinate { x: left[0], y: left[1] },
-            right: Coordinate { x: right[0], y: right[0] },
+            left: Coordinate { x: left[0] as usize, y: left[1] as usize },
+            right: Coordinate { x: right[0] as usize, y: right[1] as usize },
             fish_found: true,
             error_string: null()
         },
