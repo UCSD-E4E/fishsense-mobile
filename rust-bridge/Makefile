@@ -30,7 +30,7 @@ ios: ios-dependencies
 	@ln -sf $(ort_x86_64_static) $(ort_x86_64_lib)/libonnxruntime.a
 	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64 OPENCV_LINK_LIBS="opencv2.framework" OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64 ORT_IOS_XCFWK_LOCATION=$(onnxruntime_framework_location) cargo build --release --lib --target aarch64-apple-ios
 	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_LINK_LIBS="opencv2.framework" OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_IOS_XCFWK_LOCATION=$(onnxruntime_framework_location) cargo build --release --lib --target aarch64-apple-ios-sim
-	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_LINK_LIBS="opencv2.framework" OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_IOS_XCFWK_LOCATION=$(onnxruntime_framework_location) ORT_LIB_LOCATION=$(realpath $(ort_x86_64_lib)) cargo build --release --lib --target x86_64-apple-ios
+	@OPENCV_LINK_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator OPENCV_LINK_LIBS="opencv2.framework" OPENCV_INCLUDE_PATHS=$(opencv_location)/ios-arm64_x86_64-simulator ORT_IOS_XCFWK_LOCATION=$(onnxruntime_framework_location) ORT_LIB_LOCATION=$$(pwd)/$(ort_x86_64_lib) cargo build --release --lib --target x86_64-apple-ios
 	@$(RM) -f libs/libfishsense-ios.a
 	@$(RM) -f libs/libfishsense-ios-sim.a
 	@cp target/aarch64-apple-ios/release/libfishsense_bridge.a libs/libfishsense-ios.a
