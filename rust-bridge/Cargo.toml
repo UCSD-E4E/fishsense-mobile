@@ -6,7 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v0.5.0" }
+fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v1.0.0" }
 libc = "0.2.184"
 ndarray = "0.17.2"
 opencv = "0.98.2"

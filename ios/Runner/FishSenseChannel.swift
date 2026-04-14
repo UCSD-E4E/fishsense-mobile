@@ -15,21 +15,28 @@ class FishSenseChannel {
     }
 
     func setup(messenger: FlutterBinaryMessenger) {
-        channel = FlutterMethodChannel(name: "fishsense_native", binaryMessenger: messenger)
-        channel?.setMethodCallHandler { [weak self] call, result in
+        let channel = FlutterMethodChannel(name: "fishsense_native", binaryMessenger: messenger)
+        self.channel = channel
+        // Capture arkitManager directly so result() is always called even if self is somehow nil.
+        let manager = arkitManager
+        channel.setMethodCallHandler { [weak self] call, result in
             switch call.method {
             case "getDeviceInfo":
-                self?.arkitManager.getDeviceInfo(result: result)
+                manager.getDeviceInfo(result: result)
             case "checkLiDARSupport":
-                self?.arkitManager.checkLiDARSupport(result: result)
+                manager.checkLiDARSupport(result: result)
             case "initializeARKitSession":
-                self?.arkitManager.initializeARKitSession(result: result)
+                manager.initializeARKitSession(result: result)
             case "captureDepthFrame":
-                self?.arkitManager.captureDepthFrame(result: result)
+                manager.captureDepthFrame(result: result)
             case "stopARKitSession":
-                self?.arkitManager.stopARKitSession(result: result)
+                manager.stopARKitSession(result: result)
             case "compute_length":
-                self?.computeLength(call: call, result: result)
+                guard let self = self else {
+                    result(FlutterError(code: "UNAVAILABLE", message: "FishSenseChannel deallocated", details: nil))
+                    return
+                }
+                self.computeLength(call: call, result: result)
             default:
                 result(FlutterMethodNotImplemented)
             }

@@ -1,18 +1,28 @@
 extern crate libc;
 use core::slice;
-use std::{ffi::{c_char, c_uchar}, fmt::Display, sync::Once};
+use std::{ffi::{c_char, c_uchar}, fmt::Display, sync::{LazyLock, Mutex, Once}};
 
 use fishsense_core::errors::FishSenseError;
 use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
 use fishsense_core::fish::fish_length_calculator::FishLengthCalculator;
 use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationError};
 use fishsense_core::world_point_handler::WorldPointHandler;
-use ndarray::{s, Array1, Array2, Array3};
+use ndarray::{Array1, Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
 use opencv::prelude::MatTraitConst;
 use tracing::{debug, error, info, warn};
 
 static TRACING_INIT: Once = Once::new();
+
+/// The segmentation model is expensive to load (ONNX session init + graph optimizations).
+/// Cache it for the process lifetime so it is only initialized once.
+static SEGMENTATION: LazyLock<Mutex<FishSegmentation>> = LazyLock::new(|| {
+    info!("Loading segmentation model (one-time init)");
+    let mut seg = FishSegmentation::new();
+    seg.load_model().expect("Failed to load segmentation model");
+    info!("Segmentation model ready");
+    Mutex::new(seg)
+});
 
 /// Initialize the tracing subscriber once per process lifetime.
 /// On iOS the output goes to stdout, visible in Xcode's console and `Console.app`.
@@ -121,24 +131,9 @@ fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: u
     }
 }
 
-fn segmentation_factory() -> Result<FishSegmentation, ExecutionError> {
-    debug!("Loading segmentation model");
-    let mut segmentation = FishSegmentation::new();
-    match segmentation.load_model() {
-        Ok(_) => {
-            debug!("Segmentation model loaded");
-            Ok(segmentation)
-        },
-        Err(err) => {
-            error!("Failed to load segmentation model: {}", err);
-            Err(ExecutionError::SegmentationError(err))
-        }
-    }
-}
-
 fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     debug!("Running fish segmentation inference on {}x{} image", img.shape()[1], img.shape()[0]);
-    let mut segmentation = segmentation_factory()?;
+    let mut segmentation = SEGMENTATION.lock().unwrap();
 
     match segmentation.inference(&img) {
         Ok(mask) => {
@@ -183,16 +178,6 @@ fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), Execu
     }
 }
 
-fn rotate_arrayf32(arr: Array2<f32>) -> Array2<f32> {
-    // arr[:, ::-1].T
-    arr.slice(s![.., ..;-1]).t().mapv(|v| v)
-}
-
-fn rotate_arrayu8(arr: Array2<u8>) -> Array2<u8> {
-    // arr[:, ::-1].T
-    arr.slice(s![.., ..;-1]).t().mapv(|v| v)
-}
-
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32,
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
@@ -200,8 +185,10 @@ fn do_compute_length(
 ) -> Result<(f32, Array1<f32>, Array1<f32>), ExecutionError> {
     info!("compute_length: image={}x{} depth={}x{}", img_width, img_height, depth_width, depth_height);
 
+    // Segmentation runs in native camera-frame orientation. The returned mask
+    // has shape (img_height, img_width) and head/tail coords come back as
+    // [x, y] in the same image-pixel space.
     let mask = inference(img_data, img_width, img_height)?;
-    let mask = rotate_arrayu8(mask);
     let (left, right) = find_head_tail(&mask)?;
 
     debug!("Loading depth map {}x{}", depth_width, depth_height);
@@ -209,14 +196,18 @@ fn do_compute_length(
         depth_data as *const f32,
         depth_width as usize,
         depth_height as usize,
-    )?.t().mapv(|v| v as f32);
-    let depth_map = rotate_arrayf32(depth_map);
+    )?;
     let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
 
+    // FishLengthCalculator now carries depth_height/depth_width and rescales
+    // image-space coords into the depth grid internally — required because
+    // ARKit depth (~256×192) is much lower resolution than the RGB frame.
     let world_point_handler = WorldPointHandler { camera_intrinsics_inverted };
     let fish_length_calculator = FishLengthCalculator {
         image_height: img_height as usize,
         image_width: img_width as usize,
+        depth_height: depth_height as usize,
+        depth_width: depth_width as usize,
         world_point_handler,
     };
 
@@ -229,62 +220,6 @@ fn do_compute_length(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
-
-    // rotate_arrayu8 / rotate_arrayf32
-    // The operation is: reverse columns ([:, ::-1]) then transpose (.t()).
-    // For a 2×3 input:
-    //   1 2 3       reverse cols→  3 2 1    transpose→  3 6
-    //   4 5 6                      6 5 4                2 5
-    //                                                   1 4
-    // Shape changes from (rows, cols) → (cols, rows).
-
-    #[test]
-    fn rotate_arrayu8_correct_values_and_shape() {
-        let input = array![[1u8, 2, 3], [4, 5, 6]];
-        let result = rotate_arrayu8(input);
-
-        assert_eq!(result.shape(), &[3, 2]);
-        assert_eq!(result[[0, 0]], 3);
-        assert_eq!(result[[0, 1]], 6);
-        assert_eq!(result[[1, 0]], 2);
-        assert_eq!(result[[1, 1]], 5);
-        assert_eq!(result[[2, 0]], 1);
-        assert_eq!(result[[2, 1]], 4);
-    }
-
-    #[test]
-    fn rotate_arrayf32_correct_values_and_shape() {
-        let input = array![[1.0f32, 2.0, 3.0], [4.0, 5.0, 6.0]];
-        let result = rotate_arrayf32(input);
-
-        assert_eq!(result.shape(), &[3, 2]);
-        assert!((result[[0, 0]] - 3.0).abs() < 1e-6);
-        assert!((result[[0, 1]] - 6.0).abs() < 1e-6);
-        assert!((result[[1, 0]] - 2.0).abs() < 1e-6);
-        assert!((result[[1, 1]] - 5.0).abs() < 1e-6);
-        assert!((result[[2, 0]] - 1.0).abs() < 1e-6);
-        assert!((result[[2, 1]] - 4.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn rotate_arrayu8_identity_on_1x1() {
-        let input = array![[42u8]];
-        let result = rotate_arrayu8(input);
-        assert_eq!(result.shape(), &[1, 1]);
-        assert_eq!(result[[0, 0]], 42);
-    }
-
-    #[test]
-    fn rotate_arrayf32_single_row_becomes_column() {
-        // 1×3 → 3×1
-        let input = array![[1.0f32, 2.0, 3.0]];
-        let result = rotate_arrayf32(input);
-        assert_eq!(result.shape(), &[3, 1]);
-        assert!((result[[0, 0]] - 3.0).abs() < 1e-6);
-        assert!((result[[1, 0]] - 2.0).abs() < 1e-6);
-        assert!((result[[2, 0]] - 1.0).abs() < 1e-6);
-    }
 
     // ios_f32_array_data_to_ndarray
 

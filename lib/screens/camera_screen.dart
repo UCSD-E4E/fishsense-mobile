@@ -39,7 +39,9 @@ class _CameraScreenState extends State<CameraScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeCamera();
+    // Defer until after the first frame so the native method channel
+    // handler is guaranteed to be registered before we call into it.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeCamera());
   }
 
   @override

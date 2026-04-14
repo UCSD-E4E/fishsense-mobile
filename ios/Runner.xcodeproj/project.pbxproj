@@ -419,6 +419,7 @@
 		};
 		C5CE7924F48529E8956A71E0 /* Build Rust Bridge */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

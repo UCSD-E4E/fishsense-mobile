@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'screens/camera_screen.dart';
 import 'screens/photo_gallery_screen.dart';
-import 'services/camera_service.dart';
 import 'database.dart';
 import 'logger.dart';
 
@@ -30,13 +29,8 @@ Future<void> _initializeApp() async {
     await DatabaseModel.database;
     log.i('Database initialized');
 
-    // Initialize cameras
-    final cameraSuccess = await CameraService.initializeCameras();
-    log.i('Camera initialization: ${cameraSuccess ? 'Success' : 'Failed'}');
-
-    // Check permissions
-    final cameraPermission = await CameraService.checkCameraPermission();
-    log.d('Camera permission: ${cameraPermission ? 'Granted' : 'Denied'}');
+    // Camera initialization is deferred to CameraScreen to avoid calling
+    // platform channels before the Flutter engine is in its running state.
 
   } catch (e) {
     log.e('Error initializing app', error: e);

@@ -17,6 +17,11 @@ class ARKitService {
   /// Check LiDAR support and initialize ARKit.
   /// Returns true on a LiDAR-capable iOS device.
   static Future<bool> initializeARKit() async {
+    if (_isInitialized) {
+      log.d('$_tag: Already initialized');
+      return true;
+    }
+
     try {
       log.d('$_tag: Checking LiDAR support');
 
