@@ -17,9 +17,12 @@ release: rust flutter-deps
 debug: rust flutter-deps
 	flutter run
 
-test: flutter-deps
+test: flutter-deps rust
 	cd rust-bridge && cargo test
 	flutter test
+	flutter precache --ios
+	cd ios && pod install
+	cd ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5'
 
 lint: flutter-deps
 	cd rust-bridge && cargo fmt --check && cargo clippy -- -D warnings
