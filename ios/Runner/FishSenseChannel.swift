@@ -87,18 +87,25 @@ class FishSenseChannel {
 
         // Run the Rust ML pipeline off the main thread to keep the UI responsive.
         DispatchQueue.global(qos: .userInitiated).async {
+            // Caller-allocated buffer for the segmentation mask. Rust writes
+            // one byte per pixel (row-major). Size matches the RGB frame.
+            var maskData = Data(count: imageWidth * imageHeight)
+
             let rustResult = imageData.withUnsafeBytes { imageBytes in
                 depthData.withUnsafeBytes { depthBytes in
                     cameraIntrinsicsFloat32.withUnsafeBufferPointer { intrinsicsPtr in
-                        return FishSenseRS.compute_length(
-                            imageBytes.bindMemory(to: UInt8.self).baseAddress,
-                            UInt32(imageWidth),
-                            UInt32(imageHeight),
-                            depthBytes.bindMemory(to: UInt8.self).baseAddress,
-                            UInt32(depthWidth),
-                            UInt32(depthHeight),
-                            intrinsicsPtr.baseAddress
-                        )
+                        maskData.withUnsafeMutableBytes { maskBytes in
+                            return FishSenseRS.compute_length(
+                                imageBytes.bindMemory(to: UInt8.self).baseAddress,
+                                UInt32(imageWidth),
+                                UInt32(imageHeight),
+                                depthBytes.bindMemory(to: UInt8.self).baseAddress,
+                                UInt32(depthWidth),
+                                UInt32(depthHeight),
+                                intrinsicsPtr.baseAddress,
+                                maskBytes.bindMemory(to: UInt8.self).baseAddress
+                            )
+                        }
                     }
                 }
             }
@@ -108,7 +115,7 @@ class FishSenseChannel {
                 return str.isEmpty ? nil : str
             }
 
-            let flutterResult: [String: Any] = [
+            var flutterResult: [String: Any] = [
                 "success": true,
                 "length": Double(rustResult.length),
                 "fishFound": rustResult.fish_found,
@@ -119,6 +126,12 @@ class FishSenseChannel {
                 "confidence": 0.8,
                 "errorString": errorMsg as Any
             ]
+
+            if rustResult.fish_found {
+                flutterResult["mask"] = FlutterStandardTypedData(bytes: maskData)
+                flutterResult["maskWidth"] = imageWidth
+                flutterResult["maskHeight"] = imageHeight
+            }
 
             if rustResult.fish_found {
                 logger.info("compute_length: fish found, length=\(rustResult.length)m")

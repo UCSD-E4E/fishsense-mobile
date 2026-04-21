@@ -26,7 +26,7 @@ class DatabaseModel {
     
     return await openDatabase(
       databasePath,
-      version: 3, // UPDATED: Increment version for fish_length column
+      version: 4, // v4: mask + snout/fork + capture orientation
       onCreate: _createTables,
       onUpgrade: _onUpgrade, // Handle schema upgrades
     );
@@ -47,6 +47,17 @@ class DatabaseModel {
       // Add fish_length column for version 3
       await db.execute('ALTER TABLE photos ADD COLUMN fish_length REAL');
     }
+    if (oldVersion < 4) {
+      // v4: persist segmentation mask, snout/fork points, capture orientation
+      await db.execute('ALTER TABLE photos ADD COLUMN mask_bytes BLOB');
+      await db.execute('ALTER TABLE photos ADD COLUMN mask_width INTEGER');
+      await db.execute('ALTER TABLE photos ADD COLUMN mask_height INTEGER');
+      await db.execute('ALTER TABLE photos ADD COLUMN snout_x REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN snout_y REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN fork_x REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN fork_y REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN capture_orientation TEXT');
+    }
   }
 
   /// Create photos table - exact same schema as iOS + device info + fish length
@@ -64,7 +75,15 @@ class DatabaseModel {
         confidence_width INTEGER NOT NULL,
         confidence_height INTEGER NOT NULL,
         device_info TEXT,
-        fish_length REAL
+        fish_length REAL,
+        mask_bytes BLOB,
+        mask_width INTEGER,
+        mask_height INTEGER,
+        snout_x REAL,
+        snout_y REAL,
+        fork_x REAL,
+        fork_y REAL,
+        capture_orientation TEXT
       );
     ''';
 
@@ -101,7 +120,15 @@ class DatabaseModel {
         'confidence_width': photo.confidenceMap.width,
         'confidence_height': photo.confidenceMap.height,
         'device_info': photo.deviceInfo,
-        'fish_length': photo.fishLength, // NEW: Store fish length measurement
+        'fish_length': photo.fishLength,
+        'mask_bytes': photo.maskBytes,
+        'mask_width': photo.maskWidth,
+        'mask_height': photo.maskHeight,
+        'snout_x': photo.snoutX,
+        'snout_y': photo.snoutY,
+        'fork_x': photo.forkX,
+        'fork_y': photo.forkY,
+        'capture_orientation': photo.captureOrientation,
       };
 
       final id = await db.insert(_tableName, values);
@@ -118,19 +145,28 @@ class DatabaseModel {
   static Future<List<PhotoModel>> getAllPhotosForGallery() async {
     try {
       final db = await database;
+      // The mask BLOB can be megabytes per row — fetch it lazily via
+      // getPhotoWithBlobs() when the detail view opens.
       final List<Map<String, dynamic>> maps = await db.query(
         _tableName,
         columns: [
           'id',
-          'utc_unix_timestamp', 
+          'utc_unix_timestamp',
           'rgb_path',
-          'depth_width',     
+          'depth_width',
           'depth_height',
-          'confidence_width', 
+          'confidence_width',
           'confidence_height',
-          'device_info',      
-          'fish_length'       
-        ], 
+          'device_info',
+          'fish_length',
+          'mask_width',
+          'mask_height',
+          'snout_x',
+          'snout_y',
+          'fork_x',
+          'fork_y',
+          'capture_orientation',
+        ],
         orderBy: 'utc_unix_timestamp DESC',
       );
 
@@ -142,17 +178,24 @@ class DatabaseModel {
           utcUnixTimestamp: maps[i]['utc_unix_timestamp'],
           rgbPath: maps[i]['rgb_path'],
           depthMap: ByteMatrixModel(
-            bytes: null, 
+            bytes: null,
             width: maps[i]['depth_width'],
             height: maps[i]['depth_height'],
           ),
           confidenceMap: ByteMatrixModel(
-            bytes: null, 
+            bytes: null,
             width: maps[i]['confidence_width'],
             height: maps[i]['confidence_height'],
           ),
           deviceInfo: maps[i]['device_info'],
-          fishLength: maps[i]['fish_length'], 
+          fishLength: maps[i]['fish_length'],
+          maskWidth: maps[i]['mask_width'] as int?,
+          maskHeight: maps[i]['mask_height'] as int?,
+          snoutX: (maps[i]['snout_x'] as num?)?.toDouble(),
+          snoutY: (maps[i]['snout_y'] as num?)?.toDouble(),
+          forkX: (maps[i]['fork_x'] as num?)?.toDouble(),
+          forkY: (maps[i]['fork_y'] as num?)?.toDouble(),
+          captureOrientation: maps[i]['capture_orientation'] as String?,
         );
       });
       

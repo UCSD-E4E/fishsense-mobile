@@ -6,6 +6,31 @@ import '../logger.dart';
 class RustService {
   static const MethodChannel _channel = MethodChannel('fishsense_native');
 
+  /// Invert a 3x3 camera intrinsics matrix laid out in row-major order
+  /// `[fx, 0, cx, 0, fy, cy, 0, 0, 1]` and return `K^-1` in the same layout.
+  /// The Rust `WorldPointHandler` multiplies `K^-1 · [x, y, 1] · depth`, so
+  /// the matrix must be the plain inverse — sending the transpose inflates
+  /// the computed z-component by roughly `-(cx·x/fx + cy·y/fy)` and produces
+  /// lengths 100-1000× too large. Returns the input unchanged if fx or fy
+  /// is zero.
+  static List<double> invertIntrinsics(List<double> intrinsics) {
+    final fx = intrinsics[0];
+    final fy = intrinsics[4];
+    final cx = intrinsics[2];
+    final cy = intrinsics[5];
+
+    if (fx == 0 || fy == 0) {
+      log.w('Camera intrinsics have zero focal length — using identity');
+      return intrinsics;
+    }
+
+    return [
+      1.0 / fx, 0.0,      -cx / fx,
+      0.0,      1.0 / fy, -cy / fy,
+      0.0,      0.0,       1.0,
+    ];
+  }
+
   /// Compute fish length using the Rust ML pipeline.
   static Future<ComputeLengthResult> computeLength({
     required Uint8List imageData,

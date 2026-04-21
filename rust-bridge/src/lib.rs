@@ -181,7 +181,8 @@ fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), Execu
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32,
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
-    camera_intrinsics_inverted_data: *const f32
+    camera_intrinsics_inverted_data: *const f32,
+    mask_out: *mut c_uchar,
 ) -> Result<(f32, Array1<f32>, Array1<f32>), ExecutionError> {
     info!("compute_length: image={}x{} depth={}x{}", img_width, img_height, depth_width, depth_height);
 
@@ -189,6 +190,19 @@ fn do_compute_length(
     // has shape (img_height, img_width) and head/tail coords come back as
     // [x, y] in the same image-pixel space.
     let mask = inference(img_data, img_width, img_height)?;
+
+    // Copy the mask out to the caller-owned buffer so the UI can draw a
+    // segmentation overlay. Using a caller-allocated buffer avoids any
+    // cross-language heap ownership concerns.
+    if !mask_out.is_null() {
+        let total = (img_width as usize) * (img_height as usize);
+        let mask_std = mask.as_standard_layout();
+        if let Some(src) = mask_std.as_slice() {
+            let n = src.len().min(total);
+            unsafe { std::ptr::copy_nonoverlapping(src.as_ptr(), mask_out, n); }
+        }
+    }
+
     let (left, right) = find_head_tail(&mask)?;
 
     debug!("Loading depth map {}x{}", depth_width, depth_height);
@@ -262,17 +276,22 @@ mod tests {
     }
 }
 
+/// Caller-allocated `mask_out` is a buffer of `img_width * img_height` bytes.
+/// On success the segmentation mask is copied there in row-major order.
+/// Pass null to skip mask output.
 #[unsafe(no_mangle)]
 pub extern "C" fn compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32, // RGB
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32, // Depth Map
-    camera_intrinsics_inverted_data: *const f32
+    camera_intrinsics_inverted_data: *const f32,
+    mask_out: *mut c_uchar,
 ) -> ComputeLengthResult {
     init_tracing();
     match do_compute_length(
         img_data, img_width, img_height, // RGB
         depth_data, depth_width, depth_height, // Depth Map
-        camera_intrinsics_inverted_data
+        camera_intrinsics_inverted_data,
+        mask_out,
     ) {
         Ok((length, left, right)) => {
             info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right);

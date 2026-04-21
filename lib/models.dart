@@ -11,6 +11,23 @@ class PhotoModel {
   final String? deviceInfo;        // Existing device info field
   final double? fishLength;        // Fish length measurement in cm
 
+  /// Segmentation mask bytes (row-major, one byte per pixel, nonzero = fish).
+  /// Dimensions match the captured RGB frame.
+  final Uint8List? maskBytes;
+  final int? maskWidth;
+  final int? maskHeight;
+
+  /// Detected snout / fork points in captured-frame pixel coordinates.
+  final double? snoutX;
+  final double? snoutY;
+  final double? forkX;
+  final double? forkY;
+
+  /// Device orientation at the time of capture ("portrait" or "landscape").
+  /// Used by the detail viewer so the sensor-native landscape pixels are
+  /// shown the way the user framed them.
+  final String? captureOrientation;
+
   PhotoModel({
     required this.id,
     required this.utcUnixTimestamp,
@@ -19,6 +36,14 @@ class PhotoModel {
     required this.confidenceMap,
     this.deviceInfo,              // Optional device info
     this.fishLength,              // Optional fish length
+    this.maskBytes,
+    this.maskWidth,
+    this.maskHeight,
+    this.snoutX,
+    this.snoutY,
+    this.forkX,
+    this.forkY,
+    this.captureOrientation,
   });
 
   /// Factory constructor - equivalent to Swift init?() method
@@ -29,6 +54,14 @@ class PhotoModel {
     required ByteMatrixModel confidenceMap,
     String? deviceInfo,
     double? fishLength,           // Optional fish length parameter
+    Uint8List? maskBytes,
+    int? maskWidth,
+    int? maskHeight,
+    double? snoutX,
+    double? snoutY,
+    double? forkX,
+    double? forkY,
+    String? captureOrientation,
     int id = -1,
   }) {
     return PhotoModel(
@@ -39,6 +72,14 @@ class PhotoModel {
       confidenceMap: confidenceMap,
       deviceInfo: deviceInfo,
       fishLength: fishLength,     // Pass fish length to constructor
+      maskBytes: maskBytes,
+      maskWidth: maskWidth,
+      maskHeight: maskHeight,
+      snoutX: snoutX,
+      snoutY: snoutY,
+      forkX: forkX,
+      forkY: forkY,
+      captureOrientation: captureOrientation,
     );
   }
 
@@ -56,11 +97,23 @@ class PhotoModel {
       'confidence_height': confidenceMap.height,
       'device_info': deviceInfo,
       'fish_length': fishLength,  // Include fish length in database map
+      'mask_bytes': maskBytes,
+      'mask_width': maskWidth,
+      'mask_height': maskHeight,
+      'snout_x': snoutX,
+      'snout_y': snoutY,
+      'fork_x': forkX,
+      'fork_y': forkY,
+      'capture_orientation': captureOrientation,
     };
   }
 
   /// Create from database Map
   static PhotoModel fromMap(Map<String, dynamic> map) {
+    final rawMask = map['mask_bytes'];
+    final Uint8List? mask = rawMask is Uint8List
+        ? rawMask
+        : (rawMask is List<int> ? Uint8List.fromList(rawMask) : null);
     return PhotoModel(
       id: map['id'],
       utcUnixTimestamp: map['utc_unix_timestamp'],
@@ -76,7 +129,15 @@ class PhotoModel {
         height: map['confidence_height'],
       ),
       deviceInfo: map['device_info'],
-      fishLength: map['fish_length']?.toDouble(), // Parse fish length from database
+      fishLength: map['fish_length']?.toDouble(),
+      maskBytes: mask,
+      maskWidth: map['mask_width'] as int?,
+      maskHeight: map['mask_height'] as int?,
+      snoutX: (map['snout_x'] as num?)?.toDouble(),
+      snoutY: (map['snout_y'] as num?)?.toDouble(),
+      forkX: (map['fork_x'] as num?)?.toDouble(),
+      forkY: (map['fork_y'] as num?)?.toDouble(),
+      captureOrientation: map['capture_orientation'] as String?,
     );
   }
 }
@@ -112,12 +173,14 @@ class ByteMatrixModel {
 /// Direct translation from Swift/FishSense/ImageGallery.swift
 class DataTemp {
   final String id;
+  final int photoId; // DB primary key — used to lazily fetch the mask blob.
   final List<int> image;  // UIImage equivalent as bytes
   final DateTime creationDate;
   final double? fishLen;   // Changed from int? to double? to match PhotoModel
   final String? deviceInfo; // Include device info for gallery display
 
   DataTemp({
+    required this.photoId,
     required this.image,
     required this.creationDate,
     this.fishLen,           // Fish length from PhotoModel.fishLength
@@ -179,7 +242,13 @@ class ComputeLengthResult {
 
   final double confidence;
   final Uint8List? imageWithDots;
-  
+
+  /// Segmentation mask bytes (row-major, one byte per pixel, nonzero = fish).
+  /// Dimensions match the captured RGB frame.
+  final Uint8List? mask;
+  final int maskWidth;
+  final int maskHeight;
+
   ComputeLengthResult({
     required this.length,
     required this.fishFound,
@@ -191,6 +260,9 @@ class ComputeLengthResult {
 
     this.confidence = 0.0,
     this.imageWithDots,
+    this.mask,
+    this.maskWidth = 0,
+    this.maskHeight = 0,
   }) : left = left ?? Coordinate.zero,
        right = right ?? Coordinate.zero;
 
@@ -201,6 +273,9 @@ class ComputeLengthResult {
     required Coordinate right,
     double confidence = 0.0,
     Uint8List? imageWithDots,
+    Uint8List? mask,
+    int maskWidth = 0,
+    int maskHeight = 0,
   }) {
     return ComputeLengthResult(
       length: length,
@@ -209,6 +284,9 @@ class ComputeLengthResult {
       right: right,
       confidence: confidence,
       imageWithDots: imageWithDots,
+      mask: mask,
+      maskWidth: maskWidth,
+      maskHeight: maskHeight,
     );
   }
 
@@ -242,6 +320,10 @@ class ComputeLengthResult {
 
   /// Create result from platform channel data (for Flutter ↔ iOS communication)
   factory ComputeLengthResult.fromMap(Map<dynamic, dynamic> map) {
+    final rawMask = map['mask'];
+    final Uint8List? mask = rawMask is Uint8List
+        ? rawMask
+        : (rawMask is List<int> ? Uint8List.fromList(rawMask) : null);
     return ComputeLengthResult(
       length: (map['length'] ?? 0.0).toDouble(),
       fishFound: map['fishFound'] ?? false,
@@ -256,6 +338,9 @@ class ComputeLengthResult {
       ),
       confidence: (map['confidence'] ?? 0.0).toDouble(),
       imageWithDots: map['imageWithDots'],
+      mask: mask,
+      maskWidth: (map['maskWidth'] ?? 0) as int,
+      maskHeight: (map['maskHeight'] ?? 0) as int,
     );
   }
 

@@ -8,6 +8,7 @@ import '../services/file_storage_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
 import '../logger.dart';
+import 'fish_result_screen.dart';
 
 /// Camera screen with AR functionality
 /// Direct translation from Swift/FishSense/ViewController.swift
@@ -25,12 +26,8 @@ class _CameraScreenState extends State<CameraScreen>
   bool _isCameraInitialized = false;
   bool _isProcessingPhoto = false;
 
-  // UI state - equivalent to iOS ViewController properties
-  String _statusMessage = 'Camera Loading';
-  String _lengthMessage = 'Distance: ';
-
-  // Fish measurement state
-  Uint8List? _currentImageWithDots;
+  // Message shown inside the full-screen processing overlay during capture.
+  String _processingMessage = '';
 
   // UI Controllers - equivalent to iOS IBOutlets
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -59,17 +56,12 @@ class _CameraScreenState extends State<CameraScreen>
     if (success) {
       if (CameraService.isUsingARKit()) {
         log.i('Using ARKit — native camera view active');
-        setState(() {
-          _isCameraInitialized = true;
-          _statusMessage = 'ARKit LiDAR Ready';
-        });
       } else {
         log.w('ARKit not active despite successful init');
-        setState(() {
-          _isCameraInitialized = true;
-          _statusMessage = 'Camera Ready';
-        });
       }
+      setState(() {
+        _isCameraInitialized = true;
+      });
     } else {
       log.e('Camera initialization FAILED');
     }
@@ -82,9 +74,15 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
 
+    // Snapshot the device orientation at the moment of capture so the result
+    // screen can display the photo the way the user framed it — ARKit always
+    // writes sensor-native landscape pixels regardless of how the phone was
+    // held.
+    final captureOrientation = MediaQuery.orientationOf(context);
+
     setState(() {
       _isProcessingPhoto = true;
-      _statusMessage = 'Capturing photo...';
+      _processingMessage = 'Capturing photo...';
     });
 
     try {
@@ -118,43 +116,8 @@ class _CameraScreenState extends State<CameraScreen>
         log.w('Not using ARKit — depth data may be mock');
       }
 
-      // Convert camera intrinsics to inverted-transpose format:
-      // matrix3x3ToArray(intrinsics.inverse.transpose)
-      List<double> convertToInvertedTransposeFormat(List<double> intrinsics) {
-        try {
-          final fx = intrinsics[0];
-          final fy = intrinsics[4];
-          final cx = intrinsics[2];
-          final cy = intrinsics[5];
-
-          log.d('Camera intrinsics — fx=$fx, fy=$fy, cx=$cx, cy=$cy');
-
-          if (fx == 0 || fy == 0) {
-            log.w('Camera intrinsics have zero focal length — using identity');
-            return intrinsics;
-          }
-
-          // Inverse and transpose of the camera intrinsics matrix:
-          // Original:    Inverse:           Transposed inverse:
-          // [fx  0 cx]   [1/fx  0 -cx/fx]   [1/fx    0     0  ]
-          // [ 0 fy cy] → [  0 1/fy -cy/fy] → [  0   1/fy   0  ]
-          // [ 0  0  1]   [  0   0    1   ]   [-cx/fx -cy/fy 1  ]
-          final result = [
-            1.0 / fx, 0.0,       0.0,
-            0.0,      1.0 / fy,  0.0,
-            -cx / fx, -cy / fy,  1.0,
-          ];
-
-          log.d('Inverted-transposed intrinsics: $result');
-          return result;
-        } catch (e) {
-          log.e('Error converting camera intrinsics', error: e);
-          return intrinsics;
-        }
-      }
-
       setState(() {
-        _statusMessage = 'Analyzing fish...';
+        _processingMessage = 'Analyzing fish...';
       });
 
       // Call Rust pipeline with REAL or mock data (automatically determined)
@@ -165,8 +128,8 @@ class _CameraScreenState extends State<CameraScreen>
         depthData: Uint8List.fromList(captureResult.depthMap.bytes ?? []),
         depthWidth: captureResult.depthMap.width,
         depthHeight: captureResult.depthMap.height,
-        cameraIntrinsicsInverted: convertToInvertedTransposeFormat(
-            captureResult.cameraIntrinsics), // Correct format
+        cameraIntrinsicsInverted: RustService.invertIntrinsics(
+            captureResult.cameraIntrinsics),
       );
 
       // Create photo model for database storage using factory method
@@ -177,6 +140,18 @@ class _CameraScreenState extends State<CameraScreen>
         confidenceMap: captureResult.confidenceMap,
         deviceInfo: deviceInfo,
         fishLength: result.fishFound ? result.length : null,
+        maskBytes: result.fishFound ? result.mask : null,
+        maskWidth: result.fishFound && result.maskWidth > 0
+            ? result.maskWidth
+            : null,
+        maskHeight: result.fishFound && result.maskHeight > 0
+            ? result.maskHeight
+            : null,
+        snoutX: result.fishFound ? result.left.x : null,
+        snoutY: result.fishFound ? result.left.y : null,
+        forkX: result.fishFound ? result.right.x : null,
+        forkY: result.fishFound ? result.right.y : null,
+        captureOrientation: captureOrientation.name,
       );
 
       // Save to database - equivalent to iOS insertPhoto(with:)
@@ -188,13 +163,16 @@ class _CameraScreenState extends State<CameraScreen>
       }
 
       if (result.fishFound) {
-        setState(() {
-          _lengthMessage = 'Length: ${(result.length * 100).toStringAsFixed(1)}cm';
-          _currentImageWithDots = result.imageWithDots;
-        });
-
-        _showSuccessDialog('Fish Found!',
-            'Fish length: ${(result.length * 100).toStringAsFixed(1)}cm\n');
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => FishResultScreen(
+              photoBytes: captureResult.imageBytes,
+              result: result,
+              captureOrientation: captureOrientation,
+            ),
+          ),
+        );
       } else {
         _showErrorDialog(
             'No Fish Found',
@@ -207,8 +185,7 @@ class _CameraScreenState extends State<CameraScreen>
     } finally {
       setState(() {
         _isProcessingPhoto = false;
-        _statusMessage =
-            _isCameraInitialized ? 'ARKit LiDAR Ready' : 'Camera Ready';
+        _processingMessage = '';
       });
     }
   }
@@ -256,48 +233,6 @@ void _showErrorDialog(String title, String message) {
   );
 }
 
-/// Show success dialog for fish detection
-void _showSuccessDialog(String title, String message) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        // Dark, semi-transparent background
-        backgroundColor: Colors.grey[900]?.withValues(alpha: 0.9),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        // Title with bold white text
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        // Content with light grey text
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-        ),
-        // Action button styled with your app's accent color
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                color: Color(0xFF00AAA5), // Your app's teal accent color
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -315,14 +250,8 @@ void _showSuccessDialog(String title, String message) {
         // Native ARKit camera view via platform view
         _buildNativeCameraBackground(),
 
-        // Status overlay - equivalent to iOS status labels
-        _buildStatusOverlay(),
-
         // Capture button - equivalent to iOS photo capture button
         _buildCaptureButton(),
-
-        // Fish image overlay - equivalent to iOS fish image display
-        if (_currentImageWithDots != null) _buildFishImageOverlay(),
 
         // Processing overlay when capturing
         if (_isProcessingPhoto) _buildProcessingOverlay(),
@@ -344,7 +273,7 @@ void _showSuccessDialog(String title, String message) {
             ),
             const SizedBox(height: 20),
             Text(
-              _statusMessage,
+              _processingMessage,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -392,54 +321,6 @@ void _showSuccessDialog(String title, String message) {
         child: Text(
           'ARKit only available on iOS',
           style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      ),
-    );
-  }
-
-  /// Status overlay - equivalent to iOS greyView + status labels
-  Widget _buildStatusOverlay() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.7),
-              Colors.transparent,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _statusMessage,
-                style: const TextStyle(
-                  color: Colors.orange,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _lengthMessage,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -495,26 +376,4 @@ void _showSuccessDialog(String title, String message) {
     );
   }
 
-  /// Fish image overlay - equivalent to iOS fish image display
-  Widget _buildFishImageOverlay() {
-    return Positioned(
-      top: 16,
-      right: 16,
-      child: Container(
-        width: 180,
-        height: 240,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white, width: 1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            _currentImageWithDots!,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-    );
-  }
 }

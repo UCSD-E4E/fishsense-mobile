@@ -7,6 +7,7 @@ import '../services/file_storage_service.dart';
 import '../database.dart';
 import '../extensions.dart';
 import '../logger.dart';
+import '../widgets/fish_photo_overlay.dart';
 
 /// Photo gallery screen with grid display and photo management
 /// Direct translation from Swift/FishSense/PhotoViewController.swift and ImageGallery.swift
@@ -54,11 +55,12 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
         if (imageBytes != null) {
           final dataTemp = DataTemp(
+            photoId: photo.id,
             image: imageBytes.toList(),
             creationDate:
                 DateTime.fromMillisecondsSinceEpoch(photo.utcUnixTimestamp),
-            fishLen: photo.fishLength, 
-            deviceInfo: photo.deviceInfo, 
+            fishLen: photo.fishLength,
+            deviceInfo: photo.deviceInfo,
           );
           dataTempList.add(dataTemp);
         }
@@ -449,7 +451,9 @@ class _PhotoGridItem extends StatelessWidget {
   }
 }
 
-/// Photo detail modal - equivalent to iOS photo detail view with gestures
+/// Photo detail modal — fetches the full PhotoModel (with mask blob) from
+/// the DB and renders the same segmentation + snout/fork overlay used on
+/// the post-capture result screen.
 class _PhotoDetailModal extends StatefulWidget {
   final DataTemp photo;
   final VoidCallback onClose;
@@ -464,112 +468,135 @@ class _PhotoDetailModal extends StatefulWidget {
 }
 
 class _PhotoDetailModalState extends State<_PhotoDetailModal> {
-  Offset _position = Offset.zero;
+  PhotoModel? _full;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFull();
+  }
+
+  Future<void> _loadFull() async {
+    final full = await DatabaseModel.getPhotoWithBlobs(widget.photo.photoId);
+    if (!mounted) return;
+    setState(() {
+      _full = full;
+      _loading = false;
+    });
+  }
+
+  Orientation? _orientationFromString(String? name) {
+    switch (name) {
+      case 'portrait':
+        return Orientation.portrait;
+      case 'landscape':
+        return Orientation.landscape;
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final full = _full;
+    final photoBytes = Uint8List.fromList(widget.photo.image);
+
+    Widget imageLayer;
+    if (_loading) {
+      imageLayer = const Center(
+        child: CircularProgressIndicator(color: Color(0xFF00AAA5)),
+      );
+    } else {
+      final snout = (full?.snoutX != null && full?.snoutY != null)
+          ? Coordinate(x: full!.snoutX!, y: full.snoutY!)
+          : null;
+      final fork = (full?.forkX != null && full?.forkY != null)
+          ? Coordinate(x: full!.forkX!, y: full.forkY!)
+          : null;
+      imageLayer = FishPhotoOverlay(
+        photoBytes: photoBytes,
+        mask: full?.maskBytes,
+        maskWidth: full?.maskWidth ?? 0,
+        maskHeight: full?.maskHeight ?? 0,
+        snout: snout,
+        fork: fork,
+        captureOrientation: _orientationFromString(full?.captureOrientation),
+      );
+    }
+
     return Dialog.fullscreen(
-      backgroundColor: Colors.black.withValues(alpha: 0.9),
-      child: GestureDetector(
-        onTap: widget.onClose,
-        onPanUpdate: (details) {
-          setState(() {
-            _position += details.delta;
-          });
-        },
-        onPanEnd: (details) {
-          // Close if dragged far enough
-          if (_position.dy.abs() > 200) {
-            widget.onClose();
-          } else {
-            setState(() {
-              _position = Offset.zero;
-            });
-          }
-        },
-        child: Stack(
-          children: [
-            // Full screen image
-            Center(
-              child: Transform.translate(
-                offset: _position,
-                child: Hero(
-                  tag: widget.photo.id,
-                  child: Image.memory(
-                    Uint8List.fromList(widget.photo.image),
-                    fit: BoxFit.contain,
+      backgroundColor: Colors.black.withValues(alpha: 0.95),
+      child: Stack(
+        children: [
+          Positioned.fill(child: imageLayer),
+
+          // Metadata overlay
+          Positioned(
+            bottom: 50,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Time: ${widget.photo.creationDate.toDisplayString()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  Text(
+                    widget.photo.fishLen != null
+                        ? 'Fish Length: ${(widget.photo.fishLen! * 100).toStringAsFixed(1)}cm'
+                        : 'Fish Length: Unavailable',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Device: ${widget.photo.deviceInfo ?? 'Unknown'}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // Metadata overlay 
-            Positioned(
-              bottom: 50,
-              left: 20,
-              right: 20,
+          // Close button
+          Positioned(
+            top: 50,
+            right: 20,
+            child: GestureDetector(
+              onTap: widget.onClose,
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Time: ${widget.photo.creationDate.toDisplayString()}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.photo.fishLen != null
-                          ? 'Fish Length: ${(widget.photo.fishLen! * 100).toStringAsFixed(1)}cm'
-                          : 'Fish Length: Unavailable',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Device: ${widget.photo.deviceInfo ?? 'Unknown'}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
             ),
-
-            // Close button
-            Positioned(
-              top: 50,
-              right: 20,
-              child: GestureDetector(
-                onTap: widget.onClose,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

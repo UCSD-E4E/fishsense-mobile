@@ -38,10 +38,7 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
         
         // Turn on physics for the scene reconstruction's mesh
         _arView.environment.sceneUnderstanding.options.insert(.physics)
-        
-        // Display a debug visualization of the mesh
-        _arView.debugOptions.insert(.showSceneUnderstanding)
-        
+
         // For performance, disable render options that are not required for this app
         _arView.renderOptions = [.disablePersonOcclusion, .disableDepthOfField, .disableMotionBlur]
         
