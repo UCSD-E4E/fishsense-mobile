@@ -95,6 +95,9 @@ class FishSenseChannel {
         switch parseComputeLengthArgs(call) {
         case .success(let parsed): args = parsed
         case .failure(.message(let message)):
+            // Dart side inspects `success` and promotes `error` into a
+            // ComputeLengthResult.error; without that branch the failure
+            // would be silently dropped by ComputeLengthResult.fromMap.
             result(["success": false, "error": message])
             return
         }
@@ -145,9 +148,11 @@ class FishSenseChannel {
             "leftY": Double(rustResult.left.y),
             "rightX": Double(rustResult.right.x),
             "rightY": Double(rustResult.right.y),
-            "confidence": 0.8,
-            "errorString": errorMsg as Any
+            "confidence": 0.8
         ]
+        if let errorMsg = errorMsg {
+            flutterResult["errorString"] = errorMsg
+        }
 
         if rustResult.fish_found {
             flutterResult["mask"] = FlutterStandardTypedData(bytes: maskData)

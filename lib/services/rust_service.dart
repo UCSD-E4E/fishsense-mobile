@@ -20,7 +20,9 @@ class RustService {
     final cy = intrinsics[5];
 
     if (fx == 0 || fy == 0) {
-      log.w('Camera intrinsics have zero focal length — using identity');
+      log.w(
+        'Camera intrinsics have zero focal length — returning intrinsics unchanged',
+      );
       return intrinsics;
     }
 
@@ -56,6 +58,17 @@ class RustService {
         'compute_length',
         arguments,
       );
+
+      // Swift returns `{success: false, error: ...}` on arg-parsing failure —
+      // promote it into a typed error result so the UI can surface the real
+      // message instead of the generic "No Fish Found" path.
+      if (result['success'] == false) {
+        return ComputeLengthResult.error(
+          errorString:
+              (result['error'] ?? result['errorString'] ?? 'Rust computation failed')
+                  .toString(),
+        );
+      }
 
       return ComputeLengthResult.fromMap(result);
     } catch (e) {

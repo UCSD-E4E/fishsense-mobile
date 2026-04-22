@@ -77,7 +77,7 @@ class FileStorageService {
       final dir = Directory(directory.path);
 
       await for (final entity in dir.list()) {
-        if (entity is File && entity.path.contains('rgb_')) {
+        if (entity is File && basename(entity.path).startsWith('rgb_')) {
           await entity.delete();
         }
       }

@@ -137,7 +137,8 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 
     match segmentation.inference(&img) {
         Ok(mask) => {
-            let nonzero = mask.sum();
+            // Count in usize — mask is Array2<u8>, so the default `sum()` wraps at 256.
+            let nonzero = mask.iter().filter(|&&v| v != 0).count();
             if nonzero > 0 {
                 info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
                 Ok(mask)

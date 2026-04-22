@@ -143,7 +143,7 @@ class ARKitManagerTests: XCTestCase {
         waitForExpectations(timeout: 1)
     }
 
-    func testCheckLiDARSupport_simulatorReturnsFlase() {
+    func testCheckLiDARSupport_simulatorReturnsFalse() {
         // On the simulator LiDAR is never available; skip on real hardware.
         if #available(iOS 14.0, *) {
             if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) { return }

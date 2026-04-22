@@ -109,7 +109,11 @@ class _FishPhotoOverlayState extends State<FishPhotoOverlay> {
     int height,
   ) {
     final rgba = Uint8List(width * height * 4);
-    for (var i = 0; i < mask.length; i++) {
+    // Clamp to the declared pixel count — the native side is supposed to send
+    // exactly width*height bytes, but a mismatch would otherwise index past
+    // the rgba buffer and throw RangeError.
+    final limit = mask.length < width * height ? mask.length : width * height;
+    for (var i = 0; i < limit; i++) {
       if (mask[i] != 0) {
         final j = i * 4;
         rgba[j] = 0;

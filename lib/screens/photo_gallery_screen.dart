@@ -66,18 +66,19 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         }
       }
 
+      if (!mounted) return;
       setState(() {
         _savedPhotos = dataTempList;
         _isLoading = false;
       });
 
       // Update photo count in app state
-      if (!mounted) return;
       context.read<AppStateProvider>().setPhotoCount(_savedPhotos.length);
-      
+
       log.i('Gallery loaded ${_savedPhotos.length} photos');
     } catch (e) {
       log.e('Error loading saved photos', error: e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -117,14 +118,13 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       // Delete all image files
       final fileSuccess = await FileStorageService.deleteAllSavedPhotos();
 
+      if (!mounted) return;
       if (dbSuccess && fileSuccess) {
         setState(() {
           _savedPhotos.clear();
           _isDeleting = false;
         });
 
-        // Update photo count
-        if (!mounted) return;
         context.read<AppStateProvider>().setPhotoCount(0);
 
         _showSuccessMessage('All photos deleted successfully');
@@ -133,11 +133,15 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       }
     } catch (e) {
       log.e('Error deleting all photos', error: e);
-      if (mounted) _showErrorDialog('Delete Error', 'Error deleting photos: $e');
+      if (mounted) {
+        _showErrorDialog('Delete Error', 'Error deleting photos: $e');
+      }
     } finally {
-      setState(() {
-        _isDeleting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
     }
   }
 

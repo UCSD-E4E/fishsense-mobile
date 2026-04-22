@@ -183,55 +183,53 @@ class _CameraScreenState extends State<CameraScreen>
       log.e('Error in _capturePhoto', error: e);
       _showErrorDialog('Capture Error', 'An error occurred: $e');
     } finally {
-      setState(() {
-        _isProcessingPhoto = false;
-        _processingMessage = '';
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessingPhoto = false;
+          _processingMessage = '';
+        });
+      }
     }
   }
 
   /// Show error dialog - equivalent to iOS displayErrorMessage
-/// Show error dialog - equivalent to iOS displayErrorMessage
-void _showErrorDialog(String title, String message) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        // Dark, semi-transparent background
-        backgroundColor: Colors.grey[900]?.withValues(alpha: 0.9),
-         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        // Title with a red accent color for errors
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.redAccent,
-            fontWeight: FontWeight.bold,
+  void _showErrorDialog(String title, String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900]?.withValues(alpha: 0.9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
           ),
-        ),
-        // Content with light grey text
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-        ),
-        // Action button styled with your app's accent color
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                color: Color(0xFF00AAA5), // Your app's teal accent color
-                fontWeight: FontWeight.bold,
-              ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ],
-      );
-    },
-  );
-}
+          content: Text(
+            message,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  color: Color(0xFF00AAA5),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
