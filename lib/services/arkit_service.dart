@@ -1,129 +1,118 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import '../models.dart';
+import '../logger.dart';
 
-/// ARKit Service for iOS LiDAR integration - Real Implementation
-/// Connects to native iOS ARKit through platform channels
-/// NO PREVIEW STREAMING - Uses native ARKit camera view like original Swift app
+/// ARKit Service for iOS LiDAR integration.
+/// Connects to native iOS ARKit through platform channels.
+/// No preview streaming — uses native ARKit camera view.
 class ARKitService {
   static const MethodChannel _channel = MethodChannel('fishsense_native');
   static bool _isInitialized = false;
   static bool _isSessionRunning = false;
 
-  // ARKit configuration
   static const String _tag = 'ARKitService';
 
-  /// Initialize ARKit session with LiDAR depth sensing
-  /// Returns true if successfully initialized on a LiDAR-capable device
+  /// Check LiDAR support and initialize ARKit.
+  /// Returns true on a LiDAR-capable iOS device.
   static Future<bool> initializeARKit() async {
-    try {
-      print('$_tag: Checking LiDAR support...');
+    if (_isInitialized) {
+      log.d('$_tag: Already initialized');
+      return true;
+    }
 
-      // Only attempt on iOS
+    try {
+      log.d('$_tag: Checking LiDAR support');
+
       if (!Platform.isIOS) {
-        print('$_tag: Not iOS platform, skipping ARKit');
+        log.w('$_tag: Not iOS — skipping ARKit init');
         return false;
       }
 
-      // Check if LiDAR is supported on this device
       final bool hasLiDAR = await _channel.invokeMethod('checkLiDARSupport');
       if (!hasLiDAR) {
-        print('$_tag: LiDAR not supported on this device');
+        log.w('$_tag: LiDAR not supported on this device');
         return false;
       }
 
-      print('$_tag: LiDAR support confirmed');
+      log.i('$_tag: LiDAR support confirmed');
       _isInitialized = true;
       return true;
     } catch (e) {
-      print('$_tag: ARKit initialization failed: $e');
+      log.e('$_tag: ARKit initialization failed', error: e);
       return false;
     }
   }
 
-  /// Start ARKit session with depth sensing configuration
+  /// Start the ARKit session with depth sensing.
   static Future<bool> startSession() async {
     try {
       if (!_isInitialized) {
-        print('$_tag: ARKit not initialized');
+        log.w('$_tag: startSession called before initializeARKit');
         return false;
       }
 
-      // Initialize ARKit session on native side
+      log.d('$_tag: Starting ARKit session');
       final Map<dynamic, dynamic> result =
           await _channel.invokeMethod('initializeARKitSession');
 
       if (result['success'] == true) {
         _isSessionRunning = true;
-        print('$_tag: ARKit session started successfully');
-
+        log.i('$_tag: ARKit session started');
         return true;
       } else {
-        print('$_tag: Failed to start ARKit session: ${result['error']}');
+        log.e('$_tag: Failed to start ARKit session: ${result['error']}');
         return false;
       }
     } catch (e) {
-      print('$_tag: Failed to start ARKit session: $e');
+      log.e('$_tag: Failed to start ARKit session', error: e);
       return false;
     }
   }
 
-  /// Stop ARKit session and cleanup resources
+  /// Stop the ARKit session and release resources.
   static Future<void> stopSession() async {
     try {
       if (_isSessionRunning) {
+        log.d('$_tag: Stopping ARKit session');
         await _channel.invokeMethod('stopARKitSession');
         _isSessionRunning = false;
-        print('$_tag: ARKit session stopped');
+        log.i('$_tag: ARKit session stopped');
       }
     } catch (e) {
-      print('$_tag: Error stopping ARKit session: $e');
+      log.e('$_tag: Error stopping ARKit session', error: e);
     }
   }
 
-  /// Capture current ARKit frame with depth data
-  /// Returns CaptureResult with real LiDAR data
-  /// This is the ONLY camera interaction - no preview streaming needed
-static Future<CaptureResult?> captureFrameWithDepth() async {
+  /// Capture the current ARKit frame with depth data.
+  /// Returns null on failure.
+  static Future<CaptureResult?> captureFrameWithDepth() async {
     try {
-      print('$_tag: ARKit session started successfully');
+      log.d('$_tag: Requesting depth frame from native');
 
       final Map<dynamic, dynamic> result =
           await _channel.invokeMethod('captureDepthFrame');
 
       if (result['success'] != true) {
-        print('$_tag: Capture failed: ${result['error']}');
+        log.e('$_tag: captureDepthFrame failed: ${result['error']}');
         return null;
       }
 
-      // Extract RGB data (JPEG for display)
       final rgbImageData = result['rgbImageData'] as Uint8List;
-      
-      // Extract raw RGB data (for Rust pipeline)  
       final rawRgbData = result['rawRgbData'] as Uint8List;
-      
-      // Extract image dimensions
       final imageWidth = result['imageWidth'] as int;
       final imageHeight = result['imageHeight'] as int;
-
-      // Extract depth data
       final depthData = result['depthData'] as Uint8List;
       final depthWidth = result['depthWidth'] as int;
       final depthHeight = result['depthHeight'] as int;
-
-      // Extract confidence data  
       final confidenceData = result['confidenceData'] as Uint8List;
       final confidenceWidth = result['confidenceWidth'] as int;
       final confidenceHeight = result['confidenceHeight'] as int;
-
-      // Extract camera intrinsics
       final intrinsics = (result['cameraIntrinsics'] as List<dynamic>)
           .map((e) => e as double)
           .toList();
 
-      // Create matrix models
       final depthMap = ByteMatrixModel(
         bytes: depthData.toList(),
         width: depthWidth,
@@ -136,34 +125,34 @@ static Future<CaptureResult?> captureFrameWithDepth() async {
         height: confidenceHeight,
       );
 
-      print(
-          '$_tag: Successfully captured frame - RGB: ${rgbImageData.length} bytes, '
-          'Raw: ${rawRgbData.length} bytes, '
-          'Depth: ${depthData.length} bytes (${depthMap.width}x${depthMap.height})');
+      log.i('$_tag: Frame captured — '
+          'RGB ${rgbImageData.length}B (${imageWidth}x$imageHeight), '
+          'raw ${rawRgbData.length}B, '
+          'depth ${depthMap.width}x${depthMap.height}');
 
       return CaptureResult(
-        imageBytes: rgbImageData,       // JPEG for display
-        rawImageBytes: rawRgbData,      // Raw for Rust
-        imageWidth: imageWidth,         // Image dimensions
-        imageHeight: imageHeight,       // Image dimensions
+        imageBytes: rgbImageData,
+        rawImageBytes: rawRgbData,
+        imageWidth: imageWidth,
+        imageHeight: imageHeight,
         depthMap: depthMap,
         confidenceMap: confidenceMap,
         cameraIntrinsics: intrinsics,
         timestamp: result['timestamp'],
       );
     } catch (e) {
-      print('$_tag: Error capturing frame: $e');
+      log.e('$_tag: Error capturing depth frame', error: e);
       return null;
     }
   }
-  }
+}
 
-/// Data class for camera capture results
+/// Data returned from a single ARKit capture.
 class CaptureResult {
-  final Uint8List imageBytes;        // JPEG data for display
-  final Uint8List rawImageBytes;     // Raw data for Rust pipeline
-  final int imageWidth;              // Image dimensions  
-  final int imageHeight;             // Image dimensions
+  final Uint8List imageBytes;       // JPEG for display
+  final Uint8List rawImageBytes;    // Raw RGBA for Rust pipeline
+  final int imageWidth;
+  final int imageHeight;
   final ByteMatrixModel depthMap;
   final ByteMatrixModel confidenceMap;
   final List<double> cameraIntrinsics;
@@ -171,9 +160,9 @@ class CaptureResult {
 
   const CaptureResult({
     required this.imageBytes,
-    required this.rawImageBytes,     
-    required this.imageWidth,        
-    required this.imageHeight,       
+    required this.rawImageBytes,
+    required this.imageWidth,
+    required this.imageHeight,
     required this.depthMap,
     required this.confidenceMap,
     required this.cameraIntrinsics,

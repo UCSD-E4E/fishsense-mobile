@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fishsense_android/models.dart';
+import 'package:fishsense_android/extensions.dart';
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -342,6 +345,325 @@ void main() {
         right: Coordinate.zero,
       );
       expect(result.toString(), contains('42.12'));
+    });
+
+    // -------------------------------------------------------------------------
+    // Mask fields (added with the gallery overlay feature)
+    // -------------------------------------------------------------------------
+    test('success factory stores mask + dimensions', () {
+      final mask = Uint8List.fromList([0, 1, 0, 1]);
+      final result = ComputeLengthResult.success(
+        length: 1.0,
+        left: Coordinate.zero,
+        right: Coordinate.zero,
+        mask: mask,
+        maskWidth: 2,
+        maskHeight: 2,
+      );
+      expect(result.mask, same(mask));
+      expect(result.maskWidth, 2);
+      expect(result.maskHeight, 2);
+    });
+
+    test('mask defaults are null/0 when not provided', () {
+      final result = ComputeLengthResult.success(
+        length: 1.0,
+        left: Coordinate.zero,
+        right: Coordinate.zero,
+      );
+      expect(result.mask, isNull);
+      expect(result.maskWidth, 0);
+      expect(result.maskHeight, 0);
+    });
+
+    test('fromMap deserializes mask provided as Uint8List', () {
+      final mask = Uint8List.fromList([5, 6, 7]);
+      final result = ComputeLengthResult.fromMap({
+        'fishFound': true,
+        'mask': mask,
+        'maskWidth': 3,
+        'maskHeight': 1,
+      });
+      expect(result.mask, isA<Uint8List>());
+      expect(result.mask, equals(mask));
+      expect(result.maskWidth, 3);
+      expect(result.maskHeight, 1);
+    });
+
+    test('fromMap converts mask provided as List<int> to Uint8List', () {
+      final result = ComputeLengthResult.fromMap({
+        'fishFound': true,
+        'mask': <int>[9, 8, 7],
+        'maskWidth': 3,
+        'maskHeight': 1,
+      });
+      expect(result.mask, isA<Uint8List>());
+      expect(result.mask, equals(Uint8List.fromList([9, 8, 7])));
+    });
+
+    test('fromMap handles missing mask (null bytes, zero dimensions)', () {
+      final result = ComputeLengthResult.fromMap({'fishFound': false});
+      expect(result.mask, isNull);
+      expect(result.maskWidth, 0);
+      expect(result.maskHeight, 0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // PhotoModel — mask + snout/fork + captureOrientation (gallery feature)
+  // ---------------------------------------------------------------------------
+  group('PhotoModel mask + points + orientation', () {
+    final depthMap = ByteMatrixModel(bytes: [1], width: 1, height: 1);
+    final confidenceMap = ByteMatrixModel(bytes: [1], width: 1, height: 1);
+
+    test('create stores all new optional fields', () {
+      final mask = Uint8List.fromList([1, 0, 1, 0]);
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1700000000,
+        rgbPath: 'rgb.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        maskBytes: mask,
+        maskWidth: 2,
+        maskHeight: 2,
+        snoutX: 12.5,
+        snoutY: 34.5,
+        forkX: 56.5,
+        forkY: 78.5,
+        captureOrientation: 'portrait',
+      )!;
+      expect(model.maskBytes, same(mask));
+      expect(model.maskWidth, 2);
+      expect(model.maskHeight, 2);
+      expect(model.snoutX, 12.5);
+      expect(model.snoutY, 34.5);
+      expect(model.forkX, 56.5);
+      expect(model.forkY, 78.5);
+      expect(model.captureOrientation, 'portrait');
+    });
+
+    test('new fields default to null when omitted', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1700000000,
+        rgbPath: 'rgb.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+      )!;
+      expect(model.maskBytes, isNull);
+      expect(model.maskWidth, isNull);
+      expect(model.maskHeight, isNull);
+      expect(model.snoutX, isNull);
+      expect(model.snoutY, isNull);
+      expect(model.forkX, isNull);
+      expect(model.forkY, isNull);
+      expect(model.captureOrientation, isNull);
+    });
+
+    test('toMap emits all new column keys', () {
+      final mask = Uint8List.fromList([1, 1]);
+      final map = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        maskBytes: mask,
+        maskWidth: 2,
+        maskHeight: 1,
+        snoutX: 1.0,
+        snoutY: 2.0,
+        forkX: 3.0,
+        forkY: 4.0,
+        captureOrientation: 'landscape',
+      )!.toMap();
+      expect(map['mask_bytes'], same(mask));
+      expect(map['mask_width'], 2);
+      expect(map['mask_height'], 1);
+      expect(map['snout_x'], 1.0);
+      expect(map['snout_y'], 2.0);
+      expect(map['fork_x'], 3.0);
+      expect(map['fork_y'], 4.0);
+      expect(map['capture_orientation'], 'landscape');
+    });
+
+    test('fromMap reconstructs new fields with Uint8List mask', () {
+      final mask = Uint8List.fromList([0, 255, 0, 255]);
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'mask_bytes': mask,
+        'mask_width': 2,
+        'mask_height': 2,
+        'snout_x': 10.5,
+        'snout_y': 20.5,
+        'fork_x': 30.5,
+        'fork_y': 40.5,
+        'capture_orientation': 'portrait',
+      });
+      expect(model.maskBytes, equals(mask));
+      expect(model.maskWidth, 2);
+      expect(model.maskHeight, 2);
+      expect(model.snoutX, 10.5);
+      expect(model.snoutY, 20.5);
+      expect(model.forkX, 30.5);
+      expect(model.forkY, 40.5);
+      expect(model.captureOrientation, 'portrait');
+    });
+
+    test('fromMap converts List<int> mask payload (sqflite quirk) to Uint8List', () {
+      // sqflite sometimes hands BLOBs back as plain List<int> instead of
+      // Uint8List depending on platform — fromMap must normalize both.
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'mask_bytes': <int>[7, 8, 9, 10],
+        'mask_width': 4,
+        'mask_height': 1,
+      });
+      expect(model.maskBytes, isA<Uint8List>());
+      expect(model.maskBytes, equals(Uint8List.fromList([7, 8, 9, 10])));
+    });
+
+    test('fromMap coerces int snout/fork values back to double', () {
+      // SQLite REAL columns can come back as either int or double depending
+      // on the actual stored value (e.g. 0 → int).
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'snout_x': 0,
+        'snout_y': 5,
+        'fork_x': 10,
+        'fork_y': 0,
+      });
+      expect(model.snoutX, 0.0);
+      expect(model.snoutX, isA<double>());
+      expect(model.snoutY, 5.0);
+      expect(model.forkX, 10.0);
+      expect(model.forkY, 0.0);
+    });
+
+    test('fromMap handles all new fields being null', () {
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'mask_bytes': null,
+        'mask_width': null,
+        'mask_height': null,
+        'snout_x': null,
+        'snout_y': null,
+        'fork_x': null,
+        'fork_y': null,
+        'capture_orientation': null,
+      });
+      expect(model.maskBytes, isNull);
+      expect(model.maskWidth, isNull);
+      expect(model.snoutX, isNull);
+      expect(model.captureOrientation, isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // DataTemp
+  // ---------------------------------------------------------------------------
+  group('DataTemp', () {
+    test('constructor stores photoId and metadata fields', () {
+      final dt = DataTemp(
+        photoId: 42,
+        image: const [1, 2, 3],
+        creationDate: DateTime.utc(2024, 1, 2, 3, 4),
+        fishLen: 0.45,
+        deviceInfo: 'iPhone 15 Pro',
+      );
+      expect(dt.photoId, 42);
+      expect(dt.image, [1, 2, 3]);
+      expect(dt.creationDate, DateTime.utc(2024, 1, 2, 3, 4));
+      expect(dt.fishLen, 0.45);
+      expect(dt.deviceInfo, 'iPhone 15 Pro');
+    });
+
+    test('fishLen and deviceInfo are optional', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+      );
+      expect(dt.fishLen, isNull);
+      expect(dt.deviceInfo, isNull);
+    });
+
+    test('id is unique per instance (timestamp-derived)', () async {
+      final a = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+      );
+      // Force a microsecond delta so the millisecond-resolution id differs.
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      final b = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+      );
+      expect(a.id, isNot(equals(b.id)));
+      expect(a == b, isFalse);
+      expect(a == a, isTrue);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // DateTimeExtensions.toDisplayString
+  // ---------------------------------------------------------------------------
+  group('DateTimeExtensions.toDisplayString', () {
+    test('formats a typical afternoon time as PM with 12-hour clock', () {
+      final s = DateTime(2024, 3, 15, 14, 5).toDisplayString();
+      expect(s, 'Mar 15, 2024 at 2:05 PM');
+    });
+
+    test('formats midnight as 12:00 AM (hour 0 → 12)', () {
+      final s = DateTime(2024, 1, 1, 0, 0).toDisplayString();
+      expect(s, 'Jan 1, 2024 at 12:00 AM');
+    });
+
+    test('formats noon as 12:00 PM (hour 12 stays 12, switches to PM)', () {
+      final s = DateTime(2024, 6, 1, 12, 0).toDisplayString();
+      expect(s, 'Jun 1, 2024 at 12:00 PM');
+    });
+
+    test('pads single-digit minutes with leading zero', () {
+      final s = DateTime(2024, 12, 31, 9, 7).toDisplayString();
+      expect(s, 'Dec 31, 2024 at 9:07 AM');
+    });
+
+    test('11 PM is formatted as 11:00 PM, not 23:00', () {
+      final s = DateTime(2024, 7, 4, 23, 30).toDisplayString();
+      expect(s, 'Jul 4, 2024 at 11:30 PM');
     });
   });
 }

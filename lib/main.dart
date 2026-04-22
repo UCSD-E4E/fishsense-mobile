@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'camera_screen.dart';
-import 'photo_gallery_screen.dart';
-import 'services.dart';
+import 'screens/camera_screen.dart';
+import 'screens/photo_gallery_screen.dart';
 import 'database.dart';
+import 'logger.dart';
 
 /// Main app entry point
 /// Translation from iOS AppDelegate.swift and Main.storyboard tab navigation
@@ -27,18 +27,13 @@ Future<void> _initializeApp() async {
   try {
     // Initialize database
     await DatabaseModel.database;
-    print('Database initialized');
-    
-    // Initialize cameras
-    final cameraSuccess = await CameraService.initializeCameras();
-    print('Camera initialization: ${cameraSuccess ? 'Success' : 'Failed'}');
-    
-    // Check permissions
-    final cameraPermission = await CameraService.checkCameraPermission();
-    print('Camera permission: ${cameraPermission ? 'Granted' : 'Denied'}');
-    
+    log.i('Database initialized');
+
+    // Camera initialization is deferred to CameraScreen to avoid calling
+    // platform channels before the Flutter engine is in its running state.
+
   } catch (e) {
-    print('Error initializing app: $e');
+    log.e('Error initializing app', error: e);
   }
 }
 
@@ -134,7 +129,7 @@ class _MainTabViewState extends State<MainTabView> {
       currentIndex: _currentIndex,
       onTap: (index) async {
         if (index == 1 && _currentIndex != 1) { // Switching TO Photos tab
-          print('Switching to Photos tab - triggering auto-refresh');
+          log.d('Switching to Photos tab - triggering auto-refresh');
           
 
           _photoGalleryKey.currentState?.refreshPhotos();
@@ -194,7 +189,7 @@ class AppStateProvider extends ChangeNotifier {
       final count = await DatabaseModel.getPhotoCount();
       setPhotoCount(count);
     } catch (e) {
-      print('Error refreshing photo count: $e');
+      log.e('Error refreshing photo count', error: e);
     }
   }
 
@@ -202,7 +197,7 @@ class AppStateProvider extends ChangeNotifier {
   void showError(String title, String message) {
     setStatusMessage('Error: $message');
     // TODO: Show actual dialog when we have UI context
-    print('Error - $title: $message');
+    log.e('$title: $message');
   }
 
   /// Clear status

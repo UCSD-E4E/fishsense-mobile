@@ -35,9 +35,10 @@ dependencies:
   # Utilities
   archive: ^4.0.9
 
-  arkit_plugin: ^1.0.7
-
   vector_math: ^2.1.4
+
+  # Logging
+  logger: ^2.4.0
 
 
 

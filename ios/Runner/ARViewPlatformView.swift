@@ -2,6 +2,9 @@ import UIKit
 import Flutter
 import ARKit
 import RealityKit
+import OSLog
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fishsense", category: "ARView")
 
 /// Native ARView that can be embedded in Flutter
 class ARViewPlatformView: NSObject, FlutterPlatformView {
@@ -35,13 +38,9 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
         
         // Turn on physics for the scene reconstruction's mesh
         _arView.environment.sceneUnderstanding.options.insert(.physics)
-        
-        // Display a debug visualization of the mesh
-        _arView.debugOptions.insert(.showSceneUnderstanding)
-        
+
         // For performance, disable render options that are not required for this app
         _arView.renderOptions = [.disablePersonOcclusion, .disableDepthOfField, .disableMotionBlur]
-        
 
         // ARView on its own does not turn on mesh classification
         _arView.automaticallyConfigureSession = false
@@ -55,8 +54,8 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
         
         // Start the session
         _arView.session.run(configuration)
-        
-        print(" ARView Platform View: ARKit session started with LiDAR (using EXACT working setup)")
+
+        logger.info("ARKit session started with LiDAR + mesh classification")
     }
     
     /// Provide access to the session for photo capture
@@ -82,11 +81,11 @@ extension ARViewPlatformView: ARSessionDelegate {
         case ARCamera.TrackingState.normal:
             status = "Camera Ready"
         }
-        print("ARView Platform View - Camera Status: \(status)")
+        logger.info("Camera tracking state: \(status)")
     }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
-        print("ARView Platform View - Session failed: \(error.localizedDescription)")
+        logger.error("ARKit session failed: \(error.localizedDescription)")
     }
 }
 
@@ -116,7 +115,7 @@ class ARViewPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
         
         // Store reference so AppDelegate can access the session
         activePlatformView = platformView
-        print("Platform view created and stored for AppDelegate access")
+        logger.debug("ARViewPlatformView created (id=\(viewId))")
         
         return platformView
     }
