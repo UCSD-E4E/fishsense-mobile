@@ -5,6 +5,13 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+# Opt-in for host builds (e.g. `cargo test` on macOS): lets ort-sys download a
+# prebuilt ONNX Runtime so the test binary can link. iOS builds intentionally
+# omit this and link the xcframework shipped with the app.
+download-binaries = ["fishsense-core/download-binaries"]
+
 [dependencies]
 fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v1.4.0", default-features = false, features = ["coreml"] }
 libc = "0.2.184"

@@ -81,7 +81,7 @@ jobs:
     - name: 🧪 Run Rust tests
       run: |
         cd rust-bridge
-        cargo test
+        cargo test --features download-binaries
 
     - name: 🔍 Swift lint (SwiftLint)
       run: |
