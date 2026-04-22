@@ -178,6 +178,7 @@ fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), Execu
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32,
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32,

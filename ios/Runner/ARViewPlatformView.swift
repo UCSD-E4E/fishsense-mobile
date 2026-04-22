@@ -41,7 +41,6 @@ class ARViewPlatformView: NSObject, FlutterPlatformView {
 
         // For performance, disable render options that are not required for this app
         _arView.renderOptions = [.disablePersonOcclusion, .disableDepthOfField, .disableMotionBlur]
-        
 
         // ARView on its own does not turn on mesh classification
         _arView.automaticallyConfigureSession = false

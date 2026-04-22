@@ -75,69 +75,44 @@ class ARKitManager {
             return
         }
 
-        let pixelBuffer = currentFrame.capturedImage
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext(options: nil)
-
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            result(["success": false, "error": "Failed to create CGImage from camera frame"])
-            return
-        }
-
-        guard let rawRgbData = cgImage.dataProvider?.data as Data? else {
-            result(["success": false, "error": "Failed to extract raw RGB data from image"])
-            return
-        }
-
-        let uiImage = UIImage(cgImage: cgImage)
-        guard let jpegData = uiImage.jpegData(compressionQuality: 0.8) else {
-            result(["success": false, "error": "Failed to convert image to JPEG data"])
+        let rgb: RgbFrame
+        switch extractRgbFrame(from: currentFrame.capturedImage) {
+        case .success(let frame):
+            rgb = frame
+        case .failure(.message(let message)):
+            result(["success": false, "error": message])
             return
         }
 
         guard #available(iOS 14.0, *),
-              currentFrame.sceneDepth != nil else {
+              let depthData = currentFrame.sceneDepth?.depthMap,
+              let confidenceData = currentFrame.sceneDepth?.confidenceMap else {
             result(["success": false, "error": "Scene depth not available"])
             return
         }
 
-        if let depthData = currentFrame.sceneDepth?.depthMap,
-           let confidenceData = currentFrame.sceneDepth?.confidenceMap {
-
-            guard let depthDataBytes = convertPixelBufferToBytes(depthData),
-                  let confidenceDataBytes = convertPixelBufferToBytes(confidenceData) else {
-                result(["success": false, "error": "Failed to convert depth or confidence data"])
-                return
-            }
-
-            let intrinsics = currentFrame.camera.intrinsics
-            let cameraIntrinsics = [
-                Double(intrinsics.columns.0.x), Double(intrinsics.columns.1.x), Double(intrinsics.columns.2.x),
-                Double(intrinsics.columns.0.y), Double(intrinsics.columns.1.y), Double(intrinsics.columns.2.y),
-                Double(intrinsics.columns.0.z), Double(intrinsics.columns.1.z), Double(intrinsics.columns.2.z)
-            ]
-
-            logger.info("Frame captured — RGB \(cgImage.width)x\(cgImage.height), depth \(CVPixelBufferGetWidth(depthData))x\(CVPixelBufferGetHeight(depthData))")
-            let frameData: [String: Any] = [
-                "success": true,
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-                "rgbImageData": jpegData,
-                "rawRgbData": rawRgbData,
-                "imageWidth": cgImage.width,
-                "imageHeight": cgImage.height,
-                "depthData": depthDataBytes,
-                "depthWidth": CVPixelBufferGetWidth(depthData),
-                "depthHeight": CVPixelBufferGetHeight(depthData),
-                "confidenceData": confidenceDataBytes,
-                "confidenceWidth": CVPixelBufferGetWidth(confidenceData),
-                "confidenceHeight": CVPixelBufferGetHeight(confidenceData),
-                "cameraIntrinsics": cameraIntrinsics
-            ]
-
-            result(frameData)
-        } else {
-            result(["success": false, "error": "Depth or confidence data not available"])
+        guard let depthDataBytes = convertPixelBufferToBytes(depthData),
+              let confidenceDataBytes = convertPixelBufferToBytes(confidenceData) else {
+            result(["success": false, "error": "Failed to convert depth or confidence data"])
+            return
         }
+
+        logger.info("Frame captured — RGB \(rgb.width)x\(rgb.height), depth \(CVPixelBufferGetWidth(depthData))x\(CVPixelBufferGetHeight(depthData))")
+        result([
+            "success": true,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "rgbImageData": rgb.jpegData,
+            "rawRgbData": rgb.rawData,
+            "imageWidth": rgb.width,
+            "imageHeight": rgb.height,
+            "depthData": depthDataBytes,
+            "depthWidth": CVPixelBufferGetWidth(depthData),
+            "depthHeight": CVPixelBufferGetHeight(depthData),
+            "confidenceData": confidenceDataBytes,
+            "confidenceWidth": CVPixelBufferGetWidth(confidenceData),
+            "confidenceHeight": CVPixelBufferGetHeight(confidenceData),
+            "cameraIntrinsics": flattenIntrinsics(currentFrame.camera.intrinsics)
+        ])
     }
 
     // MARK: - Private Helpers
@@ -155,5 +130,40 @@ class ARKitManager {
         let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
 
         return Data(bytes: baseAddress, count: height * bytesPerRow)
+    }
+
+    private struct RgbFrame {
+        let jpegData: Data
+        let rawData: Data
+        let width: Int
+        let height: Int
+    }
+
+    private enum RgbExtractionError: Error {
+        case message(String)
+    }
+
+    private func extractRgbFrame(from pixelBuffer: CVPixelBuffer) -> Result<RgbFrame, RgbExtractionError> {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let context = CIContext(options: nil)
+
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            return .failure(.message("Failed to create CGImage from camera frame"))
+        }
+        guard let rawRgbData = cgImage.dataProvider?.data as Data? else {
+            return .failure(.message("Failed to extract raw RGB data from image"))
+        }
+        guard let jpegData = UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.8) else {
+            return .failure(.message("Failed to convert image to JPEG data"))
+        }
+        return .success(RgbFrame(jpegData: jpegData, rawData: rawRgbData, width: cgImage.width, height: cgImage.height))
+    }
+
+    private func flattenIntrinsics(_ intrinsics: simd_float3x3) -> [Double] {
+        return [
+            Double(intrinsics.columns.0.x), Double(intrinsics.columns.1.x), Double(intrinsics.columns.2.x),
+            Double(intrinsics.columns.0.y), Double(intrinsics.columns.1.y), Double(intrinsics.columns.2.y),
+            Double(intrinsics.columns.0.z), Double(intrinsics.columns.1.z), Double(intrinsics.columns.2.z)
+        ]
     }
 }
