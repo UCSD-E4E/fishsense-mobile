@@ -5,5 +5,5 @@ description = "Build script for the Rust bridge library used in the FishSense Mo
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "requests>=2.32.5",
+    "requests>=2.33.0",
 ]
