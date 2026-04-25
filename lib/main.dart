@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'screens/camera_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/photo_gallery_screen.dart';
+import 'services/onboarding_state.dart';
 import 'database.dart';
 import 'logger.dart';
 
@@ -52,7 +54,7 @@ class FishSenseApp extends StatelessWidget {
         title: 'FishSense',
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(),
-        home: const MainTabView(),
+        home: const _RootRouter(),
       ),
     );
   }
@@ -81,6 +83,51 @@ class FishSenseApp extends StatelessWidget {
       ),
       iconTheme: const IconThemeData(color: Colors.white),
     );
+  }
+}
+
+/// Gates first launch on the onboarding flag: new installs (and existing
+/// users on app versions that bumped OnboardingState.currentVersion) see
+/// the onboarding screen once; everyone else goes straight to the tabs.
+class _RootRouter extends StatefulWidget {
+  const _RootRouter();
+
+  @override
+  State<_RootRouter> createState() => _RootRouterState();
+}
+
+class _RootRouterState extends State<_RootRouter> {
+  bool? _needsOnboarding;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final needs = await OnboardingState.needsOnboarding();
+    if (!mounted) return;
+    setState(() => _needsOnboarding = needs);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final needs = _needsOnboarding;
+    if (needs == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF00AAA5)),
+        ),
+      );
+    }
+    if (needs) {
+      return OnboardingScreen(
+        onComplete: () => setState(() => _needsOnboarding = false),
+      );
+    }
+    return const MainTabView();
   }
 }
 
