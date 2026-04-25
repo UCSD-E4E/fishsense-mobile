@@ -8,7 +8,7 @@ To monitor fish population health, marine scientists measure fish length from he
 
 Our goal is to expedite this process with a mobile app that uses iPhone LIDAR hardware to measure fish length from a quick photo taken on a clear board. This method is faster, simpler, and minimizes the time fish spend out of water, increasing their survival chances. Additionally, users can easily save collected data, and the app reduces human error by automating data collection.
 
-This project represents a successful migration from the original iOS-only Swift application to a cross-platform Flutter/Dart framework, maintaining LiDAR measurement accuracy (±2cm) while extending support to Android devices.
+This project represents a successful migration from the original iOS-only Swift application to a cross-platform Flutter/Dart framework, preserving the LiDAR-based measurement pipeline while extending support to Android devices.
 
 ## Features
 

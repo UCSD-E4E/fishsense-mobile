@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FishSense Mobile is a cross-platform Flutter app (iOS primary, Android future) for measuring fish length using LiDAR depth data. It migrates a Swift-only app to Flutter while targeting ±2cm measurement accuracy.
+FishSense Mobile is a cross-platform Flutter app (iOS primary, Android future) for measuring fish length using LiDAR depth data. It migrates a Swift-only app to Flutter, preserving the LiDAR-based measurement pipeline.
 
 ## Commands
 
