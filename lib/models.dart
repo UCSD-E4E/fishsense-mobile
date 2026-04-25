@@ -28,6 +28,18 @@ class PhotoModel {
   /// shown the way the user framed them.
   final String? captureOrientation;
 
+  /// GPS fix at capture time. Null when services are off, permission is
+  /// denied, or no fix arrived before the acquisition timeout.
+  final double? latitude;
+  final double? longitude;
+  final double? horizontalAccuracy;
+
+  /// Reverse-geocoded friendly name for the capture location
+  /// (e.g. "Mission Bay, CA"). Null when geocoding failed — either no
+  /// network at capture or the fix landed somewhere the geocoder can't
+  /// label. The raw lat/lon above are always preserved regardless.
+  final String? placeName;
+
   PhotoModel({
     required this.id,
     required this.utcUnixTimestamp,
@@ -44,6 +56,10 @@ class PhotoModel {
     this.forkX,
     this.forkY,
     this.captureOrientation,
+    this.latitude,
+    this.longitude,
+    this.horizontalAccuracy,
+    this.placeName,
   });
 
   /// Factory constructor - equivalent to Swift init?() method
@@ -62,6 +78,10 @@ class PhotoModel {
     double? forkX,
     double? forkY,
     String? captureOrientation,
+    double? latitude,
+    double? longitude,
+    double? horizontalAccuracy,
+    String? placeName,
     int id = -1,
   }) {
     return PhotoModel(
@@ -80,6 +100,10 @@ class PhotoModel {
       forkX: forkX,
       forkY: forkY,
       captureOrientation: captureOrientation,
+      latitude: latitude,
+      longitude: longitude,
+      horizontalAccuracy: horizontalAccuracy,
+      placeName: placeName,
     );
   }
 
@@ -105,6 +129,10 @@ class PhotoModel {
       'fork_x': forkX,
       'fork_y': forkY,
       'capture_orientation': captureOrientation,
+      'latitude': latitude,
+      'longitude': longitude,
+      'horizontal_accuracy': horizontalAccuracy,
+      'place_name': placeName,
     };
   }
 
@@ -138,6 +166,10 @@ class PhotoModel {
       forkX: (map['fork_x'] as num?)?.toDouble(),
       forkY: (map['fork_y'] as num?)?.toDouble(),
       captureOrientation: map['capture_orientation'] as String?,
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
+      horizontalAccuracy: (map['horizontal_accuracy'] as num?)?.toDouble(),
+      placeName: map['place_name'] as String?,
     );
   }
 }
@@ -179,13 +211,43 @@ class DataTemp {
   final double? fishLen;   // Changed from int? to double? to match PhotoModel
   final String? deviceInfo; // Include device info for gallery display
 
+  /// GPS fix for this capture, or null if none was recorded.
+  final double? latitude;
+  final double? longitude;
+  final double? horizontalAccuracy;
+
+  /// Reverse-geocoded label for the capture location, or null when
+  /// geocoding wasn't possible. Raw lat/lon are kept above in both cases.
+  final String? placeName;
+
   DataTemp({
     required this.photoId,
     required this.image,
     required this.creationDate,
     this.fishLen,           // Fish length from PhotoModel.fishLength
     this.deviceInfo,        // Device info from PhotoModel.deviceInfo
+    this.latitude,
+    this.longitude,
+    this.horizontalAccuracy,
+    this.placeName,
   }) : id = DateTime.now().millisecondsSinceEpoch.toString();
+
+  /// Return a copy with the given fields replaced. Used by the gallery's
+  /// lazy geocode pass to swap in a backfilled placeName without rebuilding
+  /// the rest of the record (image bytes, etc.).
+  DataTemp copyWith({String? placeName}) {
+    return DataTemp(
+      photoId: photoId,
+      image: image,
+      creationDate: creationDate,
+      fishLen: fishLen,
+      deviceInfo: deviceInfo,
+      latitude: latitude,
+      longitude: longitude,
+      horizontalAccuracy: horizontalAccuracy,
+      placeName: placeName ?? this.placeName,
+    );
+  }
 
   /// Check equality for gallery updates
   @override

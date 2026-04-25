@@ -590,6 +590,273 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
+  // PhotoModel — GPS fix (latitude, longitude, horizontalAccuracy)
+  // ---------------------------------------------------------------------------
+  group('PhotoModel GPS fix', () {
+    final depthMap = ByteMatrixModel(bytes: [1], width: 1, height: 1);
+    final confidenceMap = ByteMatrixModel(bytes: [1], width: 1, height: 1);
+
+    test('create stores latitude, longitude, horizontalAccuracy', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        latitude: 32.8801,
+        longitude: -117.2340,
+        horizontalAccuracy: 4.5,
+      )!;
+      expect(model.latitude, 32.8801);
+      expect(model.longitude, -117.2340);
+      expect(model.horizontalAccuracy, 4.5);
+    });
+
+    test('create stores placeName independently of lat/lon', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        latitude: 32.88,
+        longitude: -117.23,
+        horizontalAccuracy: 5.0,
+        placeName: 'Mission Bay, CA',
+      )!;
+      // Raw coords preserved alongside the friendly name — the DB keeps
+      // both so the display layer can fall back if needed.
+      expect(model.latitude, 32.88);
+      expect(model.longitude, -117.23);
+      expect(model.placeName, 'Mission Bay, CA');
+    });
+
+    test('placeName defaults to null when omitted', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        latitude: 32.88,
+        longitude: -117.23,
+      )!;
+      expect(model.placeName, isNull);
+    });
+
+    test('toMap emits place_name (friendly name alongside raw coords)', () {
+      final map = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        latitude: 32.88,
+        longitude: -117.23,
+        placeName: 'San Diego, CA',
+      )!.toMap();
+      expect(map['place_name'], 'San Diego, CA');
+      expect(map['latitude'], 32.88);
+      expect(map['longitude'], -117.23);
+    });
+
+    test('toMap emits null place_name when no geocode was recorded', () {
+      final map = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+      )!.toMap();
+      expect(map.containsKey('place_name'), isTrue);
+      expect(map['place_name'], isNull);
+    });
+
+    test('fromMap reconstructs placeName and keeps raw coords', () {
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': 32.88,
+        'longitude': -117.23,
+        'horizontal_accuracy': 4.5,
+        'place_name': 'Mission Bay, CA',
+      });
+      expect(model.placeName, 'Mission Bay, CA');
+      expect(model.latitude, 32.88);
+      expect(model.longitude, -117.23);
+      expect(model.horizontalAccuracy, 4.5);
+    });
+
+    test('fromMap handles missing place_name key (pre-v6 row)', () {
+      // Rows written before v6 have lat/lon but no place_name at all.
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': 32.88,
+        'longitude': -117.23,
+      });
+      expect(model.placeName, isNull);
+      expect(model.latitude, 32.88);
+      expect(model.longitude, -117.23);
+    });
+
+    test('fromMap preserves lat/lon even when place_name is null', () {
+      // Network-off capture scenario: GPS fix recorded, geocode failed.
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': 32.88,
+        'longitude': -117.23,
+        'place_name': null,
+      });
+      expect(model.latitude, 32.88);
+      expect(model.longitude, -117.23);
+      expect(model.placeName, isNull);
+    });
+
+    test('location fields default to null when omitted', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+      )!;
+      expect(model.latitude, isNull);
+      expect(model.longitude, isNull);
+      expect(model.horizontalAccuracy, isNull);
+    });
+
+    test('toMap emits location column keys', () {
+      final map = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        latitude: 32.88,
+        longitude: -117.23,
+        horizontalAccuracy: 5.0,
+      )!.toMap();
+      expect(map['latitude'], 32.88);
+      expect(map['longitude'], -117.23);
+      expect(map['horizontal_accuracy'], 5.0);
+    });
+
+    test('toMap emits null location keys when no fix was recorded', () {
+      // The keys must exist so the sqflite insert doesn't complain about
+      // missing columns in SQL compiled against the v5 schema.
+      final map = PhotoModel.create(
+        utcUnixTimestamp: 1,
+        rgbPath: 'r.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+      )!.toMap();
+      expect(map.containsKey('latitude'), isTrue);
+      expect(map.containsKey('longitude'), isTrue);
+      expect(map.containsKey('horizontal_accuracy'), isTrue);
+      expect(map['latitude'], isNull);
+      expect(map['longitude'], isNull);
+      expect(map['horizontal_accuracy'], isNull);
+    });
+
+    test('fromMap reconstructs location fields from a full row', () {
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': 32.8801,
+        'longitude': -117.234,
+        'horizontal_accuracy': 3.7,
+      });
+      expect(model.latitude, 32.8801);
+      expect(model.longitude, -117.234);
+      expect(model.horizontalAccuracy, 3.7);
+    });
+
+    test('fromMap coerces int location values back to double', () {
+      // Equator/prime meridian or any whole-number accuracy arrive as int
+      // from sqflite even though the column is REAL.
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': 0,
+        'longitude': 0,
+        'horizontal_accuracy': 5,
+      });
+      expect(model.latitude, 0.0);
+      expect(model.latitude, isA<double>());
+      expect(model.longitude, 0.0);
+      expect(model.horizontalAccuracy, 5.0);
+    });
+
+    test('fromMap handles missing location keys (pre-v5 row)', () {
+      // Rows written before the v5 migration won't have these keys at all.
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+      });
+      expect(model.latitude, isNull);
+      expect(model.longitude, isNull);
+      expect(model.horizontalAccuracy, isNull);
+    });
+
+    test('fromMap handles explicitly null location values', () {
+      final model = PhotoModel.fromMap({
+        'id': 1,
+        'utc_unix_timestamp': 1,
+        'rgb_path': 'r.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'latitude': null,
+        'longitude': null,
+        'horizontal_accuracy': null,
+      });
+      expect(model.latitude, isNull);
+      expect(model.longitude, isNull);
+      expect(model.horizontalAccuracy, isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // DataTemp
   // ---------------------------------------------------------------------------
   group('DataTemp', () {
@@ -616,6 +883,96 @@ void main() {
       );
       expect(dt.fishLen, isNull);
       expect(dt.deviceInfo, isNull);
+    });
+
+    test('constructor stores location fields when provided', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+        latitude: 32.8801,
+        longitude: -117.234,
+        horizontalAccuracy: 4.2,
+      );
+      expect(dt.latitude, 32.8801);
+      expect(dt.longitude, -117.234);
+      expect(dt.horizontalAccuracy, 4.2);
+    });
+
+    test('location fields are optional and default to null', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+      );
+      expect(dt.latitude, isNull);
+      expect(dt.longitude, isNull);
+      expect(dt.horizontalAccuracy, isNull);
+    });
+
+    test('constructor stores placeName alongside raw coords', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+        latitude: 32.88,
+        longitude: -117.23,
+        placeName: 'Mission Bay, CA',
+      );
+      // Display layer can choose the friendly name but raw coords remain.
+      expect(dt.placeName, 'Mission Bay, CA');
+      expect(dt.latitude, 32.88);
+      expect(dt.longitude, -117.23);
+    });
+
+    test('placeName defaults to null', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+      );
+      expect(dt.placeName, isNull);
+    });
+
+    // -------------------------------------------------------------------------
+    // copyWith — used by the gallery's lazy geocode pass.
+    // -------------------------------------------------------------------------
+    test('copyWith(placeName:) backfills name and preserves all other fields',
+        () {
+      final original = DataTemp(
+        photoId: 42,
+        image: const [1, 2, 3],
+        creationDate: DateTime.utc(2024, 1, 2, 3, 4),
+        fishLen: 0.45,
+        deviceInfo: 'iPhone 15 Pro',
+        latitude: 32.88,
+        longitude: -117.23,
+        horizontalAccuracy: 4.5,
+      );
+      final copy = original.copyWith(placeName: 'Mission Bay, CA');
+      expect(copy.placeName, 'Mission Bay, CA');
+      // Every other field is preserved so the gallery only re-renders the
+      // location text, not the image tile.
+      expect(copy.photoId, original.photoId);
+      expect(copy.image, original.image);
+      expect(copy.creationDate, original.creationDate);
+      expect(copy.fishLen, original.fishLen);
+      expect(copy.deviceInfo, original.deviceInfo);
+      expect(copy.latitude, original.latitude);
+      expect(copy.longitude, original.longitude);
+      expect(copy.horizontalAccuracy, original.horizontalAccuracy);
+    });
+
+    test('copyWith with no args keeps existing placeName', () {
+      final dt = DataTemp(
+        photoId: 1,
+        image: const [],
+        creationDate: DateTime.utc(2024),
+        placeName: 'San Diego, CA',
+      );
+      // Lazy pass shouldn't clobber an already-geocoded row if it somehow
+      // decides to re-wrap it.
+      expect(dt.copyWith().placeName, 'San Diego, CA');
     });
 
     test('id is unique per instance (timestamp-derived)', () async {

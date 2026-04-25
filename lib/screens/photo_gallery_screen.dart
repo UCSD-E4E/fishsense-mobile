@@ -1,9 +1,12 @@
 import 'dart:typed_data';
+import 'dart:async';
+
 import 'package:fishsense_android/main.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models.dart';
 import '../services/file_storage_service.dart';
+import '../services/geocoding_service.dart';
 import '../database.dart';
 import '../extensions.dart';
 import '../logger.dart';
@@ -24,6 +27,16 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   List<DataTemp> _savedPhotos = [];
   bool _isLoading = true;
   bool _isDeleting = false;
+
+  /// Re-entrancy guard for the lazy geocode pass. `_loadSavedPhotos()` gets
+  /// called from several places (initState, tab switch, pull-to-refresh,
+  /// manual button) — we only want one pass at a time.
+  bool _lazyGeocodeRunning = false;
+
+  /// CLGeocoder is rate-limited (~50 req/min device-wide). A 250ms gap
+  /// between requests keeps us well under that and leaves headroom for
+  /// other apps on the device.
+  static const Duration _geocodeGap = Duration(milliseconds: 250);
 
   @override
   void initState() {
@@ -61,6 +74,10 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 DateTime.fromMillisecondsSinceEpoch(photo.utcUnixTimestamp),
             fishLen: photo.fishLength,
             deviceInfo: photo.deviceInfo,
+            latitude: photo.latitude,
+            longitude: photo.longitude,
+            horizontalAccuracy: photo.horizontalAccuracy,
+            placeName: photo.placeName,
           );
           dataTempList.add(dataTemp);
         }
@@ -76,12 +93,78 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       context.read<AppStateProvider>().setPhotoCount(_savedPhotos.length);
 
       log.i('Gallery loaded ${_savedPhotos.length} photos');
+
+      // Fire-and-forget: backfill friendly names for any rows that were
+      // captured without network connectivity. Doesn't block gallery
+      // rendering.
+      unawaited(_lazyGeocodeMissing());
     } catch (e) {
       log.e('Error loading saved photos', error: e);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  /// Backfill reverse-geocoded names for rows that have a GPS fix but no
+  /// place_name (captured offline, imported from a pre-v6 install, or a
+  /// previous geocode call failed). Each success is persisted to the DB
+  /// and swapped into the in-memory list so the UI updates as we go.
+  ///
+  /// Silently no-ops when already running, stops at unmount, and treats
+  /// every geocode failure as "try again on the next gallery load" — the
+  /// raw coords in the fallback display stay visible in the meantime.
+  Future<void> _lazyGeocodeMissing() async {
+    if (_lazyGeocodeRunning) return;
+    _lazyGeocodeRunning = true;
+    try {
+      // Snapshot the queue so concurrent deletions/refreshes don't skew
+      // iteration. We re-look-up each row by photoId before updating so a
+      // row deleted mid-pass is cleanly skipped.
+      final queue = _savedPhotos
+          .where((p) =>
+              p.placeName == null &&
+              p.latitude != null &&
+              p.longitude != null)
+          .map((p) => p.photoId)
+          .toList();
+
+      if (queue.isEmpty) return;
+      log.d('Lazy geocode: ${queue.length} photos need backfill');
+
+      for (final photoId in queue) {
+        if (!mounted) return;
+
+        final index = _savedPhotos.indexWhere((p) => p.photoId == photoId);
+        if (index < 0) continue; // deleted since snapshot
+        final photo = _savedPhotos[index];
+        if (photo.placeName != null) continue; // already filled elsewhere
+        if (photo.latitude == null || photo.longitude == null) continue;
+
+        final name = await GeocodingService.reverseGeocode(
+          photo.latitude!,
+          photo.longitude!,
+        );
+
+        if (!mounted) return;
+        if (name == null) continue; // try again next gallery load
+
+        await DatabaseModel.updatePlaceName(photoId, name);
+        if (!mounted) return;
+
+        final currentIndex =
+            _savedPhotos.indexWhere((p) => p.photoId == photoId);
+        if (currentIndex < 0) continue;
+        setState(() {
+          _savedPhotos[currentIndex] =
+              _savedPhotos[currentIndex].copyWith(placeName: name);
+        });
+
+        await Future.delayed(_geocodeGap);
+      }
+    } finally {
+      _lazyGeocodeRunning = false;
     }
   }
 
@@ -389,12 +472,32 @@ class _PhotoGridItem extends StatelessWidget {
               // Photo image
               Expanded(
                 flex: 3,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Image.memory(
-                    Uint8List.fromList(photo.image),
-                    fit: BoxFit.cover,
-                  ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Image.memory(
+                        Uint8List.fromList(photo.image),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    if (photo.latitude != null && photo.longitude != null)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.location_on,
+                            color: Color(0xFF00AAA5),
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               
@@ -490,6 +593,36 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
     });
   }
 
+  /// Primary, human-readable location line. Prefers the reverse-geocoded
+  /// friendly name and falls back to raw coords if geocoding failed.
+  String _formatLocationPrimary(double? lat, double? lon, String? placeName) {
+    if (placeName != null && placeName.trim().isNotEmpty) {
+      return 'Location: ${placeName.trim()}';
+    }
+    if (lat == null || lon == null) {
+      return 'Location: Unavailable';
+    }
+    return 'Location: ${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
+  }
+
+  /// Secondary line shown only when we have a friendly name — exposes the
+  /// raw coordinates (+ accuracy) so the user can still see/share the
+  /// exact fix that's stored in the DB.
+  String? _formatLocationSecondary(
+      double? lat, double? lon, double? accuracy, String? placeName) {
+    if (lat == null || lon == null) return null;
+    if (placeName == null || placeName.trim().isEmpty) {
+      // The primary line already showed the coords — adding accuracy here.
+      return accuracy == null
+          ? null
+          : '±${accuracy.toStringAsFixed(0)}m accuracy';
+    }
+    final coords = '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
+    return accuracy == null
+        ? coords
+        : '$coords  (±${accuracy.toStringAsFixed(0)}m)';
+  }
+
   Orientation? _orientationFromString(String? name) {
     switch (name) {
       case 'portrait':
@@ -575,6 +708,40 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                       fontSize: 12,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatLocationPrimary(
+                      widget.photo.latitude,
+                      widget.photo.longitude,
+                      widget.photo.placeName,
+                    ),
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (_formatLocationSecondary(
+                        widget.photo.latitude,
+                        widget.photo.longitude,
+                        widget.photo.horizontalAccuracy,
+                        widget.photo.placeName,
+                      ) !=
+                      null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        _formatLocationSecondary(
+                          widget.photo.latitude,
+                          widget.photo.longitude,
+                          widget.photo.horizontalAccuracy,
+                          widget.photo.placeName,
+                        )!,
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

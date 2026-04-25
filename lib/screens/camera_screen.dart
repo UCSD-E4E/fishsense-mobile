@@ -5,6 +5,8 @@ import '../models.dart';
 import '../services/camera_service.dart';
 import '../services/device_info_service.dart';
 import '../services/file_storage_service.dart';
+import '../services/geocoding_service.dart';
+import '../services/location_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
 import '../logger.dart';
@@ -86,6 +88,15 @@ class _CameraScreenState extends State<CameraScreen>
     });
 
     try {
+      // Kick off GPS acquisition in parallel with the capture — the fix is
+      // optional, so we don't want it on the critical path. Reverse-geocode
+      // as soon as the fix arrives so the network round-trip overlaps the
+      // Rust inference.
+      final locationFuture = LocationService.getCurrentFix();
+      final placeNameFuture = locationFuture.then((fix) => fix == null
+          ? Future<String?>.value(null)
+          : GeocodingService.reverseGeocode(fix.latitude, fix.longitude));
+
       final captureResult = await CameraService.capturePhotoWithDepth();
 
       if (captureResult == null) {
@@ -132,6 +143,16 @@ class _CameraScreenState extends State<CameraScreen>
             captureResult.cameraIntrinsics),
       );
 
+      final locationFix = await locationFuture;
+      final placeName = await placeNameFuture;
+      if (locationFix == null) {
+        log.w('No location fix recorded for this capture');
+      } else {
+        log.d('Location fix: ${locationFix.latitude}, ${locationFix.longitude} '
+            '(±${locationFix.horizontalAccuracy}m) '
+            'place=${placeName ?? "<not geocoded>"}');
+      }
+
       // Create photo model for database storage using factory method
       final photo = PhotoModel.create(
         utcUnixTimestamp: captureResult.timestamp,
@@ -152,6 +173,10 @@ class _CameraScreenState extends State<CameraScreen>
         forkX: result.fishFound ? result.right.x : null,
         forkY: result.fishFound ? result.right.y : null,
         captureOrientation: captureOrientation.name,
+        latitude: locationFix?.latitude,
+        longitude: locationFix?.longitude,
+        horizontalAccuracy: locationFix?.horizontalAccuracy,
+        placeName: placeName,
       );
 
       // Save to database - equivalent to iOS insertPhoto(with:)

@@ -26,7 +26,7 @@ class DatabaseModel {
     
     return await openDatabase(
       databasePath,
-      version: 4, // v4: mask + snout/fork + capture orientation
+      version: 6, // v6: reverse-geocoded place name
       onCreate: _createTables,
       onUpgrade: _onUpgrade, // Handle schema upgrades
     );
@@ -58,6 +58,16 @@ class DatabaseModel {
       await db.execute('ALTER TABLE photos ADD COLUMN fork_y REAL');
       await db.execute('ALTER TABLE photos ADD COLUMN capture_orientation TEXT');
     }
+    if (oldVersion < 5) {
+      // v5: capture-time GPS fix (nullable — capture works without one)
+      await db.execute('ALTER TABLE photos ADD COLUMN latitude REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN longitude REAL');
+      await db.execute('ALTER TABLE photos ADD COLUMN horizontal_accuracy REAL');
+    }
+    if (oldVersion < 6) {
+      // v6: reverse-geocoded friendly name; null when no network at capture
+      await db.execute('ALTER TABLE photos ADD COLUMN place_name TEXT');
+    }
   }
 
   /// Create photos table - exact same schema as iOS + device info + fish length
@@ -83,7 +93,11 @@ class DatabaseModel {
         snout_y REAL,
         fork_x REAL,
         fork_y REAL,
-        capture_orientation TEXT
+        capture_orientation TEXT,
+        latitude REAL,
+        longitude REAL,
+        horizontal_accuracy REAL,
+        place_name TEXT
       );
     ''';
 
@@ -129,6 +143,10 @@ class DatabaseModel {
         'fork_x': photo.forkX,
         'fork_y': photo.forkY,
         'capture_orientation': photo.captureOrientation,
+        'latitude': photo.latitude,
+        'longitude': photo.longitude,
+        'horizontal_accuracy': photo.horizontalAccuracy,
+        'place_name': photo.placeName,
       };
 
       final id = await db.insert(_tableName, values);
@@ -166,6 +184,10 @@ class DatabaseModel {
           'fork_x',
           'fork_y',
           'capture_orientation',
+          'latitude',
+          'longitude',
+          'horizontal_accuracy',
+          'place_name',
         ],
         orderBy: 'utc_unix_timestamp DESC',
       );
@@ -196,6 +218,11 @@ class DatabaseModel {
           forkX: (maps[i]['fork_x'] as num?)?.toDouble(),
           forkY: (maps[i]['fork_y'] as num?)?.toDouble(),
           captureOrientation: maps[i]['capture_orientation'] as String?,
+          latitude: (maps[i]['latitude'] as num?)?.toDouble(),
+          longitude: (maps[i]['longitude'] as num?)?.toDouble(),
+          horizontalAccuracy:
+              (maps[i]['horizontal_accuracy'] as num?)?.toDouble(),
+          placeName: maps[i]['place_name'] as String?,
         );
       });
       
@@ -230,6 +257,28 @@ class DatabaseModel {
   /// Keep the original method for backward compatibility
   static Future<List<PhotoModel>> getAllPhotos() async {
     return getAllPhotosForGallery(); 
+  }
+
+  /// Backfill a reverse-geocoded friendly name onto an existing row.
+  ///
+  /// Used by the gallery's lazy-geocode pass when a photo was captured
+  /// offline (GPS recorded, no network to reverse-geocode) and the user
+  /// later opens the gallery with connectivity. The raw lat/lon are left
+  /// untouched — this only fills in place_name.
+  static Future<bool> updatePlaceName(int id, String placeName) async {
+    try {
+      final db = await database;
+      final count = await db.update(
+        _tableName,
+        {'place_name': placeName},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      log.e('SQLite Error updating place_name', error: e);
+      return false;
+    }
   }
 
   /// Delete photo by ID
