@@ -34,6 +34,8 @@
 	<string>FishSense uses the camera and LiDAR to measure fish length accurately</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>FishSense tags captured fish photos with your location so measurements can be correlated with where they were taken.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FishSense only uses your location while the app is open, to tag captured fish photos with where they were taken.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
