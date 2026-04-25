@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'screens/camera_screen.dart';
+import 'screens/fish_map_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/photo_gallery_screen.dart';
 import 'services/onboarding_state.dart';
@@ -147,8 +148,10 @@ class _MainTabViewState extends State<MainTabView> {
   late final List<Widget> _screens;
   
   // Use GlobalKey with public PhotoGalleryScreenState
-  final GlobalKey<PhotoGalleryScreenState> _photoGalleryKey = 
+  final GlobalKey<PhotoGalleryScreenState> _photoGalleryKey =
       GlobalKey<PhotoGalleryScreenState>();
+  final GlobalKey<FishMapScreenState> _fishMapKey =
+      GlobalKey<FishMapScreenState>();
 
   @override
   void initState() {
@@ -156,6 +159,7 @@ class _MainTabViewState extends State<MainTabView> {
     _screens = [
       const CameraScreen(),                                    // Camera tab (ViewController.swift)
       PhotoGalleryScreen(key: _photoGalleryKey),              // Photos tab (PhotoViewController.swift)
+      FishMapScreen(key: _fishMapKey),                        // Map tab
     ];
   }
 
@@ -177,11 +181,13 @@ class _MainTabViewState extends State<MainTabView> {
       onTap: (index) async {
         if (index == 1 && _currentIndex != 1) { // Switching TO Photos tab
           log.d('Switching to Photos tab - triggering auto-refresh');
-          
-
           _photoGalleryKey.currentState?.refreshPhotos();
         }
-        
+        if (index == 2 && _currentIndex != 2) { // Switching TO Map tab
+          log.d('Switching to Map tab - triggering auto-refresh');
+          _fishMapKey.currentState?.refreshMappedPhotos();
+        }
+
         setState(() {
           _currentIndex = index;
         });
@@ -194,6 +200,10 @@ class _MainTabViewState extends State<MainTabView> {
         BottomNavigationBarItem(
           icon: Icon(Icons.photo_library),
           label: 'Photos',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.map),
+          label: 'Map',
         ),
       ],
     );
