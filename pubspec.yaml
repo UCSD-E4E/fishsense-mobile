@@ -16,9 +16,22 @@ dependencies:
   path: ^1.8.3
   path_provider: ^2.1.1
 
+  # Persistent key-value store (onboarding flag, user prefs)
+  shared_preferences: ^2.3.0
+
   # Camera (start with basic camera, add ARCore later)
   # camera: ^0.10.5
   permission_handler: ^12.0.1
+
+  # Location (GPS fix for photo capture)
+  geolocator: ^13.0.1
+
+  # Reverse geocoding (lat/lon → human-readable place name)
+  geocoding: ^3.0.0
+
+  # Map view for the catches map screen (OpenStreetMap tiles, no API key)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
   # Image & File handling
   image: ^4.1.3
