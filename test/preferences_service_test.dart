@@ -51,8 +51,15 @@ void main() {
   // Persistence + ChangeNotifier
   // ---------------------------------------------------------------------------
   group('PreferencesService', () {
-    test('units defaults to metric on a fresh install', () async {
-      final svc = PreferencesService();
+    // Most tests below pin the locale to a metric country so they assert
+    // the persistence/notifier behavior independent of whatever locale the
+    // test runner happens to be in.
+    PreferencesService freshMetric() =>
+        PreferencesService(countryCodeProvider: () => 'DE');
+
+    test('units defaults to metric on a fresh install in a metric locale',
+        () async {
+      final svc = freshMetric();
       await svc.load();
       expect(svc.units, UnitsSystem.metric);
       expect(svc.loaded, isTrue);
@@ -76,7 +83,7 @@ void main() {
     });
 
     test('setUnits notifies listeners only on a real change', () async {
-      final svc = PreferencesService();
+      final svc = freshMetric();
       await svc.load();
 
       var calls = 0;
@@ -105,7 +112,7 @@ void main() {
     });
 
     test('formatFishLength uses the currently selected units', () async {
-      final svc = PreferencesService();
+      final svc = freshMetric();
       await svc.load();
       // Default: metric.
       expect(svc.formatFishLength(0.452), '452 mm');
@@ -120,11 +127,66 @@ void main() {
       expect(svc.units, UnitsSystem.imperial);
     });
 
-    test('falls back to metric for an unknown stored value', () async {
+    test('unknown stored value falls back to the locale default', () async {
+      // 'klingon' is unrecognized, so we resolve via the locale path —
+      // here pinned to a metric country so the assertion is stable.
       SharedPreferences.setMockInitialValues({'preferred_units': 'klingon'});
-      final svc = PreferencesService();
+      final svc = freshMetric();
       await svc.load();
       expect(svc.units, UnitsSystem.metric);
+    });
+
+    test('seeds imperial from device locale on a fresh install in the US',
+        () async {
+      final svc = PreferencesService(countryCodeProvider: () => 'US');
+      await svc.load();
+      expect(svc.units, UnitsSystem.imperial);
+    });
+
+    test('seeds metric from device locale on a fresh install in Germany',
+        () async {
+      final svc = PreferencesService(countryCodeProvider: () => 'DE');
+      await svc.load();
+      expect(svc.units, UnitsSystem.metric);
+    });
+
+    test('locale default does not override a stored preference', () async {
+      // User previously chose metric, then their phone's region setting
+      // changed to US — we must still honor their saved choice.
+      SharedPreferences.setMockInitialValues({'preferred_units': 'metric'});
+      final svc = PreferencesService(countryCodeProvider: () => 'US');
+      await svc.load();
+      expect(svc.units, UnitsSystem.metric);
+    });
+
+    test('falls back to metric when the device has no country code',
+        () async {
+      final svc = PreferencesService(countryCodeProvider: () => null);
+      await svc.load();
+      expect(svc.units, UnitsSystem.metric);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Locale-based default helper
+  // ---------------------------------------------------------------------------
+  group('defaultUnitsForCountry', () {
+    test('imperial for US, Liberia, Myanmar', () {
+      expect(defaultUnitsForCountry('US'), UnitsSystem.imperial);
+      expect(defaultUnitsForCountry('LR'), UnitsSystem.imperial);
+      expect(defaultUnitsForCountry('MM'), UnitsSystem.imperial);
+    });
+
+    test('metric for everywhere else', () {
+      expect(defaultUnitsForCountry('GB'), UnitsSystem.metric);
+      expect(defaultUnitsForCountry('DE'), UnitsSystem.metric);
+      expect(defaultUnitsForCountry('JP'), UnitsSystem.metric);
+      expect(defaultUnitsForCountry('CA'), UnitsSystem.metric);
+    });
+
+    test('metric when country code is null or empty', () {
+      expect(defaultUnitsForCountry(null), UnitsSystem.metric);
+      expect(defaultUnitsForCountry(''), UnitsSystem.metric);
     });
   });
 }
