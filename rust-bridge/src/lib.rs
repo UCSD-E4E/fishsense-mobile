@@ -4,8 +4,8 @@ use std::{ffi::{c_char, c_uchar}, fmt::Display, sync::{LazyLock, Mutex, Once}};
 
 use fishsense_core::errors::FishSenseError;
 use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
-use fishsense_core::fish::fish_length_calculator::FishLengthCalculator;
 use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationError};
+use fishsense_core::spatial::types::DepthMap;
 use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{Array1, Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
@@ -164,21 +164,6 @@ fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Resul
     do_inference(img_arr)
 }
 
-fn find_head_tail(mask: &Array2<u8>) -> Result<(Array1<f32>, Array1<f32>), ExecutionError> {
-    debug!("Detecting head/tail in mask {}x{}", mask.shape()[1], mask.shape()[0]);
-    let detector = FishHeadTailDetector {};
-    match detector.find_head_tail_img(mask) {
-        Ok(coords) => {
-            info!("Head/tail detected — head={:?}, tail={:?}", coords.head.0, coords.tail.0);
-            Ok((coords.head.0, coords.tail.0))
-        },
-        Err(error) => {
-            error!("Head/tail detection failed: {}", error);
-            Err(ExecutionError::HeadTailError(error))
-        }
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn do_compute_length(
     img_data: *const c_uchar, img_width: u32, img_height: u32,
@@ -205,32 +190,42 @@ fn do_compute_length(
         }
     }
 
-    let (left, right) = find_head_tail(&mask)?;
-
     debug!("Loading depth map {}x{}", depth_width, depth_height);
-    let depth_map = ios_f32_array_data_to_ndarray(
+    let depth_array = ios_f32_array_data_to_ndarray(
         depth_data as *const f32,
         depth_width as usize,
         depth_height as usize,
     )?;
     let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
+    let depth_map = DepthMap(depth_array);
 
-    // FishLengthCalculator now carries depth_height/depth_width and rescales
-    // image-space coords into the depth grid internally — required because
-    // ARKit depth (~256×192) is much lower resolution than the RGB frame.
+    // Stage 1: PCA + polygon-geometry refinement on the mask.
+    let detector = FishHeadTailDetector {};
+    let coords = detector.find_head_tail_img(&mask)
+        .map_err(ExecutionError::HeadTailError)?;
+    info!("Head/tail detected — head={:?}, tail={:?}", coords.head.0, coords.tail.0);
+
+    // Stage 2: mask-bounded RANSAC plane fit → per-keypoint depth.
+    // Replaces both the v1 depth-snap and naive depth-map sampling: robust to
+    // the 1920×1440 mask / 256×192 ARKit depth resolution gap, in-mask depth
+    // holes, and fish-on-board coplanarity.
+    let (head_depth, tail_depth) = detector.predict_keypoint_depths(
+        &depth_map,
+        &mask,
+        &camera_intrinsics_inverted,
+        &coords.head,
+        &coords.tail,
+    ).map_err(ExecutionError::HeadTailError)?;
+    info!("Plane-fit depths — head={:.4}m tail={:.4}m", head_depth, tail_depth);
+
     let world_point_handler = WorldPointHandler { camera_intrinsics_inverted };
-    let fish_length_calculator = FishLengthCalculator {
-        image_height: img_height as usize,
-        image_width: img_width as usize,
-        depth_height: depth_height as usize,
-        depth_width: depth_width as usize,
-        world_point_handler,
-    };
-
-    let length = fish_length_calculator.calculate_fish_length(&depth_map, &left, &right);
+    let head_3d = world_point_handler.compute_world_point_from_depth(&coords.head.0, head_depth);
+    let tail_3d = world_point_handler.compute_world_point_from_depth(&coords.tail.0, tail_depth);
+    let diff: Array1<f32> = &head_3d - &tail_3d;
+    let length = diff.dot(&diff).sqrt();
     info!("Fish length calculated: {:.4}m", length);
 
-    Ok((length, left, right))
+    Ok((length, coords.head.0, coords.tail.0))
 }
 
 #[cfg(test)]

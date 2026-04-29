@@ -143,6 +143,36 @@ class _CameraScreenState extends State<CameraScreen>
             captureResult.cameraIntrinsics),
       );
 
+      // Sanity gates on the Rust result. The downstream length math is
+      // faithful: when it produces a 14 mm or 324 mm "fish" it's because
+      // the snout/fork it was given are degenerate — collapsed snap
+      // fallback, or a runaway segmentation that swallowed the
+      // background. Persist the raw frame for later analysis but
+      // null out fish_length / keypoints so the row can't masquerade
+      // as a measurement.
+      final maskCoverage = (result.fishFound &&
+              result.mask != null &&
+              result.maskWidth > 0 &&
+              result.maskHeight > 0)
+          ? _maskCoverage(
+              result.mask!, result.maskWidth, result.maskHeight)
+          : 0.0;
+      const minCoverage = 0.01;
+      const maxCoverage = 0.20;
+      final coverageOk =
+          maskCoverage >= minCoverage && maskCoverage <= maxCoverage;
+      final lengthOk = result.length.isFinite && result.length > 0.0;
+      final isFishUsable = result.fishFound && coverageOk && lengthOk;
+      if (result.fishFound && !isFishUsable) {
+        log.w('Discarding fish measurement: '
+            'coverage=${(maskCoverage * 100).toStringAsFixed(1)}% '
+            '(window ${(minCoverage * 100).toStringAsFixed(0)}–'
+            '${(maxCoverage * 100).toStringAsFixed(0)}%), '
+            'length=${result.length}m, '
+            'left=(${result.left.x},${result.left.y}) '
+            'right=(${result.right.x},${result.right.y})');
+      }
+
       final locationFix = await locationFuture;
       final placeName = await placeNameFuture;
       if (locationFix == null) {
@@ -160,7 +190,7 @@ class _CameraScreenState extends State<CameraScreen>
         depthMap: captureResult.depthMap,
         confidenceMap: captureResult.confidenceMap,
         deviceInfo: deviceInfo,
-        fishLength: result.fishFound ? result.length : null,
+        fishLength: isFishUsable ? result.length : null,
         maskBytes: result.fishFound ? result.mask : null,
         maskWidth: result.fishFound && result.maskWidth > 0
             ? result.maskWidth
@@ -168,15 +198,17 @@ class _CameraScreenState extends State<CameraScreen>
         maskHeight: result.fishFound && result.maskHeight > 0
             ? result.maskHeight
             : null,
-        snoutX: result.fishFound ? result.left.x : null,
-        snoutY: result.fishFound ? result.left.y : null,
-        forkX: result.fishFound ? result.right.x : null,
-        forkY: result.fishFound ? result.right.y : null,
+        snoutX: isFishUsable ? result.left.x : null,
+        snoutY: isFishUsable ? result.left.y : null,
+        forkX: isFishUsable ? result.right.x : null,
+        forkY: isFishUsable ? result.right.y : null,
         captureOrientation: captureOrientation.name,
         latitude: locationFix?.latitude,
         longitude: locationFix?.longitude,
         horizontalAccuracy: locationFix?.horizontalAccuracy,
         placeName: placeName,
+        intrinsicsBytes:
+            PhotoModel.encodeIntrinsics(captureResult.cameraIntrinsics),
       );
 
       // Save to database - equivalent to iOS insertPhoto(with:)
@@ -187,7 +219,7 @@ class _CameraScreenState extends State<CameraScreen>
         log.e('Failed to create PhotoModel from capture result');
       }
 
-      if (result.fishFound) {
+      if (isFishUsable) {
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute(
@@ -215,6 +247,20 @@ class _CameraScreenState extends State<CameraScreen>
         });
       }
     }
+  }
+
+  /// Fraction of mask pixels marked as fish (any non-zero byte). The
+  /// segmentation mask is row-major, one byte per pixel; on iOS the
+  /// dimensions match the captured RGB frame.
+  double _maskCoverage(Uint8List mask, int width, int height) {
+    final total = width * height;
+    if (total <= 0 || mask.isEmpty) return 0.0;
+    var nonzero = 0;
+    final n = mask.length < total ? mask.length : total;
+    for (var i = 0; i < n; i++) {
+      if (mask[i] != 0) nonzero++;
+    }
+    return nonzero / total;
   }
 
   /// Show error dialog - equivalent to iOS displayErrorMessage

@@ -13,7 +13,7 @@ default = []
 download-binaries = ["fishsense-core/download-binaries"]
 
 [dependencies]
-fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v1.4.0", default-features = false, features = ["coreml"] }
+fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v2.0.0", default-features = false, features = ["coreml"] }
 libc = "0.2.184"
 ndarray = "0.17.2"
 opencv = "0.98.2"

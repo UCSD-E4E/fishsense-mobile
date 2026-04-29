@@ -857,6 +857,123 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
+  // PhotoModel intrinsics (v7 schema)
+  // ---------------------------------------------------------------------------
+  group('PhotoModel intrinsics', () {
+    final depthMap = ByteMatrixModel(bytes: [0], width: 1, height: 1);
+    final confidenceMap = ByteMatrixModel(bytes: [0], width: 1, height: 1);
+
+    // Realistic ARKit-style row-major K (fx=1375, fy=1375, cx=960, cy=720).
+    final k = <double>[1375.0, 0.0, 960.0, 0.0, 1375.0, 720.0, 0.0, 0.0, 1.0];
+
+    test('encodeIntrinsics packs 9 doubles into 72 little-endian bytes', () {
+      final bytes = PhotoModel.encodeIntrinsics(k);
+      expect(bytes, isNotNull);
+      expect(bytes!.length, 72);
+    });
+
+    test('encodeIntrinsics returns null for empty or null input', () {
+      expect(PhotoModel.encodeIntrinsics(null), isNull);
+      expect(PhotoModel.encodeIntrinsics(const <double>[]), isNull);
+    });
+
+    test('decodeIntrinsics is the inverse of encodeIntrinsics', () {
+      final bytes = PhotoModel.encodeIntrinsics(k);
+      final decoded = PhotoModel.decodeIntrinsics(bytes);
+      expect(decoded, isNotNull);
+      expect(decoded!.length, 9);
+      for (var i = 0; i < 9; i++) {
+        expect(decoded[i], k[i]);
+      }
+    });
+
+    test('decodeIntrinsics returns null for null/empty/misaligned input', () {
+      expect(PhotoModel.decodeIntrinsics(null), isNull);
+      expect(PhotoModel.decodeIntrinsics(Uint8List(0)), isNull);
+      // 17 bytes is not a multiple of 8 → reject (ambiguous decode).
+      expect(PhotoModel.decodeIntrinsics(Uint8List(17)), isNull);
+    });
+
+    test('toMap emits intrinsics_bytes', () {
+      final bytes = PhotoModel.encodeIntrinsics(k);
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1700000000,
+        rgbPath: 'rgb_intrinsics.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+        intrinsicsBytes: bytes,
+      )!;
+      final map = model.toMap();
+      expect(map['intrinsics_bytes'], bytes);
+    });
+
+    test('toMap emits null intrinsics_bytes when none was recorded', () {
+      final model = PhotoModel.create(
+        utcUnixTimestamp: 1700000000,
+        rgbPath: 'rgb_no_intrinsics.jpg',
+        depthMap: depthMap,
+        confidenceMap: confidenceMap,
+      )!;
+      expect(model.toMap()['intrinsics_bytes'], isNull);
+    });
+
+    test('fromMap reconstructs intrinsicsBytes from a Uint8List payload', () {
+      final bytes = PhotoModel.encodeIntrinsics(k)!;
+      final map = {
+        'id': 1,
+        'utc_unix_timestamp': 1700000000,
+        'rgb_path': 'rgb.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'intrinsics_bytes': bytes,
+      };
+      final model = PhotoModel.fromMap(map);
+      expect(model.intrinsicsBytes, isA<Uint8List>());
+      expect(model.intrinsicsBytes, bytes);
+    });
+
+    test('fromMap converts List<int> intrinsics payload (sqflite quirk) '
+        'to Uint8List', () {
+      final bytes = PhotoModel.encodeIntrinsics(k)!;
+      final map = {
+        'id': 1,
+        'utc_unix_timestamp': 1700000000,
+        'rgb_path': 'rgb.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+        'intrinsics_bytes': bytes.toList(),
+      };
+      final model = PhotoModel.fromMap(map);
+      expect(model.intrinsicsBytes, isA<Uint8List>());
+      expect(model.intrinsicsBytes, bytes);
+    });
+
+    test('fromMap handles missing intrinsics_bytes (pre-v7 row)', () {
+      final map = {
+        'id': 1,
+        'utc_unix_timestamp': 1700000000,
+        'rgb_path': 'rgb.jpg',
+        'depth_bytes': null,
+        'depth_width': 1,
+        'depth_height': 1,
+        'confidence_bytes': null,
+        'confidence_width': 1,
+        'confidence_height': 1,
+      };
+      final model = PhotoModel.fromMap(map);
+      expect(model.intrinsicsBytes, isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // DataTemp
   // ---------------------------------------------------------------------------
   group('DataTemp', () {

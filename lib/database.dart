@@ -26,7 +26,7 @@ class DatabaseModel {
     
     return await openDatabase(
       databasePath,
-      version: 6, // v6: reverse-geocoded place name
+      version: 7, // v7: per-row camera intrinsics blob
       onCreate: _createTables,
       onUpgrade: _onUpgrade, // Handle schema upgrades
     );
@@ -68,6 +68,11 @@ class DatabaseModel {
       // v6: reverse-geocoded friendly name; null when no network at capture
       await db.execute('ALTER TABLE photos ADD COLUMN place_name TEXT');
     }
+    if (oldVersion < 7) {
+      // v7: per-row camera intrinsics — 9 f64 little-endian, row-major K.
+      // Without this, post-hoc length recomputation has to guess fx/fy/cx/cy.
+      await db.execute('ALTER TABLE photos ADD COLUMN intrinsics_bytes BLOB');
+    }
   }
 
   /// Create photos table - exact same schema as iOS + device info + fish length
@@ -97,7 +102,8 @@ class DatabaseModel {
         latitude REAL,
         longitude REAL,
         horizontal_accuracy REAL,
-        place_name TEXT
+        place_name TEXT,
+        intrinsics_bytes BLOB
       );
     ''';
 
@@ -147,6 +153,7 @@ class DatabaseModel {
         'longitude': photo.longitude,
         'horizontal_accuracy': photo.horizontalAccuracy,
         'place_name': photo.placeName,
+        'intrinsics_bytes': photo.intrinsicsBytes,
       };
 
       final id = await db.insert(_tableName, values);

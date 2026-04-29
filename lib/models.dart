@@ -40,6 +40,12 @@ class PhotoModel {
   /// label. The raw lat/lon above are always preserved regardless.
   final String? placeName;
 
+  /// Camera intrinsics for the captured frame: 9 little-endian f64
+  /// values, row-major K. Required to reproduce the on-device length
+  /// math exactly during post-hoc analysis. Encode/decode via
+  /// [encodeIntrinsics] / [decodeIntrinsics].
+  final Uint8List? intrinsicsBytes;
+
   PhotoModel({
     required this.id,
     required this.utcUnixTimestamp,
@@ -60,6 +66,7 @@ class PhotoModel {
     this.longitude,
     this.horizontalAccuracy,
     this.placeName,
+    this.intrinsicsBytes,
   });
 
   /// Factory constructor - equivalent to Swift init?() method
@@ -82,6 +89,7 @@ class PhotoModel {
     double? longitude,
     double? horizontalAccuracy,
     String? placeName,
+    Uint8List? intrinsicsBytes,
     int id = -1,
   }) {
     return PhotoModel(
@@ -104,7 +112,30 @@ class PhotoModel {
       longitude: longitude,
       horizontalAccuracy: horizontalAccuracy,
       placeName: placeName,
+      intrinsicsBytes: intrinsicsBytes,
     );
+  }
+
+  /// Pack a 9-element row-major K matrix into 72 bytes (9 × f64
+  /// little-endian) for the `intrinsics_bytes` BLOB column. Returns
+  /// null if `intrinsics` is empty so callers can pass through the
+  /// "no intrinsics available" case (e.g. mock-data path) unchanged.
+  static Uint8List? encodeIntrinsics(List<double>? intrinsics) {
+    if (intrinsics == null || intrinsics.isEmpty) return null;
+    final bd = ByteData(intrinsics.length * 8);
+    for (var i = 0; i < intrinsics.length; i++) {
+      bd.setFloat64(i * 8, intrinsics[i], Endian.little);
+    }
+    return bd.buffer.asUint8List();
+  }
+
+  /// Inverse of [encodeIntrinsics]. Returns null when the BLOB is
+  /// missing or has a non-multiple-of-8 length.
+  static List<double>? decodeIntrinsics(Uint8List? bytes) {
+    if (bytes == null || bytes.isEmpty || bytes.length % 8 != 0) return null;
+    final bd = ByteData.sublistView(bytes);
+    final n = bytes.length ~/ 8;
+    return List<double>.generate(n, (i) => bd.getFloat64(i * 8, Endian.little));
   }
 
   /// Convert to Map for database storage
@@ -133,6 +164,7 @@ class PhotoModel {
       'longitude': longitude,
       'horizontal_accuracy': horizontalAccuracy,
       'place_name': placeName,
+      'intrinsics_bytes': intrinsicsBytes,
     };
   }
 
@@ -142,6 +174,10 @@ class PhotoModel {
     final Uint8List? mask = rawMask is Uint8List
         ? rawMask
         : (rawMask is List<int> ? Uint8List.fromList(rawMask) : null);
+    final rawIntrinsics = map['intrinsics_bytes'];
+    final Uint8List? intrinsics = rawIntrinsics is Uint8List
+        ? rawIntrinsics
+        : (rawIntrinsics is List<int> ? Uint8List.fromList(rawIntrinsics) : null);
     return PhotoModel(
       id: map['id'],
       utcUnixTimestamp: map['utc_unix_timestamp'],
@@ -170,6 +206,7 @@ class PhotoModel {
       longitude: (map['longitude'] as num?)?.toDouble(),
       horizontalAccuracy: (map['horizontal_accuracy'] as num?)?.toDouble(),
       placeName: map['place_name'] as String?,
+      intrinsicsBytes: intrinsics,
     );
   }
 }
