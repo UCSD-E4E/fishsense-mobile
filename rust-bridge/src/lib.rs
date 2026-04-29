@@ -281,6 +281,7 @@ mod tests {
 /// `mask_data` is row-major `mask_width * mask_height` bytes (nonzero =
 /// fish), in the same image-pixel space as the captured RGB frame.
 /// `snout_xy` and `fork_xy` are pixel coordinates in that same space.
+#[allow(clippy::too_many_arguments)]
 fn do_recompute_length(
     mask_data: *const c_uchar, mask_width: u32, mask_height: u32,
     depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
