@@ -341,7 +341,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n  echo \"Re-sign Native Assets: no signing identity, skipping\"\n  exit 0\nfi\nFRAMEWORKS_DIR=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Frameworks\"\n[ -d \"$FRAMEWORKS_DIR\" ] || exit 0\nfor fw in \"$FRAMEWORKS_DIR\"/*.framework; do\n  [ -d \"$fw\" ] || continue\n  if /usr/bin/codesign -dvv \"$fw\" 2>&1 | grep -q \"Signature=adhoc\"; then\n    echo \"Re-signing $(basename \"$fw\")\"\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\n      --preserve-metadata=identifier,entitlements,flags \\\n      --generate-entitlement-der \\\n      \"$fw\"\n  fi\ndone\n";
+			shellScript = "set -e\nif [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n  echo \"Re-sign Native Assets: no signing identity, skipping\"\n  exit 0\nfi\nFRAMEWORKS_DIR=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Frameworks\"\n[ -d \"$FRAMEWORKS_DIR\" ] || exit 0\nfor fw in \"$FRAMEWORKS_DIR\"/*.framework; do\n  [ -d \"$fw\" ] || continue\n  if /usr/bin/codesign -dvv \"$fw\" 2>&1 | grep -q \"Signature=adhoc\"; then\n    echo \"Re-signing $(basename \"$fw\")\"\n    # Do NOT preserve `flags`: that would keep the 0x2(adhoc)\n    # bit and the resign would be a no-op.\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\n      --preserve-metadata=identifier,entitlements \\\n      --generate-entitlement-der \\\n      --timestamp=none \\\n      \"$fw\"\n  fi\ndone\n";
 			showEnvVarsInLog = 0;
 		};
 		510502A9B39ECEF6143A8931 /* [CP] Copy Pods Resources */ = {

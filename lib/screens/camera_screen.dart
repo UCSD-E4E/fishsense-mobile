@@ -212,9 +212,10 @@ class _CameraScreenState extends State<CameraScreen>
       );
 
       // Save to database - equivalent to iOS insertPhoto(with:)
+      int? insertedId;
       if (photo != null) {
-        final dbSuccess = await DatabaseModel.insertPhoto(photo);
-        log.i('DB insert: $dbSuccess');
+        insertedId = await DatabaseModel.insertPhoto(photo);
+        log.i('DB insert: id=$insertedId');
       } else {
         log.e('Failed to create PhotoModel from capture result');
       }
@@ -227,6 +228,13 @@ class _CameraScreenState extends State<CameraScreen>
               photoBytes: captureResult.imageBytes,
               result: result,
               captureOrientation: captureOrientation,
+              photoId: insertedId,
+              depthData:
+                  Uint8List.fromList(captureResult.depthMap.bytes ?? []),
+              depthWidth: captureResult.depthMap.width,
+              depthHeight: captureResult.depthMap.height,
+              cameraIntrinsicsInverted: RustService.invertIntrinsics(
+                  captureResult.cameraIntrinsics),
             ),
           ),
         );

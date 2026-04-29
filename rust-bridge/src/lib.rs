@@ -1,11 +1,11 @@
 extern crate libc;
 use core::slice;
-use std::{ffi::{c_char, c_uchar}, fmt::Display, sync::{LazyLock, Mutex, Once}};
+use std::{ffi::{c_char, c_uchar}, fmt::Display, panic::{AssertUnwindSafe, catch_unwind}, sync::{LazyLock, Mutex, Once}};
 
 use fishsense_core::errors::FishSenseError;
 use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
 use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationError};
-use fishsense_core::spatial::types::DepthMap;
+use fishsense_core::spatial::types::{DepthMap, ImageCoord};
 use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{Array1, Array2, Array3};
 use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
@@ -273,6 +273,66 @@ mod tests {
     }
 }
 
+/// Re-run only the plane-fit + length math against caller-supplied snout
+/// and fork pixel coordinates, reusing a previously-computed mask. Used by
+/// the manual-edit path where the user has dragged the keypoints to new
+/// positions and we want to recompute length without re-segmenting.
+///
+/// `mask_data` is row-major `mask_width * mask_height` bytes (nonzero =
+/// fish), in the same image-pixel space as the captured RGB frame.
+/// `snout_xy` and `fork_xy` are pixel coordinates in that same space.
+fn do_recompute_length(
+    mask_data: *const c_uchar, mask_width: u32, mask_height: u32,
+    depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
+    camera_intrinsics_inverted_data: *const f32,
+    snout_x: f32, snout_y: f32,
+    fork_x: f32, fork_y: f32,
+) -> Result<(f32, Array1<f32>, Array1<f32>), ExecutionError> {
+    info!(
+        "recompute_length: mask={}x{} depth={}x{} snout=({:.1},{:.1}) fork=({:.1},{:.1})",
+        mask_width, mask_height, depth_width, depth_height,
+        snout_x, snout_y, fork_x, fork_y,
+    );
+
+    let mask_len = (mask_width as usize) * (mask_height as usize);
+    let mask_vec = unsafe {
+        let slice = slice::from_raw_parts(mask_data, mask_len);
+        slice.to_vec()
+    };
+    let mask = Array2::<u8>::from_shape_vec((mask_height as usize, mask_width as usize), mask_vec)
+        .map_err(ExecutionError::ArrayShapeError)?;
+
+    let depth_array = ios_f32_array_data_to_ndarray(
+        depth_data as *const f32,
+        depth_width as usize,
+        depth_height as usize,
+    )?;
+    let camera_intrinsics_inverted = ios_f32_array_data_to_ndarray(camera_intrinsics_inverted_data, 3, 3)?;
+    let depth_map = DepthMap(depth_array);
+
+    let snout = ImageCoord(ndarray::array![snout_x, snout_y]);
+    let fork = ImageCoord(ndarray::array![fork_x, fork_y]);
+
+    let detector = FishHeadTailDetector {};
+    let (head_depth, tail_depth) = detector.predict_keypoint_depths(
+        &depth_map,
+        &mask,
+        &camera_intrinsics_inverted,
+        &snout,
+        &fork,
+    ).map_err(ExecutionError::HeadTailError)?;
+    info!("Plane-fit depths — head={:.4}m tail={:.4}m", head_depth, tail_depth);
+
+    let world_point_handler = WorldPointHandler { camera_intrinsics_inverted };
+    let head_3d = world_point_handler.compute_world_point_from_depth(&snout.0, head_depth);
+    let tail_3d = world_point_handler.compute_world_point_from_depth(&fork.0, tail_depth);
+    let diff: Array1<f32> = &head_3d - &tail_3d;
+    let length = diff.dot(&diff).sqrt();
+    info!("Recomputed fish length: {:.4}m", length);
+
+    Ok((length, snout.0, fork.0))
+}
+
 /// Caller-allocated `mask_out` is a buffer of `img_width * img_height` bytes.
 /// On success the segmentation mask is copied there in row-major order.
 /// Pass null to skip mask output.
@@ -284,13 +344,19 @@ pub extern "C" fn compute_length(
     mask_out: *mut c_uchar,
 ) -> ComputeLengthResult {
     init_tracing();
-    match do_compute_length(
-        img_data, img_width, img_height, // RGB
-        depth_data, depth_width, depth_height, // Depth Map
+    // Wrap the whole pipeline so any panic in OpenCV / ndarray-linalg /
+    // ONNX Runtime turns into a clean error result instead of UB across
+    // the FFI boundary. Without this, a Rust panic crossing `extern "C"`
+    // surfaces on iOS as an EXC_BAD_ACCESS in libunwind code with no
+    // useful symbols, masking the real failure.
+    let result = catch_unwind(AssertUnwindSafe(|| do_compute_length(
+        img_data, img_width, img_height,
+        depth_data, depth_width, depth_height,
         camera_intrinsics_inverted_data,
         mask_out,
-    ) {
-        Ok((length, left, right)) => {
+    )));
+    match result {
+        Ok(Ok((length, left, right))) => {
             info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right);
             ComputeLengthResult {
                 length,
@@ -300,7 +366,7 @@ pub extern "C" fn compute_length(
                 error_string: [0i8; 256],
             }
         },
-        Err(error) => {
+        Ok(Err(error)) => {
             match error {
                 ExecutionError::FishNotFound => {
                     warn!("compute_length: no fish found in image");
@@ -323,6 +389,89 @@ pub extern "C" fn compute_length(
                     }
                 },
             }
-        }
+        },
+        Err(panic_payload) => {
+            let msg = panic_message(&panic_payload);
+            error!("compute_length: panic caught at FFI boundary: {}", msg);
+            ComputeLengthResult {
+                length: 0f32,
+                left: Coordinate { x: 0, y: 0 },
+                right: Coordinate { x: 0, y: 0 },
+                fish_found: false,
+                error_string: write_error_string(&format!("panic: {}", msg)),
+            }
+        },
+    }
+}
+
+/// Best-effort string from a `catch_unwind` payload. Rust panics carry
+/// either `&'static str` or `String` payloads in practice; anything else
+/// falls through to a placeholder.
+fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&'static str>() {
+        (*s).to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "<non-string panic payload>".to_string()
+    }
+}
+
+/// Re-run plane-fit + length against caller-supplied snout/fork pixel
+/// coordinates, using a previously-stored segmentation mask. Skips the
+/// segmentation and head/tail-detection stages of `compute_length`.
+///
+/// `mask_data` is row-major `mask_width * mask_height` bytes (nonzero =
+/// fish). Snout and fork are in the same pixel-space as the mask.
+/// On any failure the returned `error_string` is populated and
+/// `fish_found` is `false`.
+#[allow(clippy::too_many_arguments)]
+#[unsafe(no_mangle)]
+pub extern "C" fn recompute_length(
+    mask_data: *const c_uchar, mask_width: u32, mask_height: u32,
+    depth_data: *const c_uchar, depth_width: u32, depth_height: u32,
+    camera_intrinsics_inverted_data: *const f32,
+    snout_x: f32, snout_y: f32,
+    fork_x: f32, fork_y: f32,
+) -> ComputeLengthResult {
+    init_tracing();
+    let result = catch_unwind(AssertUnwindSafe(|| do_recompute_length(
+        mask_data, mask_width, mask_height,
+        depth_data, depth_width, depth_height,
+        camera_intrinsics_inverted_data,
+        snout_x, snout_y, fork_x, fork_y,
+    )));
+    match result {
+        Ok(Ok((length, snout, fork))) => {
+            info!("recompute_length succeeded: length={:.4}m snout={:?} fork={:?}", length, snout, fork);
+            ComputeLengthResult {
+                length,
+                left: Coordinate { x: snout[0] as usize, y: snout[1] as usize },
+                right: Coordinate { x: fork[0] as usize, y: fork[1] as usize },
+                fish_found: true,
+                error_string: [0i8; 256],
+            }
+        },
+        Ok(Err(error)) => {
+            error!("recompute_length error: {}", error);
+            ComputeLengthResult {
+                length: 0f32,
+                left: Coordinate { x: 0, y: 0 },
+                right: Coordinate { x: 0, y: 0 },
+                fish_found: false,
+                error_string: write_error_string(&error.to_string()),
+            }
+        },
+        Err(panic_payload) => {
+            let msg = panic_message(&panic_payload);
+            error!("recompute_length: panic caught at FFI boundary: {}", msg);
+            ComputeLengthResult {
+                length: 0f32,
+                left: Coordinate { x: 0, y: 0 },
+                right: Coordinate { x: 0, y: 0 },
+                fish_found: false,
+                error_string: write_error_string(&format!("panic: {}", msg)),
+            }
+        },
     }
 }

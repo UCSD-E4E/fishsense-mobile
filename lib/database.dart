@@ -117,17 +117,22 @@ class DatabaseModel {
   }
 
   /// Insert photo - equivalent to Swift insertPhoto(with:)
-  static Future<bool> insertPhoto(PhotoModel photo) async {
+  ///
+  /// Returns the new row's primary key on success, or null on failure.
+  /// Callers that don't need the id can ignore the return value; the
+  /// post-capture flow uses it to wire up the in-memory result screen
+  /// to the persisted row so manual edits can be saved back.
+  static Future<int?> insertPhoto(PhotoModel photo) async {
     try {
       final db = await database;
-      
+
       // Convert depth map bytes to Uint8List for BLOB storage
-      final depthBytes = photo.depthMap.bytes != null 
-          ? Uint8List.fromList(photo.depthMap.bytes!) 
+      final depthBytes = photo.depthMap.bytes != null
+          ? Uint8List.fromList(photo.depthMap.bytes!)
           : null;
-      
-      final confidenceBytes = photo.confidenceMap.bytes != null 
-          ? Uint8List.fromList(photo.confidenceMap.bytes!) 
+
+      final confidenceBytes = photo.confidenceMap.bytes != null
+          ? Uint8List.fromList(photo.confidenceMap.bytes!)
           : null;
 
       final values = {
@@ -158,10 +163,44 @@ class DatabaseModel {
 
       final id = await db.insert(_tableName, values);
       log.i('Photo inserted with ID: $id');
-      return true;
-      
+      return id;
+
     } catch (e) {
       log.e('SQLite Error inserting photo', error: e);
+      return null;
+    }
+  }
+
+  /// Persist a manually-edited measurement. Updates snout/fork pixel
+  /// coordinates and the recomputed length on an existing row, leaving
+  /// every other column (mask, depth, intrinsics, etc.) untouched. Used
+  /// by the manual-edit flow on both the post-capture result screen and
+  /// the gallery detail viewer.
+  static Future<bool> updateMeasurement({
+    required int id,
+    required double snoutX,
+    required double snoutY,
+    required double forkX,
+    required double forkY,
+    required double fishLength,
+  }) async {
+    try {
+      final db = await database;
+      final count = await db.update(
+        _tableName,
+        {
+          'snout_x': snoutX,
+          'snout_y': snoutY,
+          'fork_x': forkX,
+          'fork_y': forkY,
+          'fish_length': fishLength,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      log.e('SQLite Error updating measurement', error: e);
       return false;
     }
   }

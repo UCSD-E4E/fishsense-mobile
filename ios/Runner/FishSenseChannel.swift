@@ -37,6 +37,12 @@ class FishSenseChannel {
                     return
                 }
                 self.computeLength(call: call, result: result)
+            case "recompute_length":
+                guard let self = self else {
+                    result(FlutterError(code: "UNAVAILABLE", message: "FishSenseChannel deallocated", details: nil))
+                    return
+                }
+                self.recomputeLength(call: call, result: result)
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -132,6 +138,119 @@ class FishSenseChannel {
                 }
             }
         }
+    }
+
+    // MARK: - recompute_length
+
+    private struct RecomputeLengthArgs {
+        let maskData: Data
+        let maskWidth: Int
+        let maskHeight: Int
+        let depthData: Data
+        let depthWidth: Int
+        let depthHeight: Int
+        let cameraIntrinsicsInverted: [Float32]
+        let snoutX: Float32
+        let snoutY: Float32
+        let forkX: Float32
+        let forkY: Float32
+    }
+
+    private func parseRecomputeArgs(_ call: FlutterMethodCall) -> Result<RecomputeLengthArgs, ArgParseError> {
+        guard let args = call.arguments as? [String: Any] else {
+            return .failure(.message("Invalid arguments"))
+        }
+        guard let maskWidth = args["maskWidth"] as? Int,
+              let maskHeight = args["maskHeight"] as? Int,
+              let depthWidth = args["depthWidth"] as? Int,
+              let depthHeight = args["depthHeight"] as? Int,
+              let cameraIntrinsicsInverted = args["cameraIntrinsicsInverted"] as? [Double],
+              let snoutX = (args["snoutX"] as? NSNumber)?.floatValue,
+              let snoutY = (args["snoutY"] as? NSNumber)?.floatValue,
+              let forkX = (args["forkX"] as? NSNumber)?.floatValue,
+              let forkY = (args["forkY"] as? NSNumber)?.floatValue else {
+            return .failure(.message("Missing required parameters"))
+        }
+        guard let maskData = extractData(args["maskData"]) else {
+            return .failure(.message("Invalid mask data format"))
+        }
+        guard let depthData = extractData(args["depthData"]) else {
+            return .failure(.message("Invalid depth data format"))
+        }
+        return .success(RecomputeLengthArgs(
+            maskData: maskData,
+            maskWidth: maskWidth, maskHeight: maskHeight,
+            depthData: depthData,
+            depthWidth: depthWidth, depthHeight: depthHeight,
+            cameraIntrinsicsInverted: cameraIntrinsicsInverted.map { Float32($0) },
+            snoutX: snoutX, snoutY: snoutY,
+            forkX: forkX, forkY: forkY
+        ))
+    }
+
+    private func recomputeLength(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let args: RecomputeLengthArgs
+        switch parseRecomputeArgs(call) {
+        case .success(let parsed): args = parsed
+        case .failure(.message(let message)):
+            result(["success": false, "error": message])
+            return
+        }
+
+        logger.debug("recompute_length: mask \(args.maskWidth)x\(args.maskHeight), depth \(args.depthWidth)x\(args.depthHeight), snout=(\(args.snoutX),\(args.snoutY)) fork=(\(args.forkX),\(args.forkY))")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let rustResult = Self.runRustRecompute(args: args)
+            let flutterResult = Self.buildRecomputeFlutterResult(rustResult: rustResult)
+            DispatchQueue.main.async { result(flutterResult) }
+        }
+    }
+
+    private static func runRustRecompute(args: RecomputeLengthArgs) -> ComputeLengthResult {
+        return args.maskData.withUnsafeBytes { maskBytes in
+            args.depthData.withUnsafeBytes { depthBytes in
+                args.cameraIntrinsicsInverted.withUnsafeBufferPointer { intrinsicsPtr in
+                    FishSenseRS.recompute_length(
+                        maskBytes.bindMemory(to: UInt8.self).baseAddress,
+                        UInt32(args.maskWidth),
+                        UInt32(args.maskHeight),
+                        depthBytes.bindMemory(to: UInt8.self).baseAddress,
+                        UInt32(args.depthWidth),
+                        UInt32(args.depthHeight),
+                        intrinsicsPtr.baseAddress,
+                        args.snoutX, args.snoutY,
+                        args.forkX, args.forkY
+                    )
+                }
+            }
+        }
+    }
+
+    private static func buildRecomputeFlutterResult(rustResult: ComputeLengthResult) -> [String: Any] {
+        let errorMsg: String? = withUnsafePointer(to: rustResult.error_string) { ptr in
+            let str = String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
+            return str.isEmpty ? nil : str
+        }
+
+        var flutterResult: [String: Any] = [
+            "success": true,
+            "length": Double(rustResult.length),
+            "fishFound": rustResult.fish_found,
+            "leftX": Double(rustResult.left.x),
+            "leftY": Double(rustResult.left.y),
+            "rightX": Double(rustResult.right.x),
+            "rightY": Double(rustResult.right.y),
+            "confidence": 0.8,
+        ]
+        if let errorMsg = errorMsg {
+            flutterResult["errorString"] = errorMsg
+        }
+        if rustResult.fish_found {
+            logger.info("recompute_length: success, length=\(rustResult.length)m")
+        } else {
+            logger.warning("recompute_length: failed — \(errorMsg ?? "<no error>")")
+        }
+        return flutterResult
     }
 
     private static func buildFlutterResult(rustResult: ComputeLengthResult, maskData: Data, args: ComputeLengthArgs) -> [String: Any] {

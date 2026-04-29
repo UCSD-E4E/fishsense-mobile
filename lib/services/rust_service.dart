@@ -79,6 +79,63 @@ class RustService {
     }
   }
 
+  /// Re-run the plane-fit + length math against caller-supplied snout/fork
+  /// pixel coordinates, reusing a previously-computed segmentation mask.
+  /// Used when the user manually edits the keypoints on a captured photo.
+  ///
+  /// Returns a `ComputeLengthResult` with the new length and the same
+  /// (echoed-back) keypoints. On Rust failure (e.g. degenerate plane fit
+  /// because the user dragged into a low-depth region) `fishFound` is
+  /// false and `errorString` carries the message — surface it to the UI
+  /// and let the user reset rather than persisting the failed result.
+  static Future<ComputeLengthResult> recomputeLength({
+    required Uint8List maskData,
+    required int maskWidth,
+    required int maskHeight,
+    required Uint8List depthData,
+    required int depthWidth,
+    required int depthHeight,
+    required List<double> cameraIntrinsicsInverted,
+    required Coordinate snout,
+    required Coordinate fork,
+  }) async {
+    try {
+      final Map<String, dynamic> arguments = {
+        'maskData': maskData,
+        'maskWidth': maskWidth,
+        'maskHeight': maskHeight,
+        'depthData': depthData,
+        'depthWidth': depthWidth,
+        'depthHeight': depthHeight,
+        'cameraIntrinsicsInverted': cameraIntrinsicsInverted,
+        'snoutX': snout.x,
+        'snoutY': snout.y,
+        'forkX': fork.x,
+        'forkY': fork.y,
+      };
+
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'recompute_length',
+        arguments,
+      );
+
+      if (result['success'] == false) {
+        return ComputeLengthResult.error(
+          errorString:
+              (result['error'] ?? result['errorString'] ?? 'Rust recompute failed')
+                  .toString(),
+        );
+      }
+
+      return ComputeLengthResult.fromMap(result);
+    } catch (e) {
+      log.e('Rust recompute_length failed', error: e);
+      return ComputeLengthResult.error(
+        errorString: 'Rust recompute failed: $e',
+      );
+    }
+  }
+
   /// Detect fish species using Rust ML pipeline.
   static Future<String> detectSpecies(Uint8List imageData) async {
     try {

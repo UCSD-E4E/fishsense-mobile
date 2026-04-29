@@ -7,7 +7,9 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
+import '../services/mask_snap.dart';
 import '../services/preferences_service.dart';
+import '../services/rust_service.dart';
 import '../database.dart';
 import '../extensions.dart';
 import '../logger.dart';
@@ -578,6 +580,22 @@ class _PhotoDetailModal extends StatefulWidget {
 class _PhotoDetailModalState extends State<_PhotoDetailModal> {
   PhotoModel? _full;
   bool _loading = true;
+  bool _editing = false;
+  bool _busy = false;
+  String? _editError;
+
+  /// Live snout/fork — drifts away from the DB row while the user is in
+  /// edit mode, then snaps back on a successful recompute. Initialised
+  /// from the loaded PhotoModel.
+  Coordinate? _snout;
+  Coordinate? _fork;
+  double? _length;
+
+  /// Snapshot taken when entering edit mode so a failed recompute can be
+  /// undone with the reset button.
+  Coordinate? _resetSnout;
+  Coordinate? _resetFork;
+  double? _resetLength;
 
   @override
   void initState() {
@@ -591,7 +609,170 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
     setState(() {
       _full = full;
       _loading = false;
+      if (full != null) {
+        if (full.snoutX != null && full.snoutY != null) {
+          _snout = Coordinate(x: full.snoutX!, y: full.snoutY!);
+        }
+        if (full.forkX != null && full.forkY != null) {
+          _fork = Coordinate(x: full.forkX!, y: full.forkY!);
+        }
+        _length = full.fishLength;
+      }
     });
+  }
+
+  bool get _canEdit {
+    final f = _full;
+    if (f == null) return false;
+    return _snout != null &&
+        _fork != null &&
+        f.maskBytes != null &&
+        (f.maskWidth ?? 0) > 0 &&
+        (f.maskHeight ?? 0) > 0 &&
+        f.depthMap.bytes != null &&
+        f.depthMap.width > 0 &&
+        f.depthMap.height > 0 &&
+        PhotoModel.decodeIntrinsics(f.intrinsicsBytes) != null;
+  }
+
+  void _enterEditMode() {
+    if (!_canEdit) return;
+    setState(() {
+      _editing = true;
+      _editError = null;
+      _resetSnout = _snout;
+      _resetFork = _fork;
+      _resetLength = _length;
+    });
+  }
+
+  void _exitEditMode() {
+    setState(() {
+      _editing = false;
+      _editError = null;
+    });
+  }
+
+  void _resetEdits() {
+    if (_resetSnout == null || _resetFork == null || _resetLength == null) return;
+    setState(() {
+      _snout = _resetSnout;
+      _fork = _resetFork;
+      _length = _resetLength;
+      _editError = null;
+    });
+  }
+
+  Future<void> _onSnoutDropped(Coordinate raw) =>
+      _applyEdit(snoutRaw: raw, forkRaw: _fork!);
+
+  Future<void> _onForkDropped(Coordinate raw) =>
+      _applyEdit(snoutRaw: _snout!, forkRaw: raw);
+
+  Future<void> _applyEdit({
+    required Coordinate snoutRaw,
+    required Coordinate forkRaw,
+  }) async {
+    final f = _full;
+    if (f == null || _busy || !_canEdit) return;
+    final mask = f.maskBytes!;
+    final maskW = f.maskWidth!;
+    final maskH = f.maskHeight!;
+    final intrinsics = PhotoModel.decodeIntrinsics(f.intrinsicsBytes)!;
+    final depthBytes = Uint8List.fromList(f.depthMap.bytes!);
+
+    final snappedSnout = snapToMask(
+      mask: mask,
+      maskWidth: maskW,
+      maskHeight: maskH,
+      x: snoutRaw.x,
+      y: snoutRaw.y,
+    );
+    final snappedFork = snapToMask(
+      mask: mask,
+      maskWidth: maskW,
+      maskHeight: maskH,
+      x: forkRaw.x,
+      y: forkRaw.y,
+    );
+    if (snappedSnout == null || snappedFork == null) {
+      _showError(
+        'Couldn\'t find the fish near that point. Drop the marker '
+        'closer to the highlighted segmentation mask.',
+      );
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _editError = null;
+    });
+
+    try {
+      final recomputed = await RustService.recomputeLength(
+        maskData: mask,
+        maskWidth: maskW,
+        maskHeight: maskH,
+        depthData: depthBytes,
+        depthWidth: f.depthMap.width,
+        depthHeight: f.depthMap.height,
+        cameraIntrinsicsInverted: RustService.invertIntrinsics(intrinsics),
+        snout: snappedSnout,
+        fork: snappedFork,
+      );
+
+      if (!recomputed.fishFound ||
+          !recomputed.length.isFinite ||
+          recomputed.length <= 0) {
+        _showError(
+          'Couldn\'t recompute length — the depth plane fit failed at '
+          'those points. Move the markers and try again, or reset.',
+          rustError: recomputed.errorString,
+        );
+        return;
+      }
+
+      final saved = await DatabaseModel.updateMeasurement(
+        id: widget.photo.photoId,
+        snoutX: snappedSnout.x,
+        snoutY: snappedSnout.y,
+        forkX: snappedFork.x,
+        forkY: snappedFork.y,
+        fishLength: recomputed.length,
+      );
+      if (!saved) {
+        _showError('Saved the new measurement in memory but the '
+            'database update failed.');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _snout = snappedSnout;
+        _fork = snappedFork;
+        _length = recomputed.length;
+      });
+    } catch (e) {
+      log.e('Manual recompute failed', error: e);
+      _showError('Couldn\'t recompute length: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _showError(String msg, {String? rustError}) {
+    setState(() => _editError = msg);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red.shade900,
+        content: Text(rustError == null ? msg : '$msg\n($rustError)'),
+        action: SnackBarAction(
+          label: 'Reset',
+          textColor: Colors.white,
+          onPressed: _resetEdits,
+        ),
+      ),
+    );
   }
 
   /// Primary, human-readable location line. Prefers the reverse-geocoded
@@ -646,28 +827,76 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
         child: CircularProgressIndicator(color: Color(0xFF00AAA5)),
       );
     } else {
-      final snout = (full?.snoutX != null && full?.snoutY != null)
-          ? Coordinate(x: full!.snoutX!, y: full.snoutY!)
-          : null;
-      final fork = (full?.forkX != null && full?.forkY != null)
-          ? Coordinate(x: full!.forkX!, y: full.forkY!)
-          : null;
       imageLayer = FishPhotoOverlay(
         photoBytes: photoBytes,
         mask: full?.maskBytes,
         maskWidth: full?.maskWidth ?? 0,
         maskHeight: full?.maskHeight ?? 0,
-        snout: snout,
-        fork: fork,
+        snout: _snout,
+        fork: _fork,
         captureOrientation: _orientationFromString(full?.captureOrientation),
+        editing: _editing,
+        onSnoutChanged: _busy ? null : _onSnoutDropped,
+        onForkChanged: _busy ? null : _onForkDropped,
       );
     }
+
+    final lengthLabel = _length != null
+        ? 'Fish Length: ${context.watch<PreferencesService>().formatFishLength(_length!)}'
+        : 'Fish Length: Unavailable';
 
     return Dialog.fullscreen(
       backgroundColor: Colors.black.withValues(alpha: 0.95),
       child: Stack(
         children: [
           Positioned.fill(child: imageLayer),
+
+          if (_canEdit)
+            Positioned(
+              top: 50,
+              left: 20,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(24),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_editing) ...[
+                        IconButton(
+                          tooltip: 'Reset',
+                          icon: const Icon(Icons.restart_alt,
+                              color: Colors.white),
+                          onPressed: _busy ? null : _resetEdits,
+                        ),
+                        IconButton(
+                          tooltip: 'Done',
+                          icon: const Icon(Icons.check,
+                              color: Color(0xFF4CAF50)),
+                          onPressed: _busy ? null : _exitEditMode,
+                        ),
+                      ] else
+                        IconButton(
+                          tooltip: 'Edit',
+                          icon: const Icon(Icons.edit, color: Colors.white),
+                          onPressed: _busy ? null : _enterEditMode,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          if (_busy)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFF00AAA5)),
+                ),
+              ),
+            ),
 
           // Metadata overlay
           Positioned(
@@ -693,14 +922,20 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    widget.photo.fishLen != null
-                        ? 'Fish Length: ${context.watch<PreferencesService>().formatFishLength(widget.photo.fishLen!)}'
-                        : 'Fish Length: Unavailable',
+                    lengthLabel,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                     ),
                   ),
+                  if (_editError != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _editError!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     'Device: ${widget.photo.deviceInfo ?? 'Unknown'}',
