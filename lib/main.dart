@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'screens/camera_screen.dart';
 import 'screens/fish_map_screen.dart';
+import 'screens/lidar_unsupported_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/photo_gallery_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/arkit_service.dart';
 import 'services/onboarding_state.dart';
 import 'services/preferences_service.dart';
 import 'database.dart';
@@ -102,6 +104,7 @@ class _RootRouter extends StatefulWidget {
 
 class _RootRouterState extends State<_RootRouter> {
   bool? _needsOnboarding;
+  bool? _lidarSupported;
 
   @override
   void initState() {
@@ -110,21 +113,42 @@ class _RootRouterState extends State<_RootRouter> {
   }
 
   Future<void> _check() async {
+    final lidar = await ARKitService.initializeARKit();
+    if (lidar) {
+      log.i('Startup: LiDAR/ARKit confirmed available');
+    } else {
+      log.w('Startup: LiDAR/ARKit unavailable — blocking app entry');
+    }
     final needs = await OnboardingState.needsOnboarding();
     if (!mounted) return;
-    setState(() => _needsOnboarding = needs);
+    setState(() {
+      _lidarSupported = lidar;
+      _needsOnboarding = needs;
+    });
+  }
+
+  void _retryLidarCheck() {
+    setState(() {
+      _lidarSupported = null;
+      _needsOnboarding = null;
+    });
+    _check();
   }
 
   @override
   Widget build(BuildContext context) {
     final needs = _needsOnboarding;
-    if (needs == null) {
+    final lidar = _lidarSupported;
+    if (needs == null || lidar == null) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFF00AAA5)),
         ),
       );
+    }
+    if (!lidar) {
+      return LidarUnsupportedScreen(onRetry: _retryLidarCheck);
     }
     if (needs) {
       return OnboardingScreen(
