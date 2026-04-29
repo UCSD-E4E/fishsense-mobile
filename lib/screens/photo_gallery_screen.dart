@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
+import '../services/preferences_service.dart';
 import '../database.dart';
 import '../extensions.dart';
 import '../logger.dart';
@@ -527,7 +528,7 @@ class _PhotoGridItem extends StatelessWidget {
                       // Fish length
                       Text(
                         photo.fishLen != null
-                            ? 'Fish Length: ${(photo.fishLen! * 100).toStringAsFixed(1)}cm'
+                            ? 'Fish Length: ${context.watch<PreferencesService>().formatFishLength(photo.fishLen!)}'
                             : 'Fish Length: Unavailable',
                         style: TextStyle(
                           color: Colors.grey[400],
@@ -693,7 +694,7 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
                   const SizedBox(height: 10),
                   Text(
                     widget.photo.fishLen != null
-                        ? 'Fish Length: ${(widget.photo.fishLen! * 100).toStringAsFixed(1)}cm'
+                        ? 'Fish Length: ${context.watch<PreferencesService>().formatFishLength(widget.photo.fishLen!)}'
                         : 'Fish Length: Unavailable',
                     style: const TextStyle(
                       color: Colors.white,

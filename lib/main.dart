@@ -5,7 +5,9 @@ import 'screens/camera_screen.dart';
 import 'screens/fish_map_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/photo_gallery_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/onboarding_state.dart';
+import 'services/preferences_service.dart';
 import 'database.dart';
 import 'logger.dart';
 
@@ -50,6 +52,7 @@ class FishSenseApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppStateProvider()),
+        ChangeNotifierProvider(create: (_) => PreferencesService()..load()),
       ],
       child: MaterialApp(
         title: 'FishSense',
@@ -160,6 +163,7 @@ class _MainTabViewState extends State<MainTabView> {
       const CameraScreen(),                                    // Camera tab (ViewController.swift)
       PhotoGalleryScreen(key: _photoGalleryKey),              // Photos tab (PhotoViewController.swift)
       FishMapScreen(key: _fishMapKey),                        // Map tab
+      const SettingsScreen(),                                 // Settings tab
     ];
   }
 
@@ -204,6 +208,10 @@ class _MainTabViewState extends State<MainTabView> {
         BottomNavigationBarItem(
           icon: Icon(Icons.map),
           label: 'Map',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: 'Settings',
         ),
       ],
     );

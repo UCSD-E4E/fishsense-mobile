@@ -79,6 +79,44 @@ post_install do |installer|
         runner_target.build_phases.unshift(phase)
         runner_project.save
       end
+
+      # Re-sign every framework Flutter's native-assets build hook drops into
+      # Runner.app/Frameworks/. Those land ad-hoc signed (Signature=adhoc,
+      # TeamIdentifier=not set), which iOS 26+ rejects on device install with
+      # MIInstallerErrorDomain code 13 (0xe8008014 invalid signature). The
+      # standard CocoaPods/Xcode signing flow doesn't touch them because they
+      # come in via xcode_backend.sh, not the Embed Frameworks phase.
+      sign_phase_name = 'Re-sign Native Assets'
+      unless runner_target.shell_script_build_phases.any? { |p| p.name == sign_phase_name }
+        sign_phase = runner_target.new_shell_script_build_phase(sign_phase_name)
+        sign_phase.shell_script = <<~SH
+          set -e
+          if [ -z "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+            echo "Re-sign Native Assets: no signing identity, skipping"
+            exit 0
+          fi
+          FRAMEWORKS_DIR="${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Frameworks"
+          [ -d "$FRAMEWORKS_DIR" ] || exit 0
+          for fw in "$FRAMEWORKS_DIR"/*.framework; do
+            [ -d "$fw" ] || continue
+            if /usr/bin/codesign -dvv "$fw" 2>&1 | grep -q "Signature=adhoc"; then
+              echo "Re-signing $(basename "$fw")"
+              # Do NOT preserve `flags`: that would keep the 0x2(adhoc)
+              # bit and the resign would be a no-op.
+              /usr/bin/codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" \\
+                --preserve-metadata=identifier,entitlements \\
+                --generate-entitlement-der \\
+                --timestamp=none \\
+                "$fw"
+            fi
+          done
+        SH
+        sign_phase.show_env_vars_in_log = '0'
+        # Must run AFTER xcode_backend.sh embeds the frameworks. Append to end.
+        runner_target.build_phases.delete(sign_phase)
+        runner_target.build_phases << sign_phase
+        runner_project.save
+      end
     end
   end
 end

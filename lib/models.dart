@@ -9,7 +9,7 @@ class PhotoModel {
   final ByteMatrixModel depthMap;
   final ByteMatrixModel confidenceMap;
   final String? deviceInfo;        // Existing device info field
-  final double? fishLength;        // Fish length measurement in cm
+  final double? fishLength;        // Fish length measurement in meters
 
   /// Segmentation mask bytes (row-major, one byte per pixel, nonzero = fish).
   /// Dimensions match the captured RGB frame.
@@ -463,7 +463,7 @@ class ComputeLengthResult {
     if (!fishFound) {
       return 'ComputeLengthResult(fishFound: false, error: $errorString)';
     }
-    return 'ComputeLengthResult(length: ${length.toStringAsFixed(2)}cm, '
+    return 'ComputeLengthResult(length: ${length.toStringAsFixed(3)}m, '
            'left: $left, right: $right,})';
   }
 

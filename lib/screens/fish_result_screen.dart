@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models.dart';
+import '../services/preferences_service.dart';
 import '../widgets/fish_photo_overlay.dart';
 
 /// Full-screen result view shown after a successful fish measurement.
@@ -28,7 +30,8 @@ class FishResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lengthCm = (result.length * 100).toStringAsFixed(1);
+    final lengthLabel =
+        context.watch<PreferencesService>().formatFishLength(result.length);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -65,7 +68,7 @@ class FishResultScreen extends StatelessWidget {
           SafeArea(
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: _buildMetrics(lengthCm),
+              child: _buildMetrics(lengthLabel),
             ),
           ),
         ],
@@ -73,7 +76,7 @@ class FishResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetrics(String lengthCm) {
+  Widget _buildMetrics(String lengthLabel) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -95,7 +98,7 @@ class FishResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            '$lengthCm cm',
+            lengthLabel,
             style: const TextStyle(
               color: Color(0xFF00AAA5),
               fontSize: 32,

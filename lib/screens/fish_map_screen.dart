@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 
 import '../database.dart';
 import '../extensions.dart';
@@ -10,6 +11,7 @@ import '../logger.dart';
 import '../models.dart';
 import '../services/file_storage_service.dart';
 import '../services/map_bounds.dart';
+import '../services/preferences_service.dart';
 
 /// FishMapScreen - shows every captured fish with a GPS fix on an
 /// OpenStreetMap base layer. Tapping a marker reveals a card with the
@@ -333,7 +335,7 @@ class _MapPhotoSheet extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     photo.fishLength != null
-                        ? 'Length: ${(photo.fishLength! * 100).toStringAsFixed(1)} cm'
+                        ? 'Length: ${context.watch<PreferencesService>().formatFishLength(photo.fishLength!)}'
                         : 'Length: Unavailable',
                     style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
