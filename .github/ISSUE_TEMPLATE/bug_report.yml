@@ -1,0 +1,99 @@
+name: Bug report
+description: Report a problem with FishSense Mobile
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill out the sections below so we can reproduce and triage the issue.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear and concise description of the bug.
+      placeholder: When I tap capture, the app crashes...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reliably reproduce the bug.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include screenshots, screen recordings, or crash logs if available.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Camera / ARKit capture
+        - Measurement / Rust pipeline
+        - Gallery / SQLite
+        - UI / Navigation
+        - Build / CI
+        - Other / Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: Model and OS version (e.g. iPhone 15 Pro, iOS 18.2)
+      placeholder: iPhone 15 Pro, iOS 18.2
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / commit
+      description: TestFlight build number or git commit SHA
+      placeholder: 1.0.3 (42) or 42acaed5
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Build environment (if building from source)
+      description: Output of `flutter --version` and `rustc --version`, plus Xcode version.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant console output, crash reports, or `flutter run` logs.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might help (lighting conditions, fish species, water clarity, etc.).
