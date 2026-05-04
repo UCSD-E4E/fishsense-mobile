@@ -32,21 +32,6 @@ body:
       description: Other approaches you've thought about and why they were rejected.
 
   - type: dropdown
-    id: area
-    attributes:
-      label: Area
-      description: Which part of the app would this affect?
-      options:
-        - Camera / ARKit capture
-        - Measurement / Rust pipeline
-        - Gallery / SQLite
-        - UI / Navigation
-        - Build / CI
-        - New surface area
-    validations:
-      required: true
-
-  - type: dropdown
     id: platform
     attributes:
       label: Platform

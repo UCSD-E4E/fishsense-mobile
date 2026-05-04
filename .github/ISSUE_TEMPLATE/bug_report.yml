@@ -45,21 +45,6 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area
-      description: Which part of the app is affected?
-      options:
-        - Camera / ARKit capture
-        - Measurement / Rust pipeline
-        - Gallery / SQLite
-        - UI / Navigation
-        - Build / CI
-        - Other / Unknown
-    validations:
-      required: true
-
   - type: input
     id: device
     attributes:
