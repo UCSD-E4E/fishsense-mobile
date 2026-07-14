@@ -24,11 +24,9 @@ def __download_and_extract(zip_url: str, extract_to: Path):
             zip_ref.extractall(target_path)
 
 def __ios():
-    opencv_framework_url = "https://github.com/UCSD-E4E/fishsense-mobile-thirdparty/releases/latest/download/opencv2.xcframework.zip"
     onnxruntime_framework_url = "https://github.com/UCSD-E4E/fishsense-mobile-thirdparty/releases/latest/download/onnxruntime.xcframework.zip"
     onnxruntime_build_url = "https://github.com/UCSD-E4E/fishsense-mobile-thirdparty/releases/latest/download/onnxruntime-build.zip"
 
-    __download_and_extract(opencv_framework_url, Path("./libs"))
     __download_and_extract(onnxruntime_framework_url, Path("./libs"))
     __download_and_extract(onnxruntime_build_url, Path("./libs"))
     
