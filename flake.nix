@@ -81,6 +81,15 @@
             # System Apple tools ahead of anything Nix might provide.
             export PATH="/usr/bin:$PATH"
 
+            # Drop the compiler/linker env the Nix setup hooks inject. xcodebuild
+            # reads $LD (etc.) from the environment as build settings, so a leaked
+            # `LD=ld` makes it invoke the linker directly with clang-driver flags
+            # (-Xlinker/-dynamiclib/-fobjc-arc/…) and every framework link fails
+            # with "ld: unknown options". The system Xcode toolchain must resolve
+            # these itself. (The Rust bridge build falls back to the same /usr/bin
+            # tools via PATH.)
+            unset LD CC CXX AR NM STRIP RANLIB OBJC OBJCXX
+
             # Point FLUTTER_ROOT at a writable mirror of the SDK so signed
             # iOS/macOS device builds can codesign the engine framework (the
             # store copy is read-only). See the script for the full rationale.
