@@ -81,6 +81,11 @@
             # System Apple tools ahead of anything Nix might provide.
             export PATH="/usr/bin:$PATH"
 
+            # Point FLUTTER_ROOT at a writable mirror of the SDK so signed
+            # iOS/macOS device builds can codesign the engine framework (the
+            # store copy is read-only). See the script for the full rationale.
+            source ${./nix/flutter-writable-engine.sh}
+
             echo "── FishSense Mobile devShell (iOS) ──"
             echo "  rust    : $(rustc --version 2>/dev/null)"
             echo "  flutter : $(flutter --version 2>/dev/null | head -1)"
