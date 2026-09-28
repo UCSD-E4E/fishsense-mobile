@@ -9,13 +9,14 @@ import '../logger.dart';
 /// caller falls through to the raw lat/lon display.
 class GeocodingService {
   static const String _tag = 'GeocodingService';
+  static final Geocoding _geocoding = Geocoding();
 
   /// Reverse-geocode [latitude]/[longitude] and format the best label we can.
   /// Null means "no friendly name available — show raw coords instead".
   static Future<String?> reverseGeocode(
       double latitude, double longitude) async {
     try {
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      final placemarks = await _geocoding.placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isEmpty) {
         log.d('$_tag: no placemarks for $latitude, $longitude');
         return null;
