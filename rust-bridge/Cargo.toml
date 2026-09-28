@@ -25,3 +25,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 [lib]
 name = "fishsense_bridge"
 crate-type = ["staticlib"]
+
+# Xcode 27's /usr/bin/strip leaves host proc-macro dylibs with a mis-aligned
+# LINKEDIT that rustc then fails to dlopen ("can't find crate for
+# `zerofrom_derive`"). Skip stripping for host build helpers only; the iOS
+# static libraries are unaffected.
+[profile.release.build-override]
+strip = false
