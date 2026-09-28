@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "c97c867d7a82d77c3379998b7c359954b53b969a",
+  "include-component-in-tag": false,
+  "packages": {
+    ".": {
+      "release-type": "dart",
+      "package-name": "fishsense-mobile",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

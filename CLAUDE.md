@@ -92,4 +92,6 @@ photos (id, utc_unix_timestamp, rgb_path, depth_bytes BLOB, depth_width, depth_h
 Toolchain pinned to 1.91. Targets: `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`, `aarch64-apple-darwin`, `x86_64-apple-darwin`.
 
 ## CI/CD
-GitHub Actions on macOS 15. Pipeline: `flutter pub get` → `cd rust-bridge && make` → `pod install` → `flutter build ios --release --no-codesign`. On `main` branch only: Fastlane uploads to TestFlight.
+GitHub Actions on macOS 15. Pipeline: `flutter pub get` → `cd rust-bridge && make` → `pod install` → `flutter build ios --release --no-codesign`.
+
+Branching (see [CONTRIBUTING.md](CONTRIBUTING.md)): `develop` is the default branch. Feature PRs target `develop`, are squash-merged, and need Conventional Commit titles. Each push to `develop` uploads to TestFlight for internal testers (`fastlane beta`). `main` only receives `develop` promotions (merge commit), `hotfix/*` branches, and release-please release PRs. Merging a release PR tags `vX.Y.Z` and ships to the external TestFlight groups (`fastlane release`), then CI opens a PR syncing `main` back into `develop`.
