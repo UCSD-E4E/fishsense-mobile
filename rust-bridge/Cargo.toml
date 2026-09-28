@@ -13,9 +13,10 @@ default = []
 download-binaries = ["fishsense-core/download-binaries"]
 
 [dependencies]
-# v2.1.5 replaces OpenCV with pure-Rust image/imageproc (PR #50), dropping the
-# last non-Rust build dependency.
-fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v2.1.5", default-features = false, features = ["coreml"] }
+# v2.1.5 replaced OpenCV with pure-Rust image/imageproc (PR #50), dropping the
+# last non-Rust build dependency. v2.1.6 ranks single-instance detections by
+# score x area instead of area alone (PR #51), which `inference_single` relies on.
+fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v2.1.6", default-features = false, features = ["coreml"] }
 libc = "0.2.184"
 ndarray = "0.17.2"
 tracing = "0.1"

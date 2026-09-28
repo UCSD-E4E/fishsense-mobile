@@ -120,17 +120,23 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     debug!("Running fish segmentation inference on {}x{} image", img.shape()[1], img.shape()[0]);
     let mut segmentation = SEGMENTATION.lock().unwrap();
 
-    match segmentation.inference(&img) {
-        Ok(mask) => {
+    // `inference_single`, not `inference`: this app measures one fish per image.
+    // `inference` paints *every* detection with a distinct instance id and does
+    // no best-instance selection, so treating "any non-zero pixel" as the fish
+    // merged a second fish or an occluding hand into one blob and inflated the
+    // measured length. `inference_single` ranks detections by score x area,
+    // applies the score/contour-vertex/minimum-area filters, and returns a
+    // binary 0/255 mask for that one fish (or None when nothing qualifies).
+    match segmentation.inference_single(&img) {
+        Ok(Some(mask)) => {
             // Count in usize — mask is Array2<u8>, so the default `sum()` wraps at 256.
             let nonzero = mask.iter().filter(|&&v| v != 0).count();
-            if nonzero > 0 {
-                info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
-                Ok(mask)
-            } else {
-                info!("Segmentation returned empty mask — no fish detected");
-                Err(ExecutionError::FishNotFound)
-            }
+            info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
+            Ok(mask)
+        },
+        Ok(None) => {
+            info!("Segmentation found no detection passing the score/area filters");
+            Err(ExecutionError::FishNotFound)
         },
         Err(err) => {
             error!("Segmentation inference failed: {}", err);
