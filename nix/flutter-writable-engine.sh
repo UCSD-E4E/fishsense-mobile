@@ -57,17 +57,24 @@ if command -v flutter >/dev/null 2>&1; then
         unset -f _fw_walk
 
         # Materialize the engine as a writable real copy (follow store symlinks).
-        cp -RL "$_fw_store/$_fw_shadow" "$_fw_mirror/$_fw_shadow"
-        chmod -R u+w "$_fw_mirror/$_fw_shadow"
-        touch "$_fw_mirror/.ready"
+        # This file is sourced, so there is no `set -e`: only mark the mirror
+        # ready when every step succeeded, otherwise drop it and retry next shell.
+        if cp -RL "$_fw_store/$_fw_shadow" "$_fw_mirror/$_fw_shadow" &&
+           chmod -R u+w "$_fw_mirror/$_fw_shadow"; then
+          touch "$_fw_mirror/.ready"
 
-        # Prune mirrors left over from older Flutter versions.
-        for _fw_old in "$_fw_root"/*; do
-          [ "$_fw_old" = "$_fw_mirror" ] || rm -rf "$_fw_old" 2>/dev/null
-        done
+          # Prune mirrors left over from older Flutter versions.
+          for _fw_old in "$_fw_root"/*; do
+            [ "$_fw_old" = "$_fw_mirror" ] || rm -rf "$_fw_old" 2>/dev/null
+          done
+        else
+          echo "  flutter: failed to build writable engine mirror; using the store SDK" >&2
+          rm -rf "$_fw_mirror"
+        fi
       fi
 
-      export FLUTTER_ROOT="$_fw_mirror"
+      # Fall back to the read-only store SDK if the mirror isn't complete.
+      [ -e "$_fw_mirror/.ready" ] && export FLUTTER_ROOT="$_fw_mirror"
       ;;
   esac
   unset _fw_store _fw_root _fw_mirror _fw_shadow _fw_old
