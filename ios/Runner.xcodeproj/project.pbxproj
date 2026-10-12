@@ -233,7 +233,6 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
-				510502A9B39ECEF6143A8931 /* [CP] Copy Pods Resources */,
 				46A7BB34B651A7AEA939B5EE /* Re-sign Native Assets */,
 			);
 			buildRules = (
@@ -345,23 +344,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\nif [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n  echo \"Re-sign Native Assets: no signing identity, skipping\"\n  exit 0\nfi\nFRAMEWORKS_DIR=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Frameworks\"\n[ -d \"$FRAMEWORKS_DIR\" ] || exit 0\nfor fw in \"$FRAMEWORKS_DIR\"/*.framework; do\n  [ -d \"$fw\" ] || continue\n  if /usr/bin/codesign -dvv \"$fw\" 2>&1 | grep -q \"Signature=adhoc\"; then\n    echo \"Re-signing $(basename \"$fw\")\"\n    # Do NOT preserve `flags`: that would keep the 0x2(adhoc)\n    # bit and the resign would be a no-op.\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\n      --preserve-metadata=identifier,entitlements \\\n      --generate-entitlement-der \\\n      --timestamp=none \\\n      \"$fw\"\n  fi\ndone\n";
-			showEnvVarsInLog = 0;
-		};
-		510502A9B39ECEF6143A8931 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		5F36DF448ECE9D727346DBCE /* [CP] Check Pods Manifest.lock */ = {

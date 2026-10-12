@@ -80,6 +80,9 @@
             fi
             # System Apple tools ahead of anything Nix might provide.
             export PATH="/usr/bin:$PATH"
+            # CocoaPods on Ruby 3.4 aborts with "Unicode Normalization not
+            # appropriate for ASCII-8BIT" unless the locale is UTF-8.
+            case "''${LANG:-}" in *UTF-8*) ;; *) export LANG=en_US.UTF-8 ;; esac
 
             # Drop the compiler/linker env the Nix setup hooks inject. xcodebuild
             # reads $LD (etc.) from the environment as build settings, so a leaked
