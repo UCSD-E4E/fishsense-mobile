@@ -42,7 +42,7 @@ ios-dependencies:
 	uv run python ./build.py
 
 toolchain:
-	@cargo install cbindgen
+	@command -v cbindgen >/dev/null 2>&1 || cargo install cbindgen
 # 	@brew install llvm cmake
 
 clean-all: clean clean-lib
