@@ -11,8 +11,6 @@
 		245A1E5ED2074181ABEB7E43 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BED5F7FBB3919F714E73652A /* Pods_RunnerTests.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
-		525241362E42AAD20077EA5D /* opencv2.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241342E42AAC70077EA5D /* opencv2.xcframework */; };
-		525241372E42AAD20077EA5D /* opencv2.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 525241342E42AAC70077EA5D /* opencv2.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		525241382E42AADB0077EA5D /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241332E42AAC70077EA5D /* onnxruntime.xcframework */; };
 		525241392E42AADB0077EA5D /* onnxruntime.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 525241332E42AAC70077EA5D /* onnxruntime.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5252413A2E42AADF0077EA5D /* FishSenseRS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525241322E42AAC70077EA5D /* FishSenseRS.xcframework */; };
@@ -22,6 +20,7 @@
 		525241462E43C5F80077EA5D /* FishSenseChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241472E43C5F80077EA5D /* FishSenseChannel.swift */; };
 		6F5BCAFEC9B71456D0DB73AD /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEC613A8E7EAF7422D4D0086 /* Pods_Runner.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -44,7 +43,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				525241372E42AAD20077EA5D /* opencv2.xcframework in Embed Frameworks */,
 				525241392E42AADB0077EA5D /* onnxruntime.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
@@ -62,13 +60,13 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		525241322E42AAC70077EA5D /* FishSenseRS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = FishSenseRS.xcframework; sourceTree = "<group>"; };
 		525241332E42AAC70077EA5D /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = onnxruntime.xcframework; sourceTree = "<group>"; };
-		525241342E42AAC70077EA5D /* opencv2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = opencv2.xcframework; sourceTree = "<group>"; };
 		525241402E42AD420077EA5D /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		525241422E43C5F80077EA5D /* ARViewPlatformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewPlatformView.swift; sourceTree = "<group>"; };
 		525241452E43C5F80077EA5D /* ARKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARKitManager.swift; sourceTree = "<group>"; };
 		525241472E43C5F80077EA5D /* FishSenseChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FishSenseChannel.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -90,9 +88,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
 				6F5BCAFEC9B71456D0DB73AD /* Pods_Runner.framework in Frameworks */,
 				525241412E42AD5B0077EA5D /* libc++.tbd in Frameworks */,
-				525241362E42AAD20077EA5D /* opencv2.xcframework in Frameworks */,
 				525241382E42AADB0077EA5D /* onnxruntime.xcframework in Frameworks */,
 				5252413A2E42AADF0077EA5D /* FishSenseRS.xcframework in Frameworks */,
 			);
@@ -122,7 +120,6 @@
 			children = (
 				525241322E42AAC70077EA5D /* FishSenseRS.xcframework */,
 				525241332E42AAC70077EA5D /* onnxruntime.xcframework */,
-				525241342E42AAC70077EA5D /* opencv2.xcframework */,
 			);
 			path = Frameworks;
 			sourceTree = "<group>";
@@ -130,6 +127,7 @@
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
+				78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */,
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
@@ -235,8 +233,6 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
-				6E428D1397D583F84493C5CD /* [CP] Embed Pods Frameworks */,
-				510502A9B39ECEF6143A8931 /* [CP] Copy Pods Resources */,
 				46A7BB34B651A7AEA939B5EE /* Re-sign Native Assets */,
 			);
 			buildRules = (
@@ -244,6 +240,9 @@
 			dependencies = (
 			);
 			name = Runner;
+			packageProductDependencies = (
+				78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */,
+			);
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
@@ -277,6 +276,9 @@
 				Base,
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
+			packageReferences = (
+				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
+			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -344,23 +346,6 @@
 			shellScript = "set -e\nif [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n  echo \"Re-sign Native Assets: no signing identity, skipping\"\n  exit 0\nfi\nFRAMEWORKS_DIR=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Frameworks\"\n[ -d \"$FRAMEWORKS_DIR\" ] || exit 0\nfor fw in \"$FRAMEWORKS_DIR\"/*.framework; do\n  [ -d \"$fw\" ] || continue\n  if /usr/bin/codesign -dvv \"$fw\" 2>&1 | grep -q \"Signature=adhoc\"; then\n    echo \"Re-signing $(basename \"$fw\")\"\n    # Do NOT preserve `flags`: that would keep the 0x2(adhoc)\n    # bit and the resign would be a no-op.\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\n      --preserve-metadata=identifier,entitlements \\\n      --generate-entitlement-der \\\n      --timestamp=none \\\n      \"$fw\"\n  fi\ndone\n";
 			showEnvVarsInLog = 0;
 		};
-		510502A9B39ECEF6143A8931 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		5F36DF448ECE9D727346DBCE /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -381,23 +366,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		6E428D1397D583F84493C5CD /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
@@ -833,6 +801,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FlutterGeneratedPluginSwiftPackage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 97C146E61CF9000F007C117D /* Project object */;
 }

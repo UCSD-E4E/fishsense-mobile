@@ -8,8 +8,6 @@ use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationErro
 use fishsense_core::spatial::types::{DepthMap, ImageCoord};
 use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{Array1, Array2, Array3};
-use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
-use opencv::prelude::MatTraitConst;
 use tracing::{debug, error, info, warn};
 
 static TRACING_INIT: Once = Once::new();
@@ -40,7 +38,6 @@ fn init_tracing() {
 
 #[derive(Debug)]
 enum ExecutionError {
-    OpenCVError(opencv::Error),
     FishNotFound,
     SegmentationError(SegmentationError),
     HeadTailError(FishSenseError),
@@ -75,9 +72,7 @@ fn write_error_string(msg: &str) -> [c_char; 256] {
 impl Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExecutionError::OpenCVError(error) => 
-                write!(f, "{}", error),
-            ExecutionError::FishNotFound => 
+            ExecutionError::FishNotFound =>
                 write!(f, "FishNotFound"),
             ExecutionError::SegmentationError(error) => 
                 write!(f, "{}", error),
@@ -89,32 +84,22 @@ impl Display for ExecutionError {
     }
 }
 
-fn ios_image_into_cv_bgr(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Mat, ExecutionError> {
-    let img_cv = unsafe {
-        // iOS images are 4 channel RGBA.
-        let length = (img_width * img_height * 4) as usize;
+/// Convert an iOS RGBA byte buffer into a BGR `Array3<u8>` (height, width, 3),
+/// matching OpenCV's `COLOR_RGBA2BGR`: the alpha channel is dropped and the
+/// R/B channels are swapped, since the segmentation model expects BGR input.
+fn ios_image_into_bgr(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array3<u8>, ExecutionError> {
+    let (width, height) = (img_width as usize, img_height as usize);
+    // iOS images are 4 channel RGBA.
+    let rgba = unsafe { slice::from_raw_parts(img_data, width * height * 4) };
 
-        match Mat::new_rows_cols(img_height as i32, img_width as i32, CV_8UC4) {
-            Ok(mut img_cv) => {
-                match img_cv.ptr_mut(0) {
-                    Ok(ptr) => {
-                        // Copy the data into the Mat structure.
-                        std::ptr::copy(img_data, ptr, length);
-                        Ok(img_cv)
-                    },
-                    Err(err) => Err(ExecutionError::OpenCVError(err))
-                }
-
-            },
-            Err(err) => Err(ExecutionError::OpenCVError(err))
-        }
-    }?;
-
-    let mut img_bgr = Mat::default();
-    match cvt_color_def(&img_cv, &mut img_bgr, COLOR_RGBA2BGR) {
-        Ok(_) => Ok(img_bgr),
-        Err(err) => Err(ExecutionError::OpenCVError(err))
+    let mut bgr = Vec::with_capacity(width * height * 3);
+    for px in rgba.chunks_exact(4) {
+        bgr.push(px[2]); // B
+        bgr.push(px[1]); // G
+        bgr.push(px[0]); // R
     }
+
+    Array3::from_shape_vec((height, width, 3), bgr).map_err(ExecutionError::ArrayShapeError)
 }
 
 fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: usize) -> Result<Array2<f32>, ExecutionError> {
@@ -135,17 +120,23 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     debug!("Running fish segmentation inference on {}x{} image", img.shape()[1], img.shape()[0]);
     let mut segmentation = SEGMENTATION.lock().unwrap();
 
-    match segmentation.inference(&img) {
-        Ok(mask) => {
+    // `inference_single`, not `inference`: this app measures one fish per image.
+    // `inference` paints *every* detection with a distinct instance id and does
+    // no best-instance selection, so treating "any non-zero pixel" as the fish
+    // merged a second fish or an occluding hand into one blob and inflated the
+    // measured length. `inference_single` ranks detections by score x area,
+    // applies the score/contour-vertex/minimum-area filters, and returns a
+    // binary 0/255 mask for that one fish (or None when nothing qualifies).
+    match segmentation.inference_single(&img) {
+        Ok(Some(mask)) => {
             // Count in usize — mask is Array2<u8>, so the default `sum()` wraps at 256.
             let nonzero = mask.iter().filter(|&&v| v != 0).count();
-            if nonzero > 0 {
-                info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
-                Ok(mask)
-            } else {
-                info!("Segmentation returned empty mask — no fish detected");
-                Err(ExecutionError::FishNotFound)
-            }
+            info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
+            Ok(mask)
+        },
+        Ok(None) => {
+            info!("Segmentation found no detection passing the score/area filters");
+            Err(ExecutionError::FishNotFound)
         },
         Err(err) => {
             error!("Segmentation inference failed: {}", err);
@@ -156,11 +147,7 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
     debug!("Converting iOS RGBA image {}x{} to BGR", img_width, img_height);
-    let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
-    let (rows, cols) = (img_cv.rows() as usize, img_cv.cols() as usize);
-    let data = unsafe { slice::from_raw_parts(img_cv.data(), rows * cols * 3) };
-    let img_arr = Array3::from_shape_vec((rows, cols, 3), data.to_vec())
-        .map_err(ExecutionError::ArrayShapeError)?;
+    let img_arr = ios_image_into_bgr(img_data, img_width, img_height)?;
     do_inference(img_arr)
 }
 
@@ -345,7 +332,7 @@ pub extern "C" fn compute_length(
     mask_out: *mut c_uchar,
 ) -> ComputeLengthResult {
     init_tracing();
-    // Wrap the whole pipeline so any panic in OpenCV / ndarray-linalg /
+    // Wrap the whole pipeline so any panic in ndarray-linalg /
     // ONNX Runtime turns into a clean error result instead of UB across
     // the FFI boundary. Without this, a Rust panic crossing `extern "C"`
     // surfaces on iOS as an EXC_BAD_ACCESS in libunwind code with no
