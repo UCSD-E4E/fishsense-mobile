@@ -59,6 +59,9 @@ dependencies:
   package_info_plus: ^10.2.2
   flutter_secure_storage: ^11.2.0
 
+  # Optional Authentik sign-in (OIDC + PKCE), needed only to sync
+  flutter_appauth: ^12.1.0
+
 
 
 dev_dependencies:

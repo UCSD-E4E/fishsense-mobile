@@ -78,6 +78,7 @@ SQLite (sqflite)            OpenCV + ONNX Runtime
 | [lib/camera_screen.dart](lib/camera_screen.dart) | Camera UI with measurement overlay |
 | [lib/services.dart](lib/services.dart) | `RustService` (ML calls), `CameraService`, `FileService` |
 | [lib/database.dart](lib/database.dart) | SQLite schema and operations |
+| [lib/services/auth_service.dart](lib/services/auth_service.dart) | Optional Authentik sign-in (needed only to sync), tokens, tenant choice |
 | [lib/models.dart](lib/models.dart) | `PhotoModel`, `ComputeLengthResult`, `Coordinate`, `ByteMatrixModel` |
 | [rust-bridge/src/lib.rs](rust-bridge/src/lib.rs) | Fish length computation (OpenCV + ONNX) |
 | [ios/Runner/AppDelegate.swift](ios/Runner/AppDelegate.swift) | Flutter setup, method channel registration |
