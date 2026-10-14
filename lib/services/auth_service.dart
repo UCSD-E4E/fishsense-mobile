@@ -132,6 +132,12 @@ class AuthService extends ChangeNotifier {
   bool _needsSignInAgain = false;
   bool _busy = false;
 
+  /// The refresh in flight, shared by every caller that needs a new token
+  /// meanwhile. Authentik may rotate the refresh token and revoke the old
+  /// one, so a second refresh with the same token would get invalid_grant
+  /// and wrongly end a good session (e.g. during parallel uploads).
+  Future<String>? _refreshing;
+
   bool get isSignedIn => _sub != null;
 
   /// The signed-in user's stable `sub`, which captures are stamped with.
@@ -281,6 +287,11 @@ class AuthService extends ChangeNotifier {
       }
     }
 
+    return _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+  }
+
+  Future<String> _refresh() async {
+    final sub = _sub;
     final refreshToken = await _storage.read(key: _keyRefreshToken);
     if (refreshToken == null) {
       await _markNeedsSignInAgain();
@@ -305,6 +316,9 @@ class AuthService extends ChangeNotifier {
       }
       rethrow;
     }
+    // Signed out (or in as someone else) while the refresh was in flight:
+    // its tokens belong to a session that's gone, so don't store them.
+    if (_sub != sub) throw const SignInRequiredException();
     await _storeTokens(response);
     final token = response.accessToken;
     if (token == null) throw const FormatException('no access token');

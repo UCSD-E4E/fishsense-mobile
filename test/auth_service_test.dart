@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_appauth/flutter_appauth.dart';
@@ -20,6 +21,10 @@ class _FakeAppAuth implements FlutterAppAuth {
   Object? signInError;
   TokenResponse? refreshResponse;
   Object? refreshError;
+
+  /// When set, a refresh waits for this before answering, so tests can
+  /// overlap calls.
+  Future<void>? refreshGate;
   AuthorizationTokenRequest? lastSignIn;
   final refreshedWith = <String?>[];
 
@@ -35,6 +40,7 @@ class _FakeAppAuth implements FlutterAppAuth {
   @override
   Future<TokenResponse> token(TokenRequest request) async {
     refreshedWith.add(request.refreshToken);
+    if (refreshGate != null) await refreshGate;
     if (refreshError != null) throw refreshError!;
     return refreshResponse!;
   }
@@ -236,6 +242,92 @@ void main() {
 
       await auth.accessToken(forceRefresh: true);
       expect(appAuth.refreshedWith, ['refresh-1', 'refresh-2']);
+    });
+
+    test('concurrent callers share one refresh', () async {
+      appAuth.signInResponse =
+          _signedIn(expiry: now.subtract(const Duration(minutes: 5)));
+      membershipsStatus = 503; // keep sign-in from refreshing first
+      appAuth.refreshError = Exception('offline');
+      final auth = service();
+      await auth.signIn();
+      appAuth.refreshedWith.clear();
+
+      // With rotation, a second refresh using the same refresh token would
+      // get invalid_grant and wrongly end a good session mid-sync.
+      final gate = Completer<void>();
+      appAuth
+        ..refreshGate = gate.future
+        ..refreshError = null
+        ..refreshResponse = TokenResponse(
+          'access-2',
+          'refresh-2',
+          now.add(const Duration(hours: 1)),
+          null,
+          'Bearer',
+          null,
+          null,
+        );
+      final tokens = Future.wait([
+        auth.accessToken(),
+        auth.accessToken(),
+        auth.accessToken(forceRefresh: true),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+      gate.complete();
+
+      expect(await tokens, ['access-2', 'access-2', 'access-2']);
+      expect(appAuth.refreshedWith, ['refresh-1']);
+    });
+
+    test('signing out during a refresh discards its tokens', () async {
+      appAuth.signInResponse =
+          _signedIn(expiry: now.subtract(const Duration(minutes: 5)));
+      membershipsStatus = 503;
+      appAuth.refreshError = Exception('offline');
+      final auth = service();
+      await auth.signIn();
+
+      final gate = Completer<void>();
+      appAuth
+        ..refreshGate = gate.future
+        ..refreshError = null
+        ..refreshResponse = TokenResponse(
+          'access-2', 'refresh-2', now.add(const Duration(hours: 1)),
+          null, 'Bearer', null, null,
+        );
+      final pending = auth.accessToken();
+      await Future<void>.delayed(Duration.zero);
+      await auth.signOut();
+      gate.complete();
+
+      await expectLater(pending, throwsA(isA<SignInRequiredException>()));
+      final relaunched = service();
+      await relaunched.load();
+      expect(relaunched.isSignedIn, isFalse);
+      expect(await const FlutterSecureStorage().readAll(), isEmpty);
+    });
+
+    test('a failed refresh is not reused by the next caller', () async {
+      appAuth.signInResponse =
+          _signedIn(expiry: now.subtract(const Duration(minutes: 5)));
+      membershipsStatus = 503;
+      appAuth.refreshError = Exception('offline');
+      final auth = service();
+      await auth.signIn();
+      appAuth.refreshedWith.clear();
+
+      await expectLater(auth.accessToken(), throwsException);
+      expect(auth.needsSignInAgain, isFalse, reason: 'offline is not expiry');
+
+      appAuth
+        ..refreshError = null
+        ..refreshResponse = TokenResponse(
+          'access-2', null, now.add(const Duration(hours: 1)),
+          null, 'Bearer', null, null,
+        );
+      expect(await auth.accessToken(), 'access-2');
+      expect(appAuth.refreshedWith, ['refresh-1', 'refresh-1']);
     });
 
     test('an expired refresh token asks the user to sign in again', () async {
