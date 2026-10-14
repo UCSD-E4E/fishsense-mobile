@@ -181,9 +181,8 @@ class ARKitManager {
     private func deviceModelIdentifier() -> String {
         var systemInfo = utsname()
         uname(&systemInfo)
-        return withUnsafeBytes(of: &systemInfo.machine) { buffer in
-            String(decoding: buffer.prefix(while: { $0 != 0 }), as: UTF8.self)
-        }
+        let bytes = withUnsafeBytes(of: &systemInfo.machine) { Array($0.prefix(while: { $0 != 0 })) }
+        return String(bytes: bytes, encoding: .utf8) ?? "unknown"
     }
 
     private func flattenIntrinsics(_ intrinsics: simd_float3x3) -> [Double] {

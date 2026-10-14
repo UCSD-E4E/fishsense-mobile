@@ -12,6 +12,7 @@ FishSense Mobile is a cross-platform Flutter app (iOS primary, Android future) f
 ```bash
 flutter pub get          # Install dependencies
 flutter analyze          # Lint/static analysis
+make lint                # All linters CI runs: cargo fmt/clippy, flutter analyze, swiftlint --strict
 flutter test             # Run all tests
 flutter test test/models_test.dart  # Run a specific test file
 flutter run              # Run on connected device/simulator

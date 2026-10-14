@@ -523,26 +523,32 @@ class DatabaseModel {
   static Future<bool> deletePhoto(int id) async {
     try {
       final db = await database;
-      final rows = await db.query(
-        _tableName,
-        columns: ['rgb_path', 'rgb_lossless_path'],
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      if (rows.isEmpty) return false;
+      // Rows first, files after, and only once the rows are gone: a failure
+      // part-way leaves at worst an orphaned file, never a capture whose
+      // files are missing (which sync would then try to upload).
+      final fileNames = await db.transaction((txn) async {
+        final rows = await txn.query(
+          _tableName,
+          columns: ['rgb_path', 'rgb_lossless_path'],
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        if (rows.isEmpty) return null;
 
-      // Foreign keys cascade the delete to `measurements`.
-      final count = await db.delete(
-        _tableName,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      for (final column in const ['rgb_path', 'rgb_lossless_path']) {
-        final fileName = rows.first[column] as String?;
-        if (fileName != null) await FileStorageService.deleteImage(fileName);
+        // Foreign keys cascade the delete to `measurements`.
+        await txn.delete(_tableName, where: 'id = ?', whereArgs: [id]);
+        return [
+          for (final column in const ['rgb_path', 'rgb_lossless_path'])
+            if (rows.first[column] case final String name) name,
+        ];
+      });
+      if (fileNames == null) return false;
+
+      for (final fileName in fileNames) {
+        await FileStorageService.deleteImage(fileName);
       }
-      return count > 0;
-      
+      return true;
+
     } catch (e) {
       log.e('SQLite Error deleting photo', error: e);
       return false;
