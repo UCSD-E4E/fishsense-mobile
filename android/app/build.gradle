@@ -40,6 +40,10 @@ android {
         targetSdkVersion 35
         versionCode 1
         versionName "1.0.0"
+
+        // flutter_appauth's redirect activity; matches the iOS URL scheme
+        // and the Authentik redirect com.aqua3d.fishsense:/oauthredirect.
+        manifestPlaceholders += [appAuthRedirectScheme: "com.aqua3d.fishsense"]
         
         // Native library architecture support
         ndk {

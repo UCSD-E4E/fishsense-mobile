@@ -104,6 +104,7 @@ class AuthService extends ChangeNotifier {
   static const _keyDisplayName = 'auth.display_name';
   static const _keyTenants = 'auth.tenants';
   static const _keyTenantSlug = 'auth.tenant_slug';
+  static const _keyNeedsSignInAgain = 'auth.needs_sign_in_again';
   static const _allKeys = [
     _keyRefreshToken,
     _keyAccessToken,
@@ -112,6 +113,7 @@ class AuthService extends ChangeNotifier {
     _keyDisplayName,
     _keyTenants,
     _keyTenantSlug,
+    _keyNeedsSignInAgain,
   ];
 
   /// Refresh this long before the access token actually expires, so a
@@ -157,6 +159,9 @@ class AuthService extends ChangeNotifier {
       _sub = await _storage.read(key: _keySub);
       _displayName = await _storage.read(key: _keyDisplayName);
       _tenantSlug = await _storage.read(key: _keyTenantSlug);
+      // Kept across launches so Settings asks to sign in again before a
+      // sync has to find out.
+      _needsSignInAgain = await _storage.read(key: _keyNeedsSignInAgain) != null;
       final tenantsJson = await _storage.read(key: _keyTenants);
       _tenants = tenantsJson == null
           ? const []
@@ -210,6 +215,7 @@ class AuthService extends ChangeNotifier {
       _displayName = (claims['name'] ?? claims['preferred_username'] ?? claims['email'])
           as String?;
       _needsSignInAgain = false;
+      await _storage.delete(key: _keyNeedsSignInAgain);
       await _storage.write(key: _keySub, value: sub);
       await _writeOrDelete(_keyDisplayName, _displayName);
       await _storeTokens(response);
@@ -277,7 +283,7 @@ class AuthService extends ChangeNotifier {
 
     final refreshToken = await _storage.read(key: _keyRefreshToken);
     if (refreshToken == null) {
-      _markNeedsSignInAgain();
+      await _markNeedsSignInAgain();
       throw const SignInRequiredException();
     }
     final TokenResponse response;
@@ -294,7 +300,7 @@ class AuthService extends ChangeNotifier {
       );
     } on FlutterAppAuthPlatformException catch (e) {
       if (e.platformErrorDetails.error == FlutterAppAuthOAuthError.invalidGrant) {
-        _markNeedsSignInAgain();
+        await _markNeedsSignInAgain();
         throw const SignInRequiredException();
       }
       rethrow;
@@ -368,10 +374,11 @@ class AuthService extends ChangeNotifier {
       ? _storage.delete(key: key)
       : _storage.write(key: key, value: value);
 
-  void _markNeedsSignInAgain() {
+  Future<void> _markNeedsSignInAgain() async {
     if (_needsSignInAgain) return;
     _needsSignInAgain = true;
     notifyListeners();
+    await _storage.write(key: _keyNeedsSignInAgain, value: 'true');
   }
 
   void _setBusy(bool busy) {

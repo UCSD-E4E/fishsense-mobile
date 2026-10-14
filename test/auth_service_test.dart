@@ -254,6 +254,33 @@ void main() {
           auth.accessToken(), throwsA(isA<SignInRequiredException>()));
       expect(auth.needsSignInAgain, isTrue);
       expect(auth.sub, 'user-1', reason: 'still bound to captures');
+
+      final relaunched = service();
+      await relaunched.load();
+      expect(relaunched.needsSignInAgain, isTrue,
+          reason: 'shown in Settings before a sync finds out');
+    });
+
+    test('signing in again clears the expired state for good', () async {
+      appAuth.signInResponse =
+          _signedIn(expiry: now.subtract(const Duration(minutes: 5)));
+      appAuth.refreshError = FlutterAppAuthPlatformException(
+        code: 'token_failed',
+        platformErrorDetails: FlutterAppAuthPlatformErrorDetails(
+          error: FlutterAppAuthOAuthError.invalidGrant,
+        ),
+      );
+      final auth = service();
+      await auth.signIn();
+      expect(auth.needsSignInAgain, isTrue);
+
+      appAuth.signInResponse = _signedIn();
+      await auth.signIn();
+      expect(auth.needsSignInAgain, isFalse);
+
+      final relaunched = service();
+      await relaunched.load();
+      expect(relaunched.needsSignInAgain, isFalse);
     });
 
     test('signed out there is no token', () async {
