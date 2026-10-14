@@ -37,6 +37,8 @@ class FishSenseChannel {
                     return
                 }
                 self.computeLength(call: call, result: result)
+            case "pipeline_versions":
+                result(Self.pipelineVersions())
             case "recompute_length":
                 guard let self = self else {
                     result(FlutterError(code: "UNAVAILABLE", message: "FishSenseChannel deallocated", details: nil))
@@ -137,6 +139,22 @@ class FishSenseChannel {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - pipeline_versions
+
+    private static func pipelineVersions() -> [String: String] {
+        let versions = FishSenseRS.pipeline_versions()
+        return [
+            "coreVersion": cString(versions.core_version),
+            "modelVersion": cString(versions.model_version)
+        ]
+    }
+
+    private static func cString<T>(_ tuple: T) -> String {
+        withUnsafePointer(to: tuple) { ptr in
+            String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
         }
     }
 

@@ -1140,4 +1140,21 @@ void main() {
       expect(s, 'Jul 4, 2024 at 11:30 PM');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // PhotoModel.encodeDoubles / decodeDoubles (camera pose)
+  // ---------------------------------------------------------------------------
+  group('PhotoModel double BLOBs', () {
+    test('a 4x4 pose round-trips exactly', () {
+      final pose = List<double>.generate(16, (i) => i * 0.1 - 0.75);
+      final bytes = PhotoModel.encodeDoubles(pose)!;
+      expect(bytes.length, 128);
+      expect(PhotoModel.decodeDoubles(bytes), pose);
+    });
+
+    test('null and empty encode to null', () {
+      expect(PhotoModel.encodeDoubles(null), isNull);
+      expect(PhotoModel.encodeDoubles(const []), isNull);
+    });
+  });
 }
