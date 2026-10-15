@@ -101,7 +101,16 @@ class DatabaseModel {
 
   /// v8: everything fishsense-services needs to keep a synced capture
   /// reproducible. See fishsense-services docs/handoff/fishsense-mobile/SYNC.md.
+  ///
+  /// Safe to run more than once. A v7 build that opens a v8 database
+  /// silently sets its version back to 7 and leaves the v8 columns and
+  /// tables in place (it happens on development phones that switch
+  /// branches), so the next v8 launch runs this again: it adds only the
+  /// missing columns and fills in only what is still empty.
   static Future<void> _upgradeToV8(Database db) async {
+    final existing = (await db.rawQuery('PRAGMA table_info($_tableName)'))
+        .map((c) => c['name'] as String)
+        .toSet();
     for (final column in const [
       'client_capture_uuid TEXT',
       'captured_by_sub TEXT',
@@ -118,12 +127,17 @@ class DatabaseModel {
       'rgb_lossless_path TEXT',
       'synced_at INTEGER',
     ]) {
+      if (existing.contains(column.split(' ').first)) continue;
       await db.execute('ALTER TABLE photos ADD COLUMN $column');
     }
 
     // Existing captures get a sync key too, so they can still be synced.
     const uuid = Uuid();
-    final ids = await db.query(_tableName, columns: ['id']);
+    final ids = await db.query(
+      _tableName,
+      columns: ['id'],
+      where: 'client_capture_uuid IS NULL',
+    );
     for (final row in ids) {
       await db.update(
         _tableName,
@@ -139,15 +153,18 @@ class DatabaseModel {
     for (final map in const ['depth', 'confidence']) {
       await db.execute('''
         UPDATE photos SET ${map}_row_bytes = length(${map}_bytes) / ${map}_height
-        WHERE ${map}_bytes IS NOT NULL AND ${map}_height > 0
+        WHERE ${map}_row_bytes IS NULL
+          AND ${map}_bytes IS NOT NULL AND ${map}_height > 0
           AND length(${map}_bytes) % ${map}_height = 0
       ''');
     }
 
     await _createMeasurementsTable(db);
 
-    // v7 kept one measurement per row and overwrote it on a manual edit,
-    // so carry it over as a single version whose origin is unknown.
+    // v7 kept one measurement per row and overwrote it on a manual edit, so
+    // carry it over as a version whose origin is unknown: for a row with no
+    // versions yet, or one a v7 build edited since (its current points no
+    // longer match its latest version).
     final measured = await db.query(
       _tableName,
       columns: ['id', 'utc_unix_timestamp', 'fish_length', 'snout_x', 'snout_y', 'fork_x', 'fork_y'],
@@ -155,21 +172,52 @@ class DatabaseModel {
           'AND fork_x IS NOT NULL AND fork_y IS NOT NULL',
     );
     for (final row in measured) {
+      final photoId = row['id'] as int;
+      final carried = MeasurementVersion(
+        photoId: photoId,
+        clientMeasurementUuid: uuid.v4(),
+        measuredAt: row['utc_unix_timestamp'] as int,
+        lengthM: (row['fish_length'] as num).toDouble(),
+        snout: Coordinate(
+          x: (row['snout_x'] as num).toDouble(),
+          y: (row['snout_y'] as num).toDouble(),
+        ),
+        fork: Coordinate(
+          x: (row['fork_x'] as num).toDouble(),
+          y: (row['fork_y'] as num).toDouble(),
+        ),
+        origin: MeasurementOrigin.unknown,
+      );
+
+      final latestRows = await db.query(
+        _measurementsTable,
+        where: 'photo_id = ?',
+        whereArgs: [photoId],
+        orderBy: 'measured_at DESC, id DESC',
+        limit: 1,
+      );
+      if (latestRows.isEmpty) {
+        await db.insert(_measurementsTable, carried.toMap());
+        continue;
+      }
+      final latest = MeasurementVersion.fromMap(latestRows.single);
+      if (latest.lengthM == carried.lengthM &&
+          latest.snout == carried.snout &&
+          latest.fork == carried.fork) {
+        continue;
+      }
+      // When the v7 edit happened isn't recorded; it was after the latest
+      // version, so order it after that one.
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       await db.insert(
         _measurementsTable,
         MeasurementVersion(
-          photoId: row['id'] as int,
-          clientMeasurementUuid: uuid.v4(),
-          measuredAt: row['utc_unix_timestamp'] as int,
-          lengthM: (row['fish_length'] as num).toDouble(),
-          snout: Coordinate(
-            x: (row['snout_x'] as num).toDouble(),
-            y: (row['snout_y'] as num).toDouble(),
-          ),
-          fork: Coordinate(
-            x: (row['fork_x'] as num).toDouble(),
-            y: (row['fork_y'] as num).toDouble(),
-          ),
+          photoId: photoId,
+          clientMeasurementUuid: carried.clientMeasurementUuid,
+          measuredAt: now > latest.measuredAt ? now : latest.measuredAt + 1,
+          lengthM: carried.lengthM,
+          snout: carried.snout,
+          fork: carried.fork,
           origin: MeasurementOrigin.unknown,
         ).toMap(),
       );
