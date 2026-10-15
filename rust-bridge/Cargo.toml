@@ -22,8 +22,11 @@ fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fi
 libc = "0.2.184"
 ndarray = "0.17.2"
 tracing = "0.1"
-tracing-oslog = "0.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Apple's unified log; see init_tracing. Other targets log to stderr.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+tracing-oslog = "0.3"
 
 [lib]
 name = "fishsense_bridge"
