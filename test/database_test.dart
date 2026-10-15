@@ -244,6 +244,98 @@ void main() {
     });
   });
 
+  group('re-running the v8 upgrade (a v7 build opened the v8 database)', () {
+    test('keeps what v8 recorded and fills in only what v7 left empty',
+        () async {
+      // A v8 install with one measured capture.
+      var db = await _openV8(path);
+      final v8Id = await db.insert('photos', {
+        'utc_unix_timestamp': 1000,
+        'rgb_path': 'rgb_1000.jpg',
+        'depth_width': 2,
+        'depth_height': 2,
+        'confidence_width': 2,
+        'confidence_height': 2,
+        'client_capture_uuid': 'kept-uuid',
+        'depth_row_bytes': 99,
+        'fish_length': 0.30,
+        'snout_x': 1.0,
+        'snout_y': 2.0,
+        'fork_x': 3.0,
+        'fork_y': 4.0,
+      });
+      await db.insert('measurements', {
+        'photo_id': v8Id,
+        'client_measurement_uuid': 'kept-version',
+        'measured_at': 1000,
+        'length_m': 0.30,
+        'snout_x': 1.0,
+        'snout_y': 2.0,
+        'fork_x': 3.0,
+        'fork_y': 4.0,
+        'origin': 'auto',
+      });
+
+      // A v7 build opens it: the version drops to 7, the v8 schema stays.
+      // It takes a capture and edits the v8 one, knowing nothing of v8.
+      await db.execute('PRAGMA user_version = 7');
+      final v7Id = await db.insert('photos', {
+        'utc_unix_timestamp': 2000,
+        'rgb_path': 'rgb_2000.jpg',
+        'depth_bytes': Uint8List(8 * 2),
+        'depth_width': 2,
+        'depth_height': 2,
+        'confidence_width': 2,
+        'confidence_height': 2,
+        'fish_length': 0.42,
+        'snout_x': 5.0,
+        'snout_y': 6.0,
+        'fork_x': 7.0,
+        'fork_y': 8.0,
+      });
+      await db.update('photos', {'fish_length': 0.31, 'fork_x': 3.5},
+          where: 'id = ?', whereArgs: [v8Id]);
+      await db.close();
+
+      // The v8 build again: the upgrade runs a second time.
+      db = await _openV8(path);
+      final photos = {
+        for (final r in await db.query('photos')) r['id'] as int: r,
+      };
+      expect(photos[v8Id]!['client_capture_uuid'], 'kept-uuid');
+      expect(photos[v8Id]!['depth_row_bytes'], 99);
+      expect(photos[v7Id]!['client_capture_uuid'], matches(_uuidV4));
+      expect(photos[v7Id]!['depth_row_bytes'], 8);
+
+      Future<List<MeasurementVersion>> versions(int id) async =>
+          (await db.query('measurements',
+                  where: 'photo_id = ?',
+                  whereArgs: [id],
+                  orderBy: 'measured_at, id'))
+              .map(MeasurementVersion.fromMap)
+              .toList();
+
+      final edited = await versions(v8Id);
+      expect(edited.map((v) => v.clientMeasurementUuid).first, 'kept-version');
+      expect(edited, hasLength(2), reason: 'the v7 edit becomes a version');
+      expect(edited.last.origin, MeasurementOrigin.unknown);
+      expect(edited.last.lengthM, 0.31);
+      expect(edited.last.fork.x, 3.5);
+
+      final taken = await versions(v7Id);
+      expect(taken.single.lengthM, 0.42);
+      expect(taken.single.origin, MeasurementOrigin.unknown);
+
+      // And a third run changes nothing.
+      await db.execute('PRAGMA user_version = 7');
+      await db.close();
+      db = await _openV8(path);
+      expect(await versions(v8Id), hasLength(2));
+      expect(await versions(v7Id), hasLength(1));
+      await db.close();
+    });
+  });
+
   group('measurement versions', () {
     setUp(() async {
       DatabaseModel.useDatabaseForTesting(await _openV8(path));
