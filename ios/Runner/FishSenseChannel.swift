@@ -12,6 +12,7 @@ class FishSenseChannel {
 
     init(arkitManager: ARKitManager) {
         self.arkitManager = arkitManager
+        Self.startRustLogging()
     }
 
     func setup(messenger: FlutterBinaryMessenger) {
@@ -303,5 +304,16 @@ extension FishSenseChannel {
         withUnsafePointer(to: tuple) { ptr in
             String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
         }
+    }
+}
+
+// MARK: - Rust logging
+
+extension FishSenseChannel {
+    /// Send the Rust bridge's logs to the unified log under this app's
+    /// subsystem, next to the Swift loggers (category `rust-bridge`).
+    fileprivate static func startRustLogging() {
+        let subsystem = Bundle.main.bundleIdentifier ?? "fishsense"
+        subsystem.withCString { FishSenseRS.init_logging($0) }
     }
 }

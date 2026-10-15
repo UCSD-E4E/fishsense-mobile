@@ -60,6 +60,9 @@ SQLite (sqflite)            OpenCV + ONNX Runtime
 - Runs segmentation → head/tail detection → length calculation via `fishsense.rs` crate
 - Returns `ComputeLengthResult` with fish length, head/tail coordinates
 
+### Rust logs
+The bridge logs through `tracing` to Apple's unified log, never stdout: under `flutter run`, stdout is a pipe to the host, and a stalled pipe used to hang and then abort the app. Subsystem is the app's bundle identifier (set by `init_logging` from `FishSenseChannel`), category `rust-bridge`. They don't appear in `flutter run` output. To see them, use Console.app or Xcode with `subsystem BEGINSWITH "com.aqua3d.fishsense"`, or, on the Mac, `/usr/bin/log stream --level info --predicate 'category == "rust-bridge"'`. For a device after the fact, run `sudo log collect --device-udid <UDID> --last 20m` and open the archive with `log show --archive`. `cargo test` also prints them in each test's captured output. `RUST_LOG` sets the level.
+
 ### Flutter ↔ iOS Native
 - `ARViewPlatformView.swift` renders the live ARKit camera view as a Flutter platform view
 - Platform channel calls capture RGB (JPEG + raw bytes), depth map, confidence map, and camera intrinsics from ARKit
