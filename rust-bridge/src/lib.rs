@@ -9,6 +9,7 @@ use fishsense_core::spatial::types::{DepthMap, ImageCoord};
 use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{Array1, Array2, Array3};
 use tracing::{debug, error, info, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static TRACING_INIT: Once = Once::new();
 
@@ -23,17 +24,35 @@ static SEGMENTATION: LazyLock<Mutex<FishSegmentation>> = LazyLock::new(|| {
 });
 
 /// Initialize the tracing subscriber once per process lifetime.
-/// On iOS the output goes to stdout, visible in Xcode's console and `Console.app`.
+///
+/// Events go to Apple's unified log (subsystem `com.aqua3d.fishsense`,
+/// category `rust-bridge`), visible in Console.app and Xcode. Not stdout: a
+/// debug session's stdout is a pipe to the host, and when that connection
+/// stalls a write blocks, then fails, and `tracing-subscriber`'s fallback
+/// `eprintln!` panics, which aborted the app from inside `compute_length`.
+/// os_log neither blocks nor fails.
+///
 /// Respects the `RUST_LOG` environment variable (e.g. `RUST_LOG=debug`).
 fn init_tracing() {
-    TRACING_INIT.call_once(|| {
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-            )
-            .init();
+    log_safely(|| {
+        TRACING_INIT.call_once(|| {
+            let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+            // `try_init`: if a subscriber is somehow already set, keep it
+            // rather than panic.
+            let _ = tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_oslog::OsLogger::new("com.aqua3d.fishsense", "rust-bridge"))
+                .try_init();
+        });
     });
+}
+
+/// Run logging that sits outside a `catch_unwind`, so that a panic while
+/// logging is dropped instead of unwinding across the `extern "C"` boundary
+/// (which aborts the process). A lost log line beats a crash.
+fn log_safely(log: impl FnOnce()) {
+    let _ = catch_unwind(AssertUnwindSafe(log));
 }
 
 #[derive(Debug)]
@@ -242,6 +261,22 @@ mod tests {
         assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
     }
 
+    // Logging must never take the process down
+
+    #[test]
+    fn log_safely_swallows_a_panic() {
+        // This is what killed compute_length: a log write failed and
+        // tracing-subscriber's fallback eprintln! panicked.
+        log_safely(|| panic!("failed printing to stderr"));
+    }
+
+    #[test]
+    fn init_tracing_is_idempotent_and_logs_without_stdout() {
+        init_tracing();
+        init_tracing();
+        log_safely(|| info!("rust-bridge test event"));
+    }
+
     // ExecutionError Display
 
     #[test]
@@ -345,7 +380,7 @@ pub extern "C" fn compute_length(
     )));
     match result {
         Ok(Ok((length, left, right))) => {
-            info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right);
+            log_safely(|| info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right));
             ComputeLengthResult {
                 length,
                 left: Coordinate { x: left[0] as usize, y: left[1] as usize },
@@ -357,7 +392,7 @@ pub extern "C" fn compute_length(
         Ok(Err(error)) => {
             match error {
                 ExecutionError::FishNotFound => {
-                    warn!("compute_length: no fish found in image");
+                    log_safely(|| warn!("compute_length: no fish found in image"));
                     ComputeLengthResult {
                         length: 0f32,
                         left: Coordinate { x: 0, y: 0 },
@@ -367,7 +402,7 @@ pub extern "C" fn compute_length(
                     }
                 },
                 other => {
-                    error!("compute_length error: {}", other);
+                    log_safely(|| error!("compute_length error: {}", other));
                     ComputeLengthResult {
                         length: 0f32,
                         left: Coordinate { x: 0, y: 0 },
@@ -380,7 +415,7 @@ pub extern "C" fn compute_length(
         },
         Err(panic_payload) => {
             let msg = panic_message(&panic_payload);
-            error!("compute_length: panic caught at FFI boundary: {}", msg);
+            log_safely(|| error!("compute_length: panic caught at FFI boundary: {}", msg));
             ComputeLengthResult {
                 length: 0f32,
                 left: Coordinate { x: 0, y: 0 },
@@ -431,7 +466,7 @@ pub extern "C" fn recompute_length(
     )));
     match result {
         Ok(Ok((length, snout, fork))) => {
-            info!("recompute_length succeeded: length={:.4}m snout={:?} fork={:?}", length, snout, fork);
+            log_safely(|| info!("recompute_length succeeded: length={:.4}m snout={:?} fork={:?}", length, snout, fork));
             ComputeLengthResult {
                 length,
                 left: Coordinate { x: snout[0] as usize, y: snout[1] as usize },
@@ -441,7 +476,7 @@ pub extern "C" fn recompute_length(
             }
         },
         Ok(Err(error)) => {
-            error!("recompute_length error: {}", error);
+            log_safely(|| error!("recompute_length error: {}", error));
             ComputeLengthResult {
                 length: 0f32,
                 left: Coordinate { x: 0, y: 0 },
@@ -452,7 +487,7 @@ pub extern "C" fn recompute_length(
         },
         Err(panic_payload) => {
             let msg = panic_message(&panic_payload);
-            error!("recompute_length: panic caught at FFI boundary: {}", msg);
+            log_safely(|| error!("recompute_length: panic caught at FFI boundary: {}", msg));
             ComputeLengthResult {
                 length: 0f32,
                 left: Coordinate { x: 0, y: 0 },
