@@ -9,6 +9,7 @@ import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
 import '../services/location_service.dart';
 import '../services/lossless_frame.dart';
+import '../services/measurement_check.dart';
 import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
@@ -172,31 +173,22 @@ class _CameraScreenState extends State<CameraScreen>
             captureResult.cameraIntrinsics),
       );
 
-      // Sanity gates on the Rust result. The downstream length math is
-      // faithful: when it produces a 14 mm or 324 mm "fish" it's because
-      // the snout/fork it was given are degenerate — collapsed snap
-      // fallback, or a runaway segmentation that swallowed the
-      // background. Persist the raw frame for later analysis but
-      // null out fish_length / keypoints so the row can't masquerade
-      // as a measurement.
-      final maskCoverage = (result.fishFound &&
-              result.mask != null &&
-              result.maskWidth > 0 &&
-              result.maskHeight > 0)
-          ? _maskCoverage(
-              result.mask!, result.maskWidth, result.maskHeight)
-          : 0.0;
-      const minCoverage = 0.01;
-      const maxCoverage = 0.20;
-      final coverageOk =
-          maskCoverage >= minCoverage && maskCoverage <= maxCoverage;
-      final lengthOk = result.length.isFinite && result.length > 0.0;
-      final isFishUsable = result.fishFound && coverageOk && lengthOk;
-      if (result.fishFound && !isFishUsable) {
-        log.w('Discarding fish measurement: '
-            'coverage=${(maskCoverage * 100).toStringAsFixed(1)}% '
-            '(window ${(minCoverage * 100).toStringAsFixed(0)}–'
-            '${(maxCoverage * 100).toStringAsFixed(0)}%), '
+      // Sanity checks on the Rust result (see checkMeasurement). A rejected
+      // fish still saves the raw frame and mask for later analysis, but
+      // fish_length / keypoints stay null so the row can't masquerade as a
+      // measurement.
+      final check = result.fishFound
+          ? checkMeasurement(
+              mask: result.mask,
+              width: result.maskWidth,
+              height: result.maskHeight,
+              length: result.length,
+            )
+          : null;
+      final isFishUsable = check?.usable ?? false;
+      if (check != null && !check.usable) {
+        log.w('Discarding fish measurement: ${check.rejection!.name}, '
+            'coverage=${(check.coverage * 100).toStringAsFixed(1)}%, '
             'length=${result.length}m, '
             'left=(${result.left.x},${result.left.y}) '
             'right=(${result.right.x},${result.right.y})');
@@ -296,6 +288,9 @@ class _CameraScreenState extends State<CameraScreen>
             ),
           ),
         );
+      } else if (check != null) {
+        // Found, but not measurable: say why rather than "no fish".
+        _showErrorDialog('Couldn\'t Measure', check.message);
       } else {
         _showErrorDialog(
             'No Fish Found',
@@ -329,20 +324,6 @@ class _CameraScreenState extends State<CameraScreen>
       log.w('Deleting $name: no database row refers to it');
       await FileStorageService.deleteImage(name);
     }
-  }
-
-  /// Fraction of mask pixels marked as fish (any non-zero byte). The
-  /// segmentation mask is row-major, one byte per pixel; on iOS the
-  /// dimensions match the captured RGB frame.
-  double _maskCoverage(Uint8List mask, int width, int height) {
-    final total = width * height;
-    if (total <= 0 || mask.isEmpty) return 0.0;
-    var nonzero = 0;
-    final n = mask.length < total ? mask.length : total;
-    for (var i = 0; i < n; i++) {
-      if (mask[i] != 0) nonzero++;
-    }
-    return nonzero / total;
   }
 
   /// Show error dialog - equivalent to iOS displayErrorMessage
