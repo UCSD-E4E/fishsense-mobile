@@ -11,6 +11,8 @@ import '../services/mask_snap.dart';
 import '../services/preferences_service.dart';
 import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync/sync_engine.dart';
 import '../database.dart';
 import '../extensions.dart';
 import '../logger.dart';
@@ -42,11 +44,48 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   /// other apps on the device.
   static const Duration _geocodeGap = Duration(milliseconds: 250);
 
+  /// Each capture's sync state, for its badge; refreshed when a sync run
+  /// ends, without reloading the photos.
+  Map<int, ({bool synced, bool refused})> _syncStates = {};
+  SyncEngine? _syncEngine;
+  bool _syncWasRunning = false;
+
   @override
   void initState() {
     super.initState();
     _loadSavedPhotos();
     _debugCheckDatabase();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final engine = context.read<SyncEngine>();
+    if (!identical(engine, _syncEngine)) {
+      _syncEngine?.removeListener(_onSyncChanged);
+      _syncEngine = engine..addListener(_onSyncChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _syncEngine?.removeListener(_onSyncChanged);
+    super.dispose();
+  }
+
+  void _onSyncChanged() {
+    final running = _syncEngine!.running;
+    if (_syncWasRunning && !running) _loadSyncStates();
+    _syncWasRunning = running;
+  }
+
+  Future<void> _loadSyncStates() async {
+    try {
+      final states = await DatabaseModel.syncStates();
+      if (mounted) setState(() => _syncStates = states);
+    } catch (e) {
+      log.w('Could not load sync states for the gallery', error: e);
+    }
   }
 
   /// Public method to refresh photos (called from MainTabView)
@@ -64,6 +103,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
     try {
       final photos = await DatabaseModel.getAllPhotosForGallery();
+      unawaited(_loadSyncStates());
       final dataTempList = <DataTemp>[];
 
       // Convert PhotoModel to DataTemp for gallery display
@@ -422,7 +462,33 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   /// Build photo grid - equivalent to iOS LazyVGrid
+  /// Synced, waiting, or refused by the server, like Google Photos' backup
+  /// badges. Only shown when signed in, i.e. when sync applies.
+  /// [signedIn] is read in `build`: the grid builds its items lazily during
+  /// layout, where watching a provider isn't allowed.
+  Widget? _syncBadge(int photoId, {required bool signedIn}) {
+    final state = _syncStates[photoId];
+    if (state == null || !signedIn) return null;
+    final (icon, color, label) = state.synced
+        ? (Icons.cloud_done, const Color(0xFF00AAA5), 'Synced')
+        : state.refused
+            ? (Icons.cloud_off, Colors.orange, 'Not synced: refused by the server')
+            : (Icons.cloud_upload_outlined, Colors.white70, 'Waiting to sync');
+    return Tooltip(
+      message: label,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 14, semanticLabel: label),
+      ),
+    );
+  }
+
   Widget _buildPhotoGrid() {
+    final signedIn = context.watch<AuthService>().isSignedIn;
     return RefreshIndicator(
       onRefresh: _loadSavedPhotos,
       color: const Color(0xFF00AAA5),
@@ -441,6 +507,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             final photo = _savedPhotos[index];
             return _PhotoGridItem(
               photo: photo,
+              syncBadge: _syncBadge(photo.photoId, signedIn: signedIn),
               onTap: () => _showPhotoDetail(photo),
             );
           },
@@ -455,9 +522,13 @@ class _PhotoGridItem extends StatelessWidget {
   final DataTemp photo;
   final VoidCallback onTap;
 
+  /// Shown in the top-left corner when signed in; see `_syncBadge`.
+  final Widget? syncBadge;
+
   const _PhotoGridItem({
     required this.photo,
     required this.onTap,
+    this.syncBadge,
   });
 
   @override
@@ -484,6 +555,8 @@ class _PhotoGridItem extends StatelessWidget {
                         fit: BoxFit.cover,
                       ),
                     ),
+                    if (syncBadge case final badge?)
+                      Positioned(top: 6, left: 6, child: badge),
                     if (photo.latitude != null && photo.longitude != null)
                       Positioned(
                         top: 6,

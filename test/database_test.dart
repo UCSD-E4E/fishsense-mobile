@@ -336,6 +336,76 @@ void main() {
     });
   });
 
+  group('v9 and the sync queries', () {
+    setUp(() async {
+      DatabaseModel.useDatabaseForTesting(await _openV8(path));
+    });
+
+    test('v8 databases gain sync_error, and the upgrade can run again', () async {
+      await DatabaseModel.closeDatabase();
+      var db = await _openV8('${tmp.path}/v8.sqlite');
+      await db.execute('ALTER TABLE photos DROP COLUMN sync_error');
+      await db.execute('ALTER TABLE measurements DROP COLUMN sync_error');
+      await db.execute('PRAGMA user_version = 8');
+      await db.close();
+
+      db = await _openV8('${tmp.path}/v8.sqlite');
+      expect((await _columns(db, 'photos')).keys, contains('sync_error'));
+      expect((await _columns(db, 'measurements')).keys, contains('sync_error'));
+      await db.execute('PRAGMA user_version = 8');
+      await db.close();
+      db = await _openV8('${tmp.path}/v8.sqlite'); // again: no duplicate column
+      await db.close();
+    });
+
+    test('claiming fills only what is empty, and never takes another account\'s capture',
+        () async {
+      final mine = (await DatabaseModel.insertPhoto(_photo(uuid: 'mine')))!;
+      final theirs = (await DatabaseModel.insertPhoto(_photo(uuid: 'theirs')))!;
+      final db = await DatabaseModel.database;
+      await db.update('photos', {'captured_by_sub': 'other', 'tenant_slug': null},
+          where: 'id = ?', whereArgs: [theirs]);
+      await db.update('photos', {'tenant_slug': 'angler'}, where: 'id = ?', whereArgs: [mine]);
+
+      for (final id in [mine, theirs]) {
+        await DatabaseModel.claimCapture(id, sub: 'me', tenantSlug: 'lab', installId: 'i1');
+      }
+      final m = (await DatabaseModel.getPhotoWithBlobs(mine))!;
+      expect((m.capturedBySub, m.tenantSlug, m.installId), ('me', 'angler', 'i1'));
+      final t = (await DatabaseModel.getPhotoWithBlobs(theirs))!;
+      expect((t.capturedBySub, t.tenantSlug), ('other', null));
+    });
+
+    test('the backlog counts unsynced captures, refused ones and pending edits', () async {
+      final a = (await DatabaseModel.insertPhoto(_photo(uuid: 'a'),
+          measurement: _version(photoId: -1, uuid: 'va', measuredAt: 1, length: 0.3)))!;
+      final b = (await DatabaseModel.insertPhoto(_photo(uuid: 'b')))!;
+      await DatabaseModel.insertPhoto(_photo(uuid: 'c'));
+      await (await DatabaseModel.database)
+          .update('photos', {'tenant_slug': 'lab'}, where: 'id = ?', whereArgs: [a]);
+
+      await DatabaseModel.markCaptureSynced(a, measurementIds: const [], at: DateTime.now());
+      await DatabaseModel.setCaptureSyncError(b, 'Refused (422)');
+
+      await (await DatabaseModel.database).update('photos', {'captured_by_sub': 'me'}, where: 'id = ?', whereArgs: [a]);
+      expect(await DatabaseModel.syncBacklog(sub: 'me'), (captures: 1, measurements: 1, failed: 1));
+      expect(await DatabaseModel.captureIdsToSync(sub: null), hasLength(1));
+      expect(await DatabaseModel.captureIdsToSync(sub: null, includeFailed: true), hasLength(2));
+      expect((await DatabaseModel.measurementsToSync(sub: 'me')).single.captureUuid, 'a');
+    });
+
+    test('saving a capture or a measurement tells sync there is work', () async {
+      final events = <void>[];
+      final sub = DatabaseModel.changes.listen(events.add);
+      final id = (await DatabaseModel.insertPhoto(_photo()))!;
+      await DatabaseModel.addMeasurement(
+          _version(photoId: id, uuid: 'v2', measuredAt: 2, length: 0.4));
+      await Future<void>.delayed(Duration.zero);
+      expect(events, hasLength(2));
+      await sub.cancel();
+    });
+  });
+
   group('measurement versions', () {
     setUp(() async {
       DatabaseModel.useDatabaseForTesting(await _openV8(path));

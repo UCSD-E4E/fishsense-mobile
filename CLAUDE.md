@@ -60,6 +60,12 @@ SQLite (sqflite)            OpenCV + ONNX Runtime
 - Runs segmentation → head/tail detection → length calculation via `fishsense.rs` crate
 - Returns `ComputeLengthResult` with fish length, head/tail coordinates
 
+### Sync (fishsense-services)
+Contract: fishsense-services `docs/handoff/fishsense-mobile/SYNC.md`; schemas in its `apps/web/openapi.json` (a copy is in `test/fixtures/`, and `test/sync/` checks our JSON against it). Code in `lib/services/sync/`:
+- `SyncEngine` runs on its own whenever `syncBlockedBy` allows (signed in, tenant chosen, auto sync on, Wi-Fi unless cellular is allowed, not in Low Power or Low Data Mode), and on demand with "Sync now", which skips the cellular/power/data rules. It's started by a capture or measurement being saved (`DatabaseModel.changes`), the app resuming, the connection changing (`NetworkStatusChannel.swift`), and settings or sign-in changing.
+- Per capture: claim it if unowned → stage files and hash them → `POST …/uploads` → presigned PUTs via `background_downloader` (a background `URLSession`, so uploads continue after leaving the app) → `PUT` commit. Later measurement versions: `POST …/measurements`. Every call is idempotent on the app's UUIDs.
+- Temporary failures back off (30 s doubling to 30 min, or until the connection changes). Refusals (403, 409 conflicts, 422) are stored in `sync_error` and only retried by "Sync now".
+
 ### Rust logs
 The bridge logs through `tracing` to Apple's unified log, never stdout: under `flutter run`, stdout is a pipe to the host, and a stalled pipe used to hang and then abort the app. Subsystem is the app's bundle identifier (set by `init_logging` from `FishSenseChannel`), category `rust-bridge`. They don't appear in `flutter run` output. To see them, use Console.app or Xcode with `subsystem BEGINSWITH "com.aqua3d.fishsense"`, or, on the Mac, `/usr/bin/log stream --level info --predicate 'category == "rust-bridge"'`. For a device after the fact, run `sudo log collect --device-udid <UDID> --last 20m` and open the archive with `log show --archive`. `cargo test` also prints them in each test's captured output. `RUST_LOG` sets the level.
 

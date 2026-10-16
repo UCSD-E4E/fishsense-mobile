@@ -62,7 +62,10 @@ dependencies:
   # Optional Authentik sign-in (OIDC + PKCE), needed only to sync
   flutter_appauth: ^12.1.0
 
-
+  # Sync: uploads through a background URLSession, and the SHA-256 each
+  # presigned upload is signed with
+  background_downloader: ^9.6.4
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

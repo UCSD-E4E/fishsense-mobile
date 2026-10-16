@@ -1,0 +1,101 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:background_downloader/background_downloader.dart';
+
+import '../../logger.dart';
+
+enum UploadOutcome {
+  done,
+
+  /// The store refused the request (403): the presigned URL has expired
+  /// (they last an hour), so ask for new ones.
+  expired,
+  failed,
+
+  /// Stopped because the caller asked (e.g. the rules it was started
+  /// under changed).
+  cancelled,
+}
+
+/// Uploads one file to a presigned URL.
+abstract interface class FileUploader {
+  /// Completing [cancel] stops the upload, which then ends `cancelled`.
+  Future<UploadOutcome> put({
+    required File file,
+    required String url,
+    required Map<String, String> headers,
+    required bool wifiOnly,
+    Future<void>? cancel,
+  });
+}
+
+/// Uploads through `background_downloader`, which on iOS uses a background
+/// `URLSession` uploading from the file: the transfer carries on after the
+/// user leaves the app, as Google Drive's do. [wifiOnly] turns off cellular
+/// for the transfer itself, so the setting holds even while the app is
+/// suspended.
+class BackgroundFileUploader implements FileUploader {
+  const BackgroundFileUploader({this.timeout = const Duration(minutes: 20)});
+
+  /// Longest one file may take, waits included. A Wi-Fi-only transfer
+  /// otherwise waits for Wi-Fi forever, holding up the whole sync.
+  final Duration timeout;
+
+  @override
+  Future<UploadOutcome> put({
+    required File file,
+    required String url,
+    required Map<String, String> headers,
+    required bool wifiOnly,
+    Future<void>? cancel,
+  }) async {
+    String? contentType;
+    final otherHeaders = <String, String>{};
+    headers.forEach((name, value) {
+      switch (name.toLowerCase()) {
+        // The plugin sets Content-Type from mimeType, and iOS sets
+        // Content-Length from the file; both equal the signed values.
+        case 'content-type':
+          contentType = value;
+        case 'content-length':
+          break;
+        default:
+          otherHeaders[name] = value;
+      }
+    });
+    // An empty value stops the plugin adding a Content-Disposition header.
+    otherHeaders['Content-Disposition'] = '';
+
+    final task = UploadTask.fromFile(
+      file: file,
+      url: url,
+      headers: otherHeaders,
+      httpRequestMethod: 'PUT',
+      post: 'binary',
+      mimeType: contentType ?? 'application/octet-stream',
+      requiresWiFi: wifiOnly,
+      retries: 2,
+      group: 'sync',
+    );
+    // Why it was stopped, if it was: by the caller, or by the time limit.
+    UploadOutcome? stoppedAs;
+    var finished = false;
+    void stop(UploadOutcome outcome) {
+      if (finished || stoppedAs != null) return;
+      stoppedAs = outcome;
+      FileDownloader().cancelTaskWithId(task.taskId);
+    }
+
+    unawaited(cancel?.then((_) => stop(UploadOutcome.cancelled)));
+    final timer = Timer(timeout, () => stop(UploadOutcome.failed));
+    final result = await FileDownloader().upload(task);
+    finished = true;
+    timer.cancel();
+    if (result.status == TaskStatus.complete) return UploadOutcome.done;
+    if (stoppedAs case final outcome?) return outcome;
+    log.w('Upload of ${file.path} ended ${result.status.name}, '
+        'HTTP ${result.responseStatusCode}: ${result.responseBody ?? result.exception}');
+    return result.responseStatusCode == 403 ? UploadOutcome.expired : UploadOutcome.failed;
+  }
+}

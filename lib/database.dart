@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sqflite/sqflite.dart';
@@ -18,7 +19,14 @@ class DatabaseModel {
 
   /// v8: capture provenance for sync (UUIDs, versions, strides, pose,
   /// lossless frame) and measurement versions.
-  static const int schemaVersion = 8;
+  /// v9: `sync_error` on photos and measurements.
+  static const int schemaVersion = 9;
+
+  static final StreamController<void> _changes = StreamController<void>.broadcast();
+
+  /// Fires after a capture is saved or a measurement version is added: new
+  /// work for sync.
+  static Stream<void> get changes => _changes.stream;
 
   /// Singleton pattern - get database instance
   static Future<Database> get database async {
@@ -96,6 +104,23 @@ class DatabaseModel {
     }
     if (oldVersion < 8) {
       await _upgradeToV8(db);
+    }
+    if (oldVersion < 9) {
+      await _upgradeToV9(db);
+    }
+  }
+
+  /// v9: why a capture or measurement version couldn't be synced, when the
+  /// server refused it for good (e.g. 422). Null while it can still sync.
+  /// Like v8, safe to run again.
+  static Future<void> _upgradeToV9(Database db) async {
+    for (final table in [_tableName, _measurementsTable]) {
+      final columns = (await db.rawQuery('PRAGMA table_info($table)'))
+          .map((c) => c['name'] as String)
+          .toSet();
+      if (!columns.contains('sync_error')) {
+        await db.execute('ALTER TABLE $table ADD COLUMN sync_error TEXT');
+      }
     }
   }
 
@@ -249,7 +274,8 @@ class DatabaseModel {
         algorithm_version TEXT,
         core_version TEXT,
         model_version TEXT,
-        synced_at INTEGER
+        synced_at INTEGER,
+        sync_error TEXT
       )
     ''');
     await db.execute(
@@ -300,7 +326,8 @@ class DatabaseModel {
         camera_pose_bytes BLOB,
         arkit_timestamp REAL,
         rgb_lossless_path TEXT,
-        synced_at INTEGER
+        synced_at INTEGER,
+        sync_error TEXT
       );
     ''';
 
@@ -387,6 +414,7 @@ class DatabaseModel {
         return id;
       });
       log.i('Photo inserted with ID: $id');
+      _changes.add(null);
       return id;
 
     } catch (e) {
@@ -420,6 +448,9 @@ class DatabaseModel {
         if (count == 0) return false;
         await txn.insert(_measurementsTable, measurement.toMap());
         return true;
+      }).then((added) {
+        if (added) _changes.add(null);
+        return added;
       });
     } catch (e) {
       log.e('SQLite Error adding measurement', error: e);
@@ -473,6 +504,8 @@ class DatabaseModel {
           'longitude',
           'horizontal_accuracy',
           'place_name',
+          'synced_at',
+          'sync_error',
         ],
         orderBy: 'utc_unix_timestamp DESC',
       );
@@ -508,6 +541,8 @@ class DatabaseModel {
           horizontalAccuracy:
               (maps[i]['horizontal_accuracy'] as num?)?.toDouble(),
           placeName: maps[i]['place_name'] as String?,
+          syncedAt: maps[i]['synced_at'] as int?,
+          syncError: maps[i]['sync_error'] as String?,
         );
       });
       
@@ -564,6 +599,162 @@ class DatabaseModel {
       log.e('SQLite Error updating place_name', error: e);
       return false;
     }
+  }
+
+  // ── Sync ─────────────────────────────────────────────────────────────
+
+  /// SQL limiting captures (aliased [alias]) to the ones [sub] may sync:
+  /// its own and unclaimed ones. With no [sub], only unclaimed ones.
+  static (String, List<Object?>) _syncableBy(String? sub, [String alias = '']) {
+    final col = '${alias.isEmpty ? '' : '$alias.'}captured_by_sub';
+    return sub == null
+        ? ('$col IS NULL', const [])
+        : ('($col IS NULL OR $col = ?)', [sub]);
+  }
+
+  /// Captures [sub] may sync that aren't committed yet, oldest first. Ones
+  /// the server refused for good are left out unless [includeFailed];
+  /// another account's are always left out.
+  static Future<List<int>> captureIdsToSync({
+    required String? sub,
+    bool includeFailed = false,
+  }) async {
+    final db = await database;
+    final (owner, args) = _syncableBy(sub);
+    final rows = await db.query(
+      _tableName,
+      columns: ['id'],
+      where: 'synced_at IS NULL AND $owner'
+          '${includeFailed ? '' : ' AND sync_error IS NULL'}',
+      whereArgs: args,
+      orderBy: 'utc_unix_timestamp, id',
+    );
+    return [for (final r in rows) r['id'] as int];
+  }
+
+  /// Measurement versions added after their capture was committed, with
+  /// the capture's sync key and tenant, oldest first. Only [sub]'s
+  /// captures (a committed capture always has a capturer), and only
+  /// versions with a length: the server takes nothing else.
+  static Future<List<({MeasurementVersion version, String captureUuid, String tenantSlug})>>
+      measurementsToSync({required String sub, bool includeFailed = false}) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT m.*, p.client_capture_uuid AS capture_uuid, p.tenant_slug AS capture_tenant
+      FROM $_measurementsTable m JOIN $_tableName p ON p.id = m.photo_id
+      WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL AND m.length_m > 0
+        ${includeFailed ? '' : 'AND m.sync_error IS NULL'}
+        AND p.captured_by_sub = ?
+        AND p.client_capture_uuid IS NOT NULL AND p.tenant_slug IS NOT NULL
+      ORDER BY m.measured_at, m.id
+    ''', [sub]);
+    return [
+      for (final r in rows)
+        (
+          version: MeasurementVersion.fromMap(r),
+          captureUuid: r['capture_uuid'] as String,
+          tenantSlug: r['capture_tenant'] as String,
+        ),
+    ];
+  }
+
+  /// Bind an unowned capture to the account syncing it: fill in whatever of
+  /// `captured_by_sub`, `tenant_slug` and `install_id` is still empty, and
+  /// never change one that is set. Only applies to a capture with no
+  /// capturer yet or whose capturer is [sub].
+  static Future<void> claimCapture(
+    int id, {
+    required String sub,
+    required String tenantSlug,
+    String? installId,
+  }) async {
+    final db = await database;
+    await db.rawUpdate('''
+      UPDATE $_tableName SET
+        captured_by_sub = COALESCE(captured_by_sub, ?),
+        tenant_slug = COALESCE(tenant_slug, ?),
+        install_id = COALESCE(install_id, ?)
+      WHERE id = ? AND (captured_by_sub IS NULL OR captured_by_sub = ?)
+    ''', [sub, tenantSlug, installId, id, sub]);
+  }
+
+  /// The capture and the measurement versions its commit carried are on
+  /// the server.
+  static Future<void> markCaptureSynced(
+    int id, {
+    required List<int> measurementIds,
+    required DateTime at,
+  }) async {
+    final db = await database;
+    final ms = at.toUtc().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      await txn.update(_tableName, {'synced_at': ms, 'sync_error': null},
+          where: 'id = ?', whereArgs: [id]);
+      for (final m in measurementIds) {
+        await txn.update(_measurementsTable, {'synced_at': ms, 'sync_error': null},
+            where: 'id = ?', whereArgs: [m]);
+      }
+    });
+  }
+
+  static Future<void> markMeasurementSynced(int id, {required DateTime at}) async {
+    final db = await database;
+    await db.update(
+      _measurementsTable,
+      {'synced_at': at.toUtc().millisecondsSinceEpoch, 'sync_error': null},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// The server refused this capture for good; keep it on the phone and
+  /// stop retrying it automatically.
+  static Future<void> setCaptureSyncError(int id, String error) async {
+    final db = await database;
+    await db.update(_tableName, {'sync_error': error}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<void> setMeasurementSyncError(int id, String error) async {
+    final db = await database;
+    await db.update(_measurementsTable, {'sync_error': error},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// What [sub] still has to sync, and how many of its captures the
+  /// server refused, for the sync status line. Another account's captures
+  /// aren't counted: they aren't this user's to sync.
+  static Future<({int captures, int measurements, int failed})> syncBacklog({
+    required String? sub,
+  }) async {
+    final db = await database;
+    int count(List<Map<String, Object?>> rows) => rows.first.values.first as int;
+    final (owner, args) = _syncableBy(sub);
+    final captures = count(await db.rawQuery(
+        'SELECT COUNT(*) FROM $_tableName '
+        'WHERE synced_at IS NULL AND sync_error IS NULL AND $owner',
+        args));
+    final failed = count(await db.rawQuery(
+        'SELECT COUNT(*) FROM $_tableName '
+        'WHERE synced_at IS NULL AND sync_error IS NOT NULL AND $owner',
+        args));
+    final measurements = sub == null
+        ? 0
+        : count(await db.rawQuery('''
+            SELECT COUNT(*) FROM $_measurementsTable m JOIN $_tableName p ON p.id = m.photo_id
+            WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL AND m.sync_error IS NULL
+              AND m.length_m > 0 AND p.captured_by_sub = ?
+          ''', [sub]));
+    return (captures: captures, measurements: measurements, failed: failed);
+  }
+
+  /// Each capture's sync state, for the gallery badges.
+  static Future<Map<int, ({bool synced, bool refused})>> syncStates() async {
+    final db = await database;
+    final rows = await db.query(_tableName, columns: ['id', 'synced_at', 'sync_error']);
+    return {
+      for (final r in rows)
+        r['id'] as int: (synced: r['synced_at'] != null, refused: r['sync_error'] != null),
+    };
   }
 
   /// Delete photo by ID, with its measurement versions and its image

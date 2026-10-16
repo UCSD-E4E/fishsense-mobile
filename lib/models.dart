@@ -88,6 +88,9 @@ class PhotoModel {
   /// UTC), or null if it hasn't been.
   final int? syncedAt;
 
+  /// Why the server refused this capture for good, or null.
+  final String? syncError;
+
   PhotoModel({
     required this.id,
     required this.utcUnixTimestamp,
@@ -123,6 +126,7 @@ class PhotoModel {
     this.arkitTimestamp,
     this.rgbLosslessPath,
     this.syncedAt,
+    this.syncError,
   });
 
   /// Factory constructor - equivalent to Swift init?() method
@@ -271,6 +275,7 @@ class PhotoModel {
       'arkit_timestamp': arkitTimestamp,
       'rgb_lossless_path': rgbLosslessPath,
       'synced_at': syncedAt,
+      'sync_error': syncError,
     };
   }
 
@@ -331,6 +336,7 @@ class PhotoModel {
       arkitTimestamp: (map['arkit_timestamp'] as num?)?.toDouble(),
       rgbLosslessPath: map['rgb_lossless_path'] as String?,
       syncedAt: map['synced_at'] as int?,
+      syncError: map['sync_error'] as String?,
     );
   }
 }
