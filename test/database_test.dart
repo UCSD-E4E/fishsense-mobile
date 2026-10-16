@@ -387,10 +387,11 @@ void main() {
       await DatabaseModel.markCaptureSynced(a, measurementIds: const [], at: DateTime.now());
       await DatabaseModel.setCaptureSyncError(b, 'Refused (422)');
 
-      expect(await DatabaseModel.syncBacklog(), (captures: 1, measurements: 1, failed: 1));
-      expect(await DatabaseModel.captureIdsToSync(), hasLength(1));
-      expect(await DatabaseModel.captureIdsToSync(includeFailed: true), hasLength(2));
-      expect((await DatabaseModel.measurementsToSync()).single.captureUuid, 'a');
+      await (await DatabaseModel.database).update('photos', {'captured_by_sub': 'me'}, where: 'id = ?', whereArgs: [a]);
+      expect(await DatabaseModel.syncBacklog(sub: 'me'), (captures: 1, measurements: 1, failed: 1));
+      expect(await DatabaseModel.captureIdsToSync(sub: null), hasLength(1));
+      expect(await DatabaseModel.captureIdsToSync(sub: null, includeFailed: true), hasLength(2));
+      expect((await DatabaseModel.measurementsToSync(sub: 'me')).single.captureUuid, 'a');
     });
 
     test('saving a capture or a measurement tells sync there is work', () async {

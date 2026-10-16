@@ -141,6 +141,12 @@ class FakeServer {
   /// Answer with this status (and detail) instead, keyed by "METHOD suffix".
   final failures = <String, (int, String)>{};
 
+  /// Every request about this capture UUID fails like this, every time.
+  final alwaysFail = <String, (int, String)>{};
+
+  /// Answer everything with a 200 HTML page, as a Wi-Fi sign-in page does.
+  bool captivePortal = false;
+
   late final client = MockClient((request) async {
     requests.add(request);
     final path = request.url.path;
@@ -150,6 +156,10 @@ class FakeServer {
     final uuid = match.group(2)!;
     final suffix = match.group(3) ?? '';
     final key = '${request.method} $suffix';
+    if (captivePortal) return http.Response('<html>Sign in to Wi-Fi</html>', 200);
+    if (alwaysFail[uuid] case (final status, final detail)) {
+      return http.Response(jsonEncode({'detail': detail}), status);
+    }
     if (failures.remove(key) case (final status, final detail)) {
       return http.Response(jsonEncode({'detail': detail}), status);
     }
@@ -200,14 +210,23 @@ class FakeUploader implements FileUploader {
   final puts = <({String url, Map<String, String> headers, bool wifiOnly, List<int> bytes})>[];
   final outcomes = <UploadOutcome>[];
 
+  /// Like iOS with cellular off and no Wi-Fi: a Wi-Fi-only upload waits
+  /// until it is cancelled.
+  bool noWifi = false;
+
   @override
   Future<UploadOutcome> put({
     required File file,
     required String url,
     required Map<String, String> headers,
     required bool wifiOnly,
+    Future<void>? cancel,
   }) async {
     puts.add((url: url, headers: headers, wifiOnly: wifiOnly, bytes: file.readAsBytesSync()));
+    if (noWifi && wifiOnly) {
+      await cancel;
+      return UploadOutcome.cancelled;
+    }
     return outcomes.isEmpty ? UploadOutcome.done : outcomes.removeAt(0);
   }
 }

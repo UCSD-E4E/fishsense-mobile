@@ -603,34 +603,51 @@ class DatabaseModel {
 
   // ── Sync ─────────────────────────────────────────────────────────────
 
-  /// Captures not yet committed to fishsense-services, oldest first. Ones
-  /// the server refused for good are left out unless [includeFailed].
-  static Future<List<int>> captureIdsToSync({bool includeFailed = false}) async {
+  /// SQL limiting captures (aliased [alias]) to the ones [sub] may sync:
+  /// its own and unclaimed ones. With no [sub], only unclaimed ones.
+  static (String, List<Object?>) _syncableBy(String? sub, [String alias = '']) {
+    final col = '${alias.isEmpty ? '' : '$alias.'}captured_by_sub';
+    return sub == null
+        ? ('$col IS NULL', const [])
+        : ('($col IS NULL OR $col = ?)', [sub]);
+  }
+
+  /// Captures [sub] may sync that aren't committed yet, oldest first. Ones
+  /// the server refused for good are left out unless [includeFailed];
+  /// another account's are always left out.
+  static Future<List<int>> captureIdsToSync({
+    required String? sub,
+    bool includeFailed = false,
+  }) async {
     final db = await database;
+    final (owner, args) = _syncableBy(sub);
     final rows = await db.query(
       _tableName,
       columns: ['id'],
-      where: includeFailed
-          ? 'synced_at IS NULL'
-          : 'synced_at IS NULL AND sync_error IS NULL',
+      where: 'synced_at IS NULL AND $owner'
+          '${includeFailed ? '' : ' AND sync_error IS NULL'}',
+      whereArgs: args,
       orderBy: 'utc_unix_timestamp, id',
     );
     return [for (final r in rows) r['id'] as int];
   }
 
   /// Measurement versions added after their capture was committed, with
-  /// the capture's sync key and tenant, oldest first.
+  /// the capture's sync key and tenant, oldest first. Only [sub]'s
+  /// captures (a committed capture always has a capturer), and only
+  /// versions with a length: the server takes nothing else.
   static Future<List<({MeasurementVersion version, String captureUuid, String tenantSlug})>>
-      measurementsToSync({bool includeFailed = false}) async {
+      measurementsToSync({required String sub, bool includeFailed = false}) async {
     final db = await database;
     final rows = await db.rawQuery('''
       SELECT m.*, p.client_capture_uuid AS capture_uuid, p.tenant_slug AS capture_tenant
       FROM $_measurementsTable m JOIN $_tableName p ON p.id = m.photo_id
-      WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL
+      WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL AND m.length_m > 0
         ${includeFailed ? '' : 'AND m.sync_error IS NULL'}
+        AND p.captured_by_sub = ?
         AND p.client_capture_uuid IS NOT NULL AND p.tenant_slug IS NOT NULL
       ORDER BY m.measured_at, m.id
-    ''');
+    ''', [sub]);
     return [
       for (final r in rows)
         (
@@ -703,19 +720,30 @@ class DatabaseModel {
         where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Unsynced captures and measurement versions, and how many of the
-  /// captures the server refused, for the sync status line.
-  static Future<({int captures, int measurements, int failed})> syncBacklog() async {
+  /// What [sub] still has to sync, and how many of its captures the
+  /// server refused, for the sync status line. Another account's captures
+  /// aren't counted: they aren't this user's to sync.
+  static Future<({int captures, int measurements, int failed})> syncBacklog({
+    required String? sub,
+  }) async {
     final db = await database;
     int count(List<Map<String, Object?>> rows) => rows.first.values.first as int;
+    final (owner, args) = _syncableBy(sub);
     final captures = count(await db.rawQuery(
-        'SELECT COUNT(*) FROM $_tableName WHERE synced_at IS NULL AND sync_error IS NULL'));
+        'SELECT COUNT(*) FROM $_tableName '
+        'WHERE synced_at IS NULL AND sync_error IS NULL AND $owner',
+        args));
     final failed = count(await db.rawQuery(
-        'SELECT COUNT(*) FROM $_tableName WHERE synced_at IS NULL AND sync_error IS NOT NULL'));
-    final measurements = count(await db.rawQuery('''
-      SELECT COUNT(*) FROM $_measurementsTable m JOIN $_tableName p ON p.id = m.photo_id
-      WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL AND m.sync_error IS NULL
-    '''));
+        'SELECT COUNT(*) FROM $_tableName '
+        'WHERE synced_at IS NULL AND sync_error IS NOT NULL AND $owner',
+        args));
+    final measurements = sub == null
+        ? 0
+        : count(await db.rawQuery('''
+            SELECT COUNT(*) FROM $_measurementsTable m JOIN $_tableName p ON p.id = m.photo_id
+            WHERE p.synced_at IS NOT NULL AND m.synced_at IS NULL AND m.sync_error IS NULL
+              AND m.length_m > 0 AND p.captured_by_sub = ?
+          ''', [sub]));
     return (captures: captures, measurements: measurements, failed: failed);
   }
 

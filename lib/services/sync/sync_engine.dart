@@ -17,14 +17,40 @@ import 'sync_policy.dart';
 import 'sync_settings.dart';
 import 'uploader.dart';
 
-/// How a pass over one capture or version ended.
-enum _Step {
-  /// Synced, or recorded as refused for good: move on.
-  next,
+/// How syncing one capture or version ended.
+enum _Kind {
+  /// On the server now.
+  synced,
 
-  /// Something temporary (network, server, expired links): stop this pass
-  /// and retry later.
-  stop,
+  /// Refused for good (recorded on the row): move on.
+  refused,
+
+  /// A problem with this item only (e.g. its tenant, a 5xx on it): retry it
+  /// later, carry on with the rest.
+  retryItem,
+
+  /// A problem with the connection (offline, TLS, a captive portal): stop
+  /// the run and retry later.
+  retryAll,
+
+  /// The rules changed under a running upload; start over under the new
+  /// ones.
+  cancelled,
+
+  /// The session is no good: wait for the user to sign in again.
+  signIn,
+}
+
+class _Result {
+  final _Kind kind;
+  final String? why;
+
+  /// For [_Kind.retryItem]: wait an hour, not seconds (e.g. no storage).
+  final bool long;
+
+  const _Result(this.kind, [this.why, this.long = false]);
+
+  static const synced = _Result(_Kind.synced);
 }
 
 /// Syncs captures to fishsense-services, like Google Photos backup: on its
@@ -33,9 +59,14 @@ enum _Step {
 /// A run is started by new work (a capture or measurement saved), the app
 /// coming to the foreground, the connection changing, the user's sync
 /// settings or sign-in changing, and [syncNow]. One run at a time; a start
-/// during a run makes it go round once more. Captures go oldest first, each
-/// followed later by its measurement versions. Every server call is
-/// idempotent on the app's UUIDs, so an interrupted run resumes safely.
+/// during a run makes it go round once more, and if the rules changed, an
+/// upload in progress is stopped so the next round follows the new ones.
+///
+/// Captures go oldest first, then measurement versions. A failure tied to
+/// one item puts just that item on hold (with a growing delay) and the run
+/// carries on; a failing connection, or three items failing in a row, ends
+/// the run. Every server call is idempotent on the app's UUIDs, so an
+/// interrupted run resumes safely.
 class SyncEngine extends ChangeNotifier {
   SyncEngine({
     required AuthService auth,
@@ -73,21 +104,32 @@ class SyncEngine extends ChangeNotifier {
   final DateTime Function() _now;
   final bool _watchLifecycle;
 
+  /// Items failing in a row before the run gives up: likely the server.
+  static const _maxConsecutiveFailures = 3;
+
   final _subscriptions = <StreamSubscription<Object?>>[];
   AppLifecycleListener? _lifecycle;
   Timer? _retryTimer;
 
   NetworkStatus _network = NetworkStatus.unknown;
   bool _running = false;
+  bool _runForced = false;
   bool _again = false;
   bool _againForced = false;
   Future<void>? _run;
+  Completer<void>? _cancelUploads;
 
   SyncBlock? _block;
   int _done = 0;
   int _total = 0;
+
+  /// Connection-level failures in a row, and when to try again.
   int _failures = 0;
-  DateTime? _retryAt;
+  DateTime? _allRetryAt;
+
+  /// Items on hold after failing, keyed `c:<photo id>` / `m:<measurement id>`.
+  final _onHold = <String, ({int failures, DateTime until})>{};
+
   String? _lastError;
   DateTime? _lastSyncedAt;
   ({int captures, int measurements, int failed}) _backlog =
@@ -101,19 +143,25 @@ class SyncEngine extends ChangeNotifier {
   int get done => _done;
   int get total => _total;
 
-  /// Captures and versions still to sync, and captures refused for good.
+  /// What this account still has to sync, and captures refused for good.
   ({int captures, int measurements, int failed}) get backlog => _backlog;
 
-  /// When the next automatic retry is due after a temporary failure.
-  DateTime? get retryAt => _retryAt;
+  /// When the next automatic retry is due after a failure, if one is.
+  DateTime? get retryAt {
+    final times = [if (_allRetryAt case final at?) at, for (final h in _onHold.values) h.until];
+    return times.isEmpty ? null : times.reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+
   String? get lastError => _lastError;
   DateTime? get lastSyncedAt => _lastSyncedAt;
   NetworkStatus get network => _network;
 
-  /// "Sync now" can run: signed in, a tenant chosen, connected.
-  bool get canSyncNow => _blockedBy(forced: true) == null && !_running;
+  /// "Sync now" can run: signed in, a tenant chosen, connected, and not
+  /// already in a forced run. Pressed during an automatic run, it takes
+  /// over (stopping an upload held back by the cellular setting).
+  bool get canSyncNow => _blockedBy(forced: true) == null && !(_running && _runForced);
 
-  /// One line for Settings, e.g. "Waiting for Wi-Fi — 3 captures to sync".
+  /// One line for Settings, e.g. "Waiting for Wi-Fi. 3 captures to sync."
   String get statusText {
     final pending = _backlog.captures;
     final items = pending == 1 ? '1 capture' : '$pending captures';
@@ -124,8 +172,8 @@ class SyncEngine extends ChangeNotifier {
     if (_block != null) {
       return pending > 0 ? '${_block!.message} $items to sync.' : _block!.message;
     }
-    if (_retryAt != null) {
-      return "Couldn't reach FishSense; will retry. $items to sync.";
+    if (retryAt != null) {
+      return pending > 0 ? 'Will retry soon. $items to sync.' : 'Will retry soon.';
     }
     if (pending > 0 || _backlog.measurements > 0) {
       return pending > 0 ? '$items to sync.' : 'Measurement edits to sync.';
@@ -169,16 +217,32 @@ class SyncEngine extends ChangeNotifier {
   }
 
   /// Run now, regardless of the cellular setting, Low Power or Low Data
-  /// Mode and any retry wait; also retries what the server refused before.
-  /// Still needs a session, a tenant and a connection.
-  Future<void> syncNow() => _start(forced: true);
+  /// Mode, automatic sync being off, and any wait after a failure; also
+  /// retries what the server refused before. Still needs a session, a
+  /// tenant and a connection.
+  Future<void> syncNow() {
+    // An automatic run may be holding an upload back for Wi-Fi.
+    if (_running && !_runForced) _cancelUploads?.complete();
+    return _start(forced: true);
+  }
 
   void _kick() => unawaited(_start(forced: false));
 
   void _onInputsChanged() {
     _refreshBlock();
+    // If the rules a running upload follows no longer hold (e.g. cellular
+    // now allowed, or the connection now disallowed), stop it so the next
+    // round follows the new ones.
+    if (_running) {
+      final wifiOnlyNow = !_runForced && !_settings.useCellular;
+      if (_blockedBy(forced: _runForced) != null || wifiOnlyNow != _runWifiOnly) {
+        if (!(_cancelUploads?.isCompleted ?? true)) _cancelUploads!.complete();
+      }
+    }
     _kick();
   }
+
+  bool _runWifiOnly = true;
 
   void _onNetwork(NetworkStatus status) {
     final before = _network;
@@ -186,7 +250,8 @@ class SyncEngine extends ChangeNotifier {
     if (status == before) return;
     // A new path is the moment to try again, not a timer.
     if (status.connected) {
-      _retryAt = null;
+      _allRetryAt = null;
+      _onHold.clear();
       _retryTimer?.cancel();
     }
     _onInputsChanged();
@@ -228,13 +293,17 @@ class SyncEngine extends ChangeNotifier {
           _againForced = false;
         } while (_again);
       } catch (e, s) {
+        // Each item's errors are handled where they happen; this is a bug
+        // or a broken database. Don't spin: back off like a lost connection.
         log.e('Sync run failed', error: e, stackTrace: s);
-        _lastError = e.toString();
+        _retryAll('Sync failed: $e');
       } finally {
         _running = false;
+        _runForced = false;
         _done = _total = 0;
         await _refreshBacklog();
         _refreshBlock();
+        _scheduleRetry();
         notifyListeners();
       }
     }();
@@ -242,7 +311,7 @@ class SyncEngine extends ChangeNotifier {
 
   Future<void> _refreshBacklog() async {
     try {
-      _backlog = await DatabaseModel.syncBacklog();
+      _backlog = await DatabaseModel.syncBacklog(sub: _auth.sub);
     } catch (e) {
       log.w('Could not count unsynced captures', error: e);
     }
@@ -251,57 +320,87 @@ class SyncEngine extends ChangeNotifier {
   Future<void> _pass({required bool forced}) async {
     await _refreshBacklog();
     _block = _blockedBy(forced: false);
-    final block = _blockedBy(forced: forced);
-    if (block != null) {
+    if (_blockedBy(forced: forced) != null) {
       notifyListeners();
       return;
     }
+    final now = _now();
     if (forced) {
-      _retryAt = null;
+      _allRetryAt = null;
+      _onHold.clear();
       _retryTimer?.cancel();
-    } else if (_retryAt case final at? when _now().isBefore(at)) {
+    } else if (_allRetryAt case final at? when now.isBefore(at)) {
       return;
     }
+    _runForced = forced;
+    _runWifiOnly = !forced && !_settings.useCellular;
+    _cancelUploads = Completer<void>();
+    final sub = _auth.sub!;
 
-    final captureIds = await DatabaseModel.captureIdsToSync(includeFailed: forced);
-    final versionsBefore = (await DatabaseModel.measurementsToSync(includeFailed: forced)).length;
-    _total = captureIds.length + versionsBefore;
+    final captureIds = await DatabaseModel.captureIdsToSync(sub: sub, includeFailed: forced);
+    _total = captureIds.length + _backlog.measurements;
     _done = 0;
     notifyListeners();
 
-    for (final id in captureIds) {
-      if (_blockedBy(forced: forced) != null) return;
-      if (await _syncCapture(id, forced: forced) == _Step.stop) return;
-      _done++;
-      notifyListeners();
+    var inARow = 0;
+    // Runs one item; false ends the run.
+    Future<bool> step(String key, Future<_Result> Function() sync) async {
+      if (_blockedBy(forced: forced) != null) return false;
+      if (_onHold[key] case final hold? when _now().isBefore(hold.until)) return true;
+      final result = await sync();
+      switch (result.kind) {
+        case _Kind.synced:
+        case _Kind.refused:
+          _onHold.remove(key);
+          inARow = 0;
+          _done++;
+          notifyListeners();
+          return true;
+        case _Kind.retryItem:
+          _hold(key, result.why!, long: result.long);
+          if (++inARow >= _maxConsecutiveFailures) {
+            _retryAll('$_maxConsecutiveFailures items failed in a row: ${result.why}');
+            return false;
+          }
+          return true;
+        case _Kind.retryAll:
+          _retryAll(result.why!);
+          return false;
+        case _Kind.cancelled:
+        case _Kind.signIn:
+          return false;
+      }
     }
 
+    for (final id in captureIds) {
+      if (!await step('c:$id', () => _syncCapture(id, forced: forced))) return;
+    }
     // Includes versions of captures committed just now that their commit
     // didn't carry (the server already had the capture).
-    final versions = await DatabaseModel.measurementsToSync(includeFailed: forced);
+    final versions = await DatabaseModel.measurementsToSync(sub: sub, includeFailed: forced);
     _total = _done + versions.length;
     for (final item in versions) {
-      if (_blockedBy(forced: forced) != null) return;
-      if (await _syncMeasurement(item) == _Step.stop) return;
-      _done++;
-      notifyListeners();
+      if (!await step('m:${item.version.id}', () => _syncMeasurement(item))) return;
     }
 
     _failures = 0;
-    _retryAt = null;
-    _lastError = null;
-    _lastSyncedAt = _now();
+    _allRetryAt = null;
+    if (_onHold.isEmpty) {
+      _lastError = null;
+      _lastSyncedAt = _now();
+    }
   }
 
-  Future<_Step> _syncCapture(int id, {required bool forced}) async {
+  Future<_Result> _syncCapture(int id, {required bool forced}) async {
     final sub = _auth.sub!;
     final tenant = _auth.tenant!.slug;
     var photo = await DatabaseModel.getPhotoWithBlobs(id);
-    if (photo == null) return _Step.next;
+    if (photo == null) return _Result.synced; // deleted meanwhile
 
-    // Another account's capture stays on the phone for that account.
+    // Another account's capture stays on the phone for that account
+    // (already excluded from the queue; kept as a guard).
     if (photo.capturedBySub != null && photo.capturedBySub != sub) {
-      return _Step.next;
+      return const _Result(_Kind.refused);
     }
     // Taken signed out, before v8, or before a tenant was chosen: the
     // account syncing it claims it (SYNC.md §1), and keeps it.
@@ -318,7 +417,7 @@ class SyncEngine extends ChangeNotifier {
     final captureTenant = photo.tenantSlug!;
     if (captureUuid == null) {
       await DatabaseModel.setCaptureSyncError(id, 'No capture UUID.');
-      return _Step.next;
+      return const _Result(_Kind.refused);
     }
 
     final staging = Directory(p.join((await _stagingRoot()).path, captureUuid));
@@ -335,17 +434,17 @@ class SyncEngine extends ChangeNotifier {
       } on PayloadException catch (e) {
         log.w('Capture $captureUuid cannot be synced: $e');
         await DatabaseModel.setCaptureSyncError(id, e.message);
-        return _Step.next;
+        return const _Result(_Kind.refused);
       }
 
-      // Presigned links last an hour; if they expire on the way (e.g. a
-      // long wait for Wi-Fi), ask again once.
+      // Presigned links last an hour; if they expire on the way, ask again
+      // once.
       for (var attempt = 0; ; attempt++) {
         final grant = await _api.requestUploads(captureTenant, captureUuid, payload.declared);
         if (grant.alreadyCommitted) {
           // Committed before; its later versions go up separately.
           await DatabaseModel.markCaptureSynced(id, measurementIds: const [], at: _now());
-          return _Step.next;
+          return _Result.synced;
         }
         var expired = false;
         for (final upload in grant.uploads) {
@@ -354,34 +453,32 @@ class SyncEngine extends ChangeNotifier {
             url: upload.url,
             headers: upload.headers,
             wifiOnly: !forced && !_settings.useCellular,
+            cancel: _cancelUploads?.future,
           );
-          if (outcome == UploadOutcome.expired) {
-            expired = true;
-            break;
+          switch (outcome) {
+            case UploadOutcome.done:
+              continue;
+            case UploadOutcome.cancelled:
+              return const _Result(_Kind.cancelled);
+            case UploadOutcome.failed:
+              return _Result(_Kind.retryItem, 'Upload of $captureUuid failed.');
+            case UploadOutcome.expired:
+              expired = true;
           }
-          if (outcome == UploadOutcome.failed) {
-            return _retryLater('Upload of $captureUuid failed.');
-          }
+          break;
         }
         if (!expired) break;
-        if (attempt >= 1) return _retryLater('Upload links for $captureUuid expired.');
+        if (attempt >= 1) {
+          return _Result(_Kind.retryItem, 'Upload links for $captureUuid expired.');
+        }
       }
 
       await _api.commit(captureTenant, captureUuid, payload.manifest);
       await DatabaseModel.markCaptureSynced(id, measurementIds: payload.measurementIds, at: _now());
       log.i('Synced capture $captureUuid');
-      return _Step.next;
-    } on SyncApiException catch (e) {
-      return _onApiError(e, onRefused: (why) => DatabaseModel.setCaptureSyncError(id, why));
-    } on SignInRequiredException {
-      _refreshBlock();
-      return _Step.stop;
-    } on SocketException catch (e) {
-      return _retryLater('Offline: ${e.message}');
-    } on http.ClientException catch (e) {
-      return _retryLater('Network error: ${e.message}');
-    } on TimeoutException {
-      return _retryLater('Timed out.');
+      return _Result.synced;
+    } catch (e, s) {
+      return _onError(e, s, onRefused: (why) => DatabaseModel.setCaptureSyncError(id, why));
     } finally {
       if (staging.existsSync()) {
         try {
@@ -391,77 +488,107 @@ class SyncEngine extends ChangeNotifier {
     }
   }
 
-  Future<_Step> _syncMeasurement(
+  Future<_Result> _syncMeasurement(
     ({MeasurementVersion version, String captureUuid, String tenantSlug}) item,
   ) async {
     final id = item.version.id!;
     try {
       await _api.addMeasurement(item.tenantSlug, item.captureUuid, measurementJson(item.version));
       await DatabaseModel.markMeasurementSynced(id, at: _now());
-      return _Step.next;
-    } on SyncApiException catch (e) {
-      return _onApiError(e, onRefused: (why) => DatabaseModel.setMeasurementSyncError(id, why));
-    } on SignInRequiredException {
-      _refreshBlock();
-      return _Step.stop;
-    } on SocketException catch (e) {
-      return _retryLater('Offline: ${e.message}');
-    } on http.ClientException catch (e) {
-      return _retryLater('Network error: ${e.message}');
-    } on TimeoutException {
-      return _retryLater('Timed out.');
+      return _Result.synced;
+    } catch (e, s) {
+      return _onError(e, s, onRefused: (why) => DatabaseModel.setMeasurementSyncError(id, why));
     }
   }
 
-  /// SYNC.md §4's table: what each answer means and what to do.
-  Future<_Step> _onApiError(
-    SyncApiException e, {
+  /// What an error means for the item (SYNC.md §4's table for the API).
+  Future<_Result> _onError(
+    Object e,
+    StackTrace s, {
     required Future<void> Function(String why) onRefused,
   }) async {
-    final detail = e.detail.toLowerCase();
-    switch (e.status) {
-      case 401:
-        _lastError = 'Signed out by the server.';
-        return _Step.stop;
-      case 403:
-        // The capture's capturer isn't this account: not ours to sync.
-        await onRefused('Belongs to another account.');
-        return _Step.next;
-      case 404:
-        return _retryLater('Not a member of this organization: ${e.detail}', long: true);
-      case 409 when detail.contains('no storage'):
-        return _retryLater('Your organization is not set up for sync yet.', long: true);
-      case 409 when detail.contains('has not been uploaded') ||
-            detail.contains('not the file declared'):
-        return _retryLater('Upload incomplete; will redo it.');
-      case 409:
-      case 422:
-        // A conflict or a payload the server won't take: a bug to report,
-        // not something retrying fixes.
-        log.e('Sync refused (${e.status}): ${e.detail}');
-        await onRefused('Refused (${e.status}): ${e.detail}');
-        return _Step.next;
+    switch (e) {
+      case SyncApiException(:final status, :final detail):
+        final text = detail.toLowerCase();
+        switch (status) {
+          case 401:
+            // Refused even after a token refresh: the session is no good on
+            // the server. Ask the user to sign in again.
+            await _auth.markSignInRequired();
+            return const _Result(_Kind.signIn);
+          case 403:
+            // The capture's capturer isn't this account: not ours to sync.
+            await onRefused('Belongs to another account.');
+            return const _Result(_Kind.refused);
+          case 404:
+            return _Result(_Kind.retryItem, 'Not a member of its organization: $detail', true);
+          case 409 when text.contains('no storage'):
+            return const _Result(
+                _Kind.retryItem, 'The organization is not set up for sync yet.', true);
+          case 409 when text.contains('has not been uploaded') ||
+                text.contains('not the file declared'):
+            return const _Result(_Kind.retryItem, 'Upload incomplete; will redo it.');
+          case 409:
+          case 422:
+            // A conflict or a payload the server won't take: a bug to
+            // report, not something retrying fixes.
+            log.e('Sync refused ($status): $detail');
+            await onRefused('Refused ($status): $detail');
+            return const _Result(_Kind.refused);
+          default:
+            return _Result(_Kind.retryItem, 'Server error $status.');
+        }
+      case SignInRequiredException():
+        _refreshBlock();
+        return const _Result(_Kind.signIn);
+      case FileSystemException(:final message, :final path):
+        // E.g. a photo deleted while it was being read.
+        return _Result(_Kind.retryItem, 'Could not read ${path ?? 'a file'}: $message');
+      case IOException() || http.ClientException() || TimeoutException():
+        // Offline, TLS, a dropped connection.
+        return _Result(_Kind.retryAll, "Couldn't reach FishSense: $e");
+      case FormatException():
+        // Not the API answering (e.g. a Wi-Fi sign-in page).
+        return const _Result(
+            _Kind.retryAll, 'Unexpected answer from the network; is a Wi-Fi sign-in page open?');
       default:
-        return _retryLater('Server error ${e.status}.');
+        log.e('Sync of an item failed', error: e, stackTrace: s);
+        return _Result(_Kind.retryItem, 'Sync failed: $e');
     }
   }
 
-  /// Stop this run and try again after a growing delay (30 s doubling to
-  /// 30 min), or sooner when the connection changes.
-  _Step _retryLater(String why, {bool long = false}) {
-    _failures++;
-    final delay = long
-        ? const Duration(hours: 1)
-        : Duration(seconds: math.min(30 * (1 << math.min(_failures - 1, 6)), 30 * 60));
+  /// Delay after [failures] failures: 30 s doubling to 30 min.
+  static Duration _backoff(int failures) =>
+      Duration(seconds: math.min(30 * (1 << math.min(failures - 1, 6)), 30 * 60));
+
+  /// Put one item on hold; the run carries on without it.
+  void _hold(String key, String why, {required bool long}) {
+    final failures = (_onHold[key]?.failures ?? 0) + 1;
+    final delay = long ? const Duration(hours: 1) : _backoff(failures);
+    _onHold[key] = (failures: failures, until: _now().add(delay));
     _lastError = why;
-    _retryAt = _now().add(delay);
+    log.w('Sync: holding $key for ${delay.inSeconds}s: $why');
+  }
+
+  /// End the run; try again after a growing delay, or sooner when the
+  /// connection changes.
+  void _retryAll(String why) {
+    _failures++;
+    final delay = _backoff(_failures);
+    _allRetryAt = _now().add(delay);
+    _lastError = why;
+    log.w('Sync paused: $why Retrying in ${delay.inSeconds}s.');
+  }
+
+  void _scheduleRetry() {
     _retryTimer?.cancel();
-    _retryTimer = Timer(delay, () {
-      _retryAt = null;
+    final at = retryAt;
+    if (at == null) return;
+    final delay = at.difference(_now());
+    _retryTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      if (_allRetryAt case final all? when !_now().isBefore(all)) _allRetryAt = null;
       _kick();
     });
-    log.w('Sync paused: $why Retrying in ${delay.inSeconds}s.');
-    return _Step.stop;
   }
 
   @override
@@ -473,6 +600,7 @@ class SyncEngine extends ChangeNotifier {
     }
     _lifecycle?.dispose();
     _retryTimer?.cancel();
+    if (!(_cancelUploads?.isCompleted ?? true)) _cancelUploads!.complete();
     super.dispose();
   }
 }

@@ -34,7 +34,11 @@ void main() {
   late SyncSettings settings;
   late SyncEngine engine;
 
-  Future<void> startEngine({NetworkStatus initial = wifi, bool settingsEnabled = true}) async {
+  Future<void> startEngine({
+    NetworkStatus initial = wifi,
+    bool settingsEnabled = true,
+    bool settle = true,
+  }) async {
     auth = AuthService(storage: const FlutterSecureStorage());
     await auth.load();
     settings = SyncSettings();
@@ -56,7 +60,15 @@ void main() {
       watchLifecycle: false,
     )..start();
     network.add(initial);
-    await engine.settle();
+    if (settle) await engine.settle();
+  }
+
+  /// Wait until [condition] holds, letting the engine and the database run.
+  Future<void> until(bool Function() condition) async {
+    for (var i = 0; i < 200 && !condition(); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(condition(), isTrue);
   }
 
   Future<PhotoModel> photo(int id) async => (await DatabaseModel.getPhotoWithBlobs(id))!;
@@ -292,5 +304,140 @@ void main() {
 
     expect(server.where('POST', '/uploads'), hasLength(1));
     expect(uploader.puts, hasLength(5));
+  });
+
+  group('review fixes', () {
+    const uuidC = 'c0000000-0000-4000-8000-0000000000cc';
+    const uuidD = 'd0000000-0000-4000-8000-0000000000dd';
+
+    test('a capture that keeps failing is put on hold; the ones behind it sync', () async {
+      final a = await box.addCapture(uuid: uuidA);
+      final b = await box.addCapture(uuid: uuidB, timestamp: 1760000009000);
+      server.alwaysFail[uuidA] = (500, 'boom');
+      await startEngine();
+
+      expect((await photo(a)).syncedAt, isNull);
+      expect((await photo(a)).syncError, isNull, reason: 'still retried later');
+      expect((await photo(b)).syncedAt, isNotNull);
+      expect(engine.retryAt, isNotNull);
+      expect(engine.lastError, contains('500'));
+
+      // A capture whose tenant the user left (404) doesn't block either.
+      server.alwaysFail
+        ..clear()
+        ..[uuidC] = (404, 'not a member');
+      final c = await box.addCapture(uuid: uuidC, timestamp: 1760000010000);
+      final d = await box.addCapture(uuid: uuidD, timestamp: 1760000011000);
+      await engine.syncNow();
+      expect((await photo(c)).syncedAt, isNull);
+      expect((await photo(d)).syncedAt, isNotNull);
+      expect((await photo(a)).syncedAt, isNotNull, reason: 'Sync now retried it');
+    });
+
+    test('three failures in a row end the run: the server is likely down', () async {
+      for (var i = 0; i < 5; i++) {
+        await box.addCapture(
+            uuid: 'e000000$i-0000-4000-8000-000000000000', timestamp: 1760000000000 + i);
+      }
+      for (var i = 0; i < 5; i++) {
+        server.alwaysFail['e000000$i-0000-4000-8000-000000000000'] = (502, 'bad gateway');
+      }
+      await startEngine();
+      expect(server.where('POST', '/uploads'), hasLength(3));
+      expect(engine.retryAt, isNotNull);
+    });
+
+    test("another account's captures and edits are neither sent nor counted", () async {
+      final mine = await box.addCapture(uuid: uuidA);
+      final theirs = await box.addCapture(uuid: uuidB, sub: 'user-2', timestamp: 1760000009000);
+      final db = await DatabaseModel.database;
+      await db.update('photos', {'synced_at': 1}, where: 'id = ?', whereArgs: [theirs]);
+      await DatabaseModel.addMeasurement(MeasurementVersion(
+        photoId: theirs,
+        clientMeasurementUuid: 'f0000000-0000-4000-8000-0000000000ff',
+        measuredAt: 1760000010000,
+        lengthM: 0.5,
+        snout: const Coordinate(x: 1, y: 2),
+        fork: const Coordinate(x: 3, y: 4),
+        origin: MeasurementOrigin.manual,
+      ));
+      await box.addCapture(uuid: uuidC, sub: 'user-2', timestamp: 1760000011000);
+      await startEngine();
+
+      expect((await photo(mine)).syncedAt, isNotNull);
+      expect(server.measurements[uuidB], isNull);
+      expect(server.committed.keys, [uuidA]);
+      expect(engine.backlog, (captures: 0, measurements: 0, failed: 0));
+      expect(engine.statusText, 'All captures synced.');
+    });
+
+    test('a version without a length is never sent', () async {
+      final id = await box.addCapture(uuid: uuidA);
+      await startEngine();
+      await (await DatabaseModel.database).insert('measurements', {
+        'photo_id': id,
+        'client_measurement_uuid': 'f1000000-0000-4000-8000-0000000000ff',
+        'measured_at': 1760000020000,
+        'length_m': 0.0,
+        'snout_x': 1.0,
+        'snout_y': 2.0,
+        'fork_x': 3.0,
+        'fork_y': 4.0,
+        'origin': 'unknown',
+      });
+      await engine.syncNow();
+
+      expect(server.measurements[uuidA], isNull);
+      expect(engine.backlog.measurements, 0);
+    });
+
+    test('an upload waiting for Wi-Fi restarts over cellular once cellular is allowed',
+        () async {
+      await box.addCapture(uuid: uuidA);
+      uploader.noWifi = true;
+      await startEngine(settle: false);
+      await until(() => uploader.puts.isNotEmpty);
+      expect(engine.running, isTrue, reason: 'held waiting for Wi-Fi');
+      expect(engine.canSyncNow, isTrue);
+
+      await settings.setUseCellular(true);
+      await engine.settle();
+      expect(server.committed, contains(uuidA));
+      expect(uploader.puts.last.wifiOnly, isFalse);
+    });
+
+    test('Sync now takes over an upload held back for Wi-Fi', () async {
+      await box.addCapture(uuid: uuidA);
+      uploader.noWifi = true;
+      await startEngine(settle: false);
+      await until(() => uploader.puts.isNotEmpty);
+
+      await engine.syncNow();
+      await engine.settle();
+      expect(server.committed, contains(uuidA));
+    });
+
+    test('a Wi-Fi sign-in page (HTML with 200) ends the run and retries later', () async {
+      final id = await box.addCapture(uuid: uuidA);
+      server.captivePortal = true;
+      await startEngine();
+
+      expect((await photo(id)).syncedAt, isNull);
+      expect(engine.retryAt, isNotNull);
+      expect(engine.lastError, contains('sign-in page'));
+    });
+
+    test('a 401 after a token refresh asks the user to sign in again', () async {
+      await box.addCapture(uuid: uuidA);
+      server.alwaysFail[uuidA] = (401, 'invalid token');
+      await startEngine();
+
+      expect(auth.needsSignInAgain, isTrue);
+      expect(engine.block, SyncBlock.signInExpired);
+      final sent = server.requests.length;
+      network.add(cellular);
+      await engine.settle();
+      expect(server.requests.length, sent, reason: 'no retries until signed in again');
+    });
   });
 }

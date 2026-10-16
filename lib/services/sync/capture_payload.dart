@@ -108,32 +108,42 @@ Future<CapturePayload> buildCapturePayload({
   }
 
   await stagingDir.create(recursive: true);
-  Future<File> stage(String name, List<int> bytes) async =>
-      File(p.join(stagingDir.path, name))
-        ..writeAsBytesSync(bytes is Uint8List ? bytes : Uint8List.fromList(bytes), flush: true);
+  final files = <StagedFile>[];
+
+  // Reading, writing and hashing megabytes is kept off the UI isolate.
+  Future<void> addExisting(String role, File file) async {
+    final path = file.path;
+    final (digest, size) = await Isolate.run(() {
+      final bytes = File(path).readAsBytesSync();
+      return (sha256.convert(bytes).toString(), bytes.length);
+    });
+    files.add(StagedFile(DeclaredFile(role: role, sha256: digest, size: size), file));
+  }
+
+  // Written out exactly as stored; hashed from the same bytes in memory.
+  Future<void> addStaged(String role, List<int> bytes) async {
+    final path = p.join(stagingDir.path, '$role.bin');
+    final data = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+    final digest = await Isolate.run(() {
+      File(path).writeAsBytesSync(data, flush: true);
+      return sha256.convert(data).toString();
+    });
+    files.add(StagedFile(
+      DeclaredFile(role: role, sha256: digest, size: data.length),
+      File(path),
+    ));
+  }
 
   final jpeg = File(p.join(documentsDir, photo.rgbPath));
   if (!jpeg.existsSync()) throw PayloadException('${photo.rgbPath} is missing.');
-  final roles = <(String, File)>[
-    ('rgb_jpeg', jpeg),
-    if (photo.rgbLosslessPath case final png?)
-      if (File(p.join(documentsDir, png)).existsSync())
-        ('rgb_lossless', File(p.join(documentsDir, png))),
-    ('depth_f32', await stage('depth_f32.bin', depth)),
-    ('confidence_u8', await stage('confidence_u8.bin', confidence)),
-    if (hasMask) ('mask_u8', await stage('mask_u8.bin', mask)),
-  ];
-
-  final files = <StagedFile>[];
-  for (final (role, file) in roles) {
-    final path = file.path;
-    final digest = await Isolate.run(
-        () => sha256.convert(File(path).readAsBytesSync()).toString());
-    files.add(StagedFile(
-      DeclaredFile(role: role, sha256: digest, size: file.lengthSync()),
-      file,
-    ));
+  await addExisting('rgb_jpeg', jpeg);
+  if (photo.rgbLosslessPath case final png?) {
+    final file = File(p.join(documentsDir, png));
+    if (file.existsSync()) await addExisting('rgb_lossless', file);
   }
+  await addStaged('depth_f32', depth);
+  await addStaged('confidence_u8', confidence);
+  if (hasMask) await addStaged('mask_u8', mask);
 
   final pose = PhotoModel.decodeDoubles(photo.cameraPoseBytes);
   final usable = [for (final v in versions) if (v.lengthM > 0) v];

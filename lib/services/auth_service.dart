@@ -325,6 +325,11 @@ class AuthService extends ChangeNotifier {
     return token;
   }
 
+  /// The API refused a freshly refreshed token: the session is no good on
+  /// the server even though it refreshes here (e.g. revoked). Ask the user
+  /// to sign in again, as for an expired refresh token.
+  Future<void> markSignInRequired() => _markNeedsSignInAgain();
+
   Future<void> _loadMemberships() async {
     try {
       final tenants = await _fetchMemberships();

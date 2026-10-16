@@ -80,8 +80,12 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   Future<void> _loadSyncStates() async {
-    final states = await DatabaseModel.syncStates();
-    if (mounted) setState(() => _syncStates = states);
+    try {
+      final states = await DatabaseModel.syncStates();
+      if (mounted) setState(() => _syncStates = states);
+    } catch (e) {
+      log.w('Could not load sync states for the gallery', error: e);
+    }
   }
 
   /// Public method to refresh photos (called from MainTabView)
@@ -460,9 +464,11 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   /// Build photo grid - equivalent to iOS LazyVGrid
   /// Synced, waiting, or refused by the server, like Google Photos' backup
   /// badges. Only shown when signed in, i.e. when sync applies.
-  Widget? _syncBadge(int photoId) {
+  /// [signedIn] is read in `build`: the grid builds its items lazily during
+  /// layout, where watching a provider isn't allowed.
+  Widget? _syncBadge(int photoId, {required bool signedIn}) {
     final state = _syncStates[photoId];
-    if (state == null || !context.watch<AuthService>().isSignedIn) return null;
+    if (state == null || !signedIn) return null;
     final (icon, color, label) = state.synced
         ? (Icons.cloud_done, const Color(0xFF00AAA5), 'Synced')
         : state.refused
@@ -482,6 +488,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   Widget _buildPhotoGrid() {
+    final signedIn = context.watch<AuthService>().isSignedIn;
     return RefreshIndicator(
       onRefresh: _loadSavedPhotos,
       color: const Color(0xFF00AAA5),
@@ -500,7 +507,7 @@ class PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             final photo = _savedPhotos[index];
             return _PhotoGridItem(
               photo: photo,
-              syncBadge: _syncBadge(photo.photoId),
+              syncBadge: _syncBadge(photo.photoId, signedIn: signedIn),
               onTap: () => _showPhotoDetail(photo),
             );
           },

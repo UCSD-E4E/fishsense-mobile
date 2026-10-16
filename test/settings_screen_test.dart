@@ -30,6 +30,7 @@ class _NoUploads implements FileUploader {
     required String url,
     required Map<String, String> headers,
     required bool wifiOnly,
+    Future<void>? cancel,
   }) async =>
       UploadOutcome.failed;
 }
