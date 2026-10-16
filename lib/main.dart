@@ -8,6 +8,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/photo_gallery_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/arkit_service.dart';
+import 'services/auth_service.dart';
 import 'services/onboarding_state.dart';
 import 'services/preferences_service.dart';
 import 'database.dart';
@@ -55,6 +56,7 @@ class FishSenseApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AppStateProvider()),
         ChangeNotifierProvider(create: (_) => PreferencesService()..load()),
+        ChangeNotifierProvider(create: (_) => AuthService()..load()),
       ],
       child: MaterialApp(
         title: 'FishSense',

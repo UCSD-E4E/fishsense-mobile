@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models.dart';
+import '../services/auth_service.dart';
 import '../services/camera_service.dart';
 import '../services/device_info_service.dart';
 import '../services/file_storage_service.dart';
@@ -85,6 +87,13 @@ class _CameraScreenState extends State<CameraScreen>
     // writes sensor-native landscape pixels regardless of how the phone was
     // held.
     final captureOrientation = MediaQuery.orientationOf(context);
+
+    // Bind the capture to whoever is signed in right now (no network
+    // needed). Signed out, both stay null and the account that first
+    // syncs the capture claims it.
+    final auth = context.read<AuthService>();
+    final capturedBySub = auth.sub;
+    final tenantSlug = auth.tenant?.slug;
 
     setState(() {
       _isProcessingPhoto = true;
@@ -237,6 +246,8 @@ class _CameraScreenState extends State<CameraScreen>
         intrinsicsBytes:
             PhotoModel.encodeIntrinsics(captureResult.cameraIntrinsics),
         clientCaptureUuid: clientCaptureUuid,
+        capturedBySub: capturedBySub,
+        tenantSlug: tenantSlug,
         installId: provenance.installId,
         deviceModel: captureResult.deviceModel,
         appVersion: provenance.appVersion,
