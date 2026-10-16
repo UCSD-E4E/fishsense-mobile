@@ -21,17 +21,17 @@ dependencies:
 
   # Camera (start with basic camera, add ARCore later)
   # camera: ^0.10.5
-  permission_handler: ^12.0.1
+  permission_handler: ^13.0.2
 
   # Location (GPS fix for photo capture)
-  geolocator: ^13.0.1
+  geolocator: ^14.1.1
 
   # Reverse geocoding (lat/lon → human-readable place name)
-  geocoding: ^3.0.0
+  geocoding: ^5.0.0
 
   # Map view for the catches map screen (OpenStreetMap tiles, no API key)
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.1
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
   # Image & File handling
   image: ^4.1.3
@@ -53,12 +53,28 @@ dependencies:
   # Logging
   logger: ^2.4.0
 
+  # Capture provenance: capture/measurement UUIDs, app version, and a
+  # per-install ID kept in the Keychain
+  uuid: ^4.6.0
+  package_info_plus: ^10.2.2
+  flutter_secure_storage: ^11.2.0
 
+  # Optional Authentik sign-in (OIDC + PKCE), needed only to sync
+  flutter_appauth: ^12.1.0
+
+  # Sync: uploads through a background URLSession, and the SHA-256 each
+  # presigned upload is signed with
+  background_downloader: ^9.6.4
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Runs the real SQLite migrations on the host in tests
+  sqflite_common_ffi: ^2.4.4
+  path_provider_platform_interface: ^2.1.3
+  plugin_platform_interface: ^2.1.8
 
 flutter:
   uses-material-design: true

@@ -1,12 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../models.dart';
+import '../services/auth_service.dart';
 import '../services/camera_service.dart';
 import '../services/device_info_service.dart';
 import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
 import '../services/location_service.dart';
+import '../services/lossless_frame.dart';
+import '../services/measurement_check.dart';
+import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
 import '../logger.dart';
@@ -82,10 +88,23 @@ class _CameraScreenState extends State<CameraScreen>
     // held.
     final captureOrientation = MediaQuery.orientationOf(context);
 
+    // Bind the capture to whoever is signed in right now (no network
+    // needed). Signed out, both stay null and the account that first
+    // syncs the capture claims it.
+    final auth = context.read<AuthService>();
+    final capturedBySub = auth.sub;
+    final tenantSlug = auth.tenant?.slug;
+
     setState(() {
       _isProcessingPhoto = true;
       _processingMessage = 'Capturing photo...';
     });
+
+    // Files written for this capture; deleted in `finally` if no row ends
+    // up pointing at them, since per-row delete could never reach them.
+    Future<String?>? losslessFuture;
+    String? savedImageName;
+    int? insertedId;
 
     try {
       // Kick off GPS acquisition in parallel with the capture — the fix is
@@ -104,9 +123,29 @@ class _CameraScreenState extends State<CameraScreen>
         return;
       }
 
+      // The sync key is minted the moment the capture is taken.
+      final clientCaptureUuid = const Uuid().v4();
+      final provenanceFuture = ProvenanceService.get();
+
+      // Encode the exact frame the pipeline segments, losslessly, while
+      // inference runs. It's what makes the measurement reproducible; the
+      // JPEG below is lossy and only for display.
+      final losslessName = 'rgb_${captureResult.timestamp}.png';
+      losslessFuture = LosslessFrame.encodePng(
+        captureResult.rawImageBytes,
+        captureResult.imageWidth,
+        captureResult.imageHeight,
+      ).then<String?>(
+        (png) => FileStorageService.saveImage(png, customName: losslessName),
+        onError: (Object e) {
+          log.e('Failed to encode lossless frame', error: e);
+          return null;
+        },
+      );
+
       // Save RGB image
       final imageName = 'rgb_${captureResult.timestamp}.jpg';
-      final savedImageName = await FileStorageService.saveImage(
+      savedImageName = await FileStorageService.saveImage(
         captureResult.imageBytes,
         customName: imageName,
       );
@@ -143,31 +182,22 @@ class _CameraScreenState extends State<CameraScreen>
             captureResult.cameraIntrinsics),
       );
 
-      // Sanity gates on the Rust result. The downstream length math is
-      // faithful: when it produces a 14 mm or 324 mm "fish" it's because
-      // the snout/fork it was given are degenerate — collapsed snap
-      // fallback, or a runaway segmentation that swallowed the
-      // background. Persist the raw frame for later analysis but
-      // null out fish_length / keypoints so the row can't masquerade
-      // as a measurement.
-      final maskCoverage = (result.fishFound &&
-              result.mask != null &&
-              result.maskWidth > 0 &&
-              result.maskHeight > 0)
-          ? _maskCoverage(
-              result.mask!, result.maskWidth, result.maskHeight)
-          : 0.0;
-      const minCoverage = 0.01;
-      const maxCoverage = 0.20;
-      final coverageOk =
-          maskCoverage >= minCoverage && maskCoverage <= maxCoverage;
-      final lengthOk = result.length.isFinite && result.length > 0.0;
-      final isFishUsable = result.fishFound && coverageOk && lengthOk;
-      if (result.fishFound && !isFishUsable) {
-        log.w('Discarding fish measurement: '
-            'coverage=${(maskCoverage * 100).toStringAsFixed(1)}% '
-            '(window ${(minCoverage * 100).toStringAsFixed(0)}–'
-            '${(maxCoverage * 100).toStringAsFixed(0)}%), '
+      // Sanity checks on the Rust result (see checkMeasurement). A rejected
+      // fish still saves the raw frame and mask for later analysis, but
+      // fish_length / keypoints stay null so the row can't masquerade as a
+      // measurement.
+      final check = result.fishFound
+          ? checkMeasurement(
+              mask: result.mask,
+              width: result.maskWidth,
+              height: result.maskHeight,
+              length: result.length,
+            )
+          : null;
+      final isFishUsable = check?.usable ?? false;
+      if (check != null && !check.usable) {
+        log.w('Discarding fish measurement: ${check.rejection!.name}, '
+            'coverage=${(check.coverage * 100).toStringAsFixed(1)}%, '
             'length=${result.length}m, '
             'left=(${result.left.x},${result.left.y}) '
             'right=(${result.right.x},${result.right.y})');
@@ -181,6 +211,12 @@ class _CameraScreenState extends State<CameraScreen>
         log.d('Location fix: ${locationFix.latitude}, ${locationFix.longitude} '
             '(±${locationFix.horizontalAccuracy}m) '
             'place=${placeName ?? "<not geocoded>"}');
+      }
+
+      final provenance = await provenanceFuture;
+      final savedLosslessName = await losslessFuture;
+      if (savedLosslessName == null) {
+        log.e('Lossless frame not saved; this capture will not be reproducible');
       }
 
       // Create photo model for database storage using factory method
@@ -209,12 +245,37 @@ class _CameraScreenState extends State<CameraScreen>
         placeName: placeName,
         intrinsicsBytes:
             PhotoModel.encodeIntrinsics(captureResult.cameraIntrinsics),
+        clientCaptureUuid: clientCaptureUuid,
+        capturedBySub: capturedBySub,
+        tenantSlug: tenantSlug,
+        installId: provenance.installId,
+        deviceModel: captureResult.deviceModel,
+        appVersion: provenance.appVersion,
+        coreVersion: provenance.coreVersion,
+        modelVersion: provenance.modelVersion,
+        depthRowBytes: captureResult.depthRowBytes,
+        confidenceRowBytes: captureResult.confidenceRowBytes,
+        cameraPoseBytes: PhotoModel.encodeDoubles(captureResult.cameraPose),
+        arkitTimestamp: captureResult.arkitTimestamp,
+        rgbLosslessPath: savedLosslessName,
       );
 
+      // The phone's own result is the capture's first measurement version.
+      // A frame that couldn't be measured has none.
+      final measurement = isFishUsable
+          ? provenance.measurement(
+              photoId: -1, // replaced with the new row's id on insert
+              lengthM: result.length,
+              snout: result.left,
+              fork: result.right,
+              origin: MeasurementOrigin.auto,
+            )
+          : null;
+
       // Save to database - equivalent to iOS insertPhoto(with:)
-      int? insertedId;
       if (photo != null) {
-        insertedId = await DatabaseModel.insertPhoto(photo);
+        insertedId =
+            await DatabaseModel.insertPhoto(photo, measurement: measurement);
         log.i('DB insert: id=$insertedId');
       } else {
         log.e('Failed to create PhotoModel from capture result');
@@ -238,6 +299,9 @@ class _CameraScreenState extends State<CameraScreen>
             ),
           ),
         );
+      } else if (check != null) {
+        // Found, but not measurable: say why rather than "no fish".
+        _showErrorDialog('Couldn\'t Measure', check.message);
       } else {
         _showErrorDialog(
             'No Fish Found',
@@ -248,6 +312,9 @@ class _CameraScreenState extends State<CameraScreen>
       log.e('Error in _capturePhoto', error: e);
       _showErrorDialog('Capture Error', 'An error occurred: $e');
     } finally {
+      if (insertedId == null) {
+        await _deleteOrphanedFiles(savedImageName, losslessFuture);
+      }
       if (mounted) {
         setState(() {
           _isProcessingPhoto = false;
@@ -257,18 +324,17 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  /// Fraction of mask pixels marked as fish (any non-zero byte). The
-  /// segmentation mask is row-major, one byte per pixel; on iOS the
-  /// dimensions match the captured RGB frame.
-  double _maskCoverage(Uint8List mask, int width, int height) {
-    final total = width * height;
-    if (total <= 0 || mask.isEmpty) return 0.0;
-    var nonzero = 0;
-    final n = mask.length < total ? mask.length : total;
-    for (var i = 0; i < n; i++) {
-      if (mask[i] != 0) nonzero++;
+  /// Remove a capture's image files when its row was never inserted.
+  Future<void> _deleteOrphanedFiles(
+    String? jpegName,
+    Future<String?>? losslessFuture,
+  ) async {
+    final pngName = await losslessFuture;
+    for (final name in [jpegName, pngName]) {
+      if (name == null) continue;
+      log.w('Deleting $name: no database row refers to it');
+      await FileStorageService.deleteImage(name);
     }
-    return nonzero / total;
   }
 
   /// Show error dialog - equivalent to iOS displayErrorMessage

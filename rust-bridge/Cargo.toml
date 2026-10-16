@@ -13,13 +13,28 @@ default = []
 download-binaries = ["fishsense-core/download-binaries"]
 
 [dependencies]
-fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v2.0.0", default-features = false, features = ["coreml"] }
+# v2.1.5 replaced OpenCV with pure-Rust image/imageproc (PR #50), dropping the
+# last non-Rust build dependency. v2.1.6 ranks single-instance detections by
+# score x area instead of area alone (PR #51), which `inference_single` relies on.
+# v4.1.0 verifies the embedded model against a pinned manifest (PR #84); the
+# 3.0/4.0 breaking changes are Python-side and don't touch this crate's API.
+fishsense-core = { git = "https://github.com/UCSD-E4E/fishsense-core", tag = "fishsense_core-v4.1.0", default-features = false, features = ["coreml"] }
 libc = "0.2.184"
 ndarray = "0.17.2"
-opencv = "0.98.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Apple's unified log; see init_tracing. Other targets log to stderr.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+tracing-oslog = "0.3"
 
 [lib]
 name = "fishsense_bridge"
 crate-type = ["staticlib"]
+
+# Xcode 27's /usr/bin/strip leaves host proc-macro dylibs with a mis-aligned
+# LINKEDIT that rustc then fails to dlopen ("can't find crate for
+# `zerofrom_derive`"). Skip stripping for host build helpers only; the iOS
+# static libraries are unaffected.
+[profile.release.build-override]
+strip = false

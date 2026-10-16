@@ -12,6 +12,7 @@ class FishSenseChannel {
 
     init(arkitManager: ARKitManager) {
         self.arkitManager = arkitManager
+        Self.startRustLogging()
     }
 
     func setup(messenger: FlutterBinaryMessenger) {
@@ -31,18 +32,12 @@ class FishSenseChannel {
                 manager.captureDepthFrame(result: result)
             case "stopARKitSession":
                 manager.stopARKitSession(result: result)
-            case "compute_length":
+            case "pipeline_versions", "compute_length", "recompute_length":
                 guard let self = self else {
                     result(FlutterError(code: "UNAVAILABLE", message: "FishSenseChannel deallocated", details: nil))
                     return
                 }
-                self.computeLength(call: call, result: result)
-            case "recompute_length":
-                guard let self = self else {
-                    result(FlutterError(code: "UNAVAILABLE", message: "FishSenseChannel deallocated", details: nil))
-                    return
-                }
-                self.recomputeLength(call: call, result: result)
+                self.handleRustCall(call, result: result)
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -50,6 +45,19 @@ class FishSenseChannel {
     }
 
     // MARK: - Rust FFI
+
+    private func handleRustCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "pipeline_versions":
+            result(Self.pipelineVersions())
+        case "compute_length":
+            computeLength(call: call, result: result)
+        case "recompute_length":
+            recomputeLength(call: call, result: result)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
 
     private struct ComputeLengthArgs {
         let imageData: Data
@@ -227,10 +235,8 @@ class FishSenseChannel {
     }
 
     private static func buildRecomputeFlutterResult(rustResult: ComputeLengthResult) -> [String: Any] {
-        let errorMsg: String? = withUnsafePointer(to: rustResult.error_string) { ptr in
-            let str = String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
-            return str.isEmpty ? nil : str
-        }
+        let errorString = cString(rustResult.error_string)
+        let errorMsg: String? = errorString.isEmpty ? nil : errorString
 
         var flutterResult: [String: Any] = [
             "success": true,
@@ -254,10 +260,8 @@ class FishSenseChannel {
     }
 
     private static func buildFlutterResult(rustResult: ComputeLengthResult, maskData: Data, args: ComputeLengthArgs) -> [String: Any] {
-        let errorMsg: String? = withUnsafePointer(to: rustResult.error_string) { ptr in
-            let str = String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
-            return str.isEmpty ? nil : str
-        }
+        let errorString = cString(rustResult.error_string)
+        let errorMsg: String? = errorString.isEmpty ? nil : errorString
 
         var flutterResult: [String: Any] = [
             "success": true,
@@ -282,5 +286,34 @@ class FishSenseChannel {
             logger.warning("compute_length: fish not found")
         }
         return flutterResult
+    }
+}
+
+// MARK: - pipeline_versions
+
+extension FishSenseChannel {
+    fileprivate static func pipelineVersions() -> [String: String] {
+        let versions = FishSenseRS.pipeline_versions()
+        return [
+            "coreVersion": cString(versions.core_version),
+            "modelVersion": cString(versions.model_version)
+        ]
+    }
+
+    fileprivate static func cString<T>(_ tuple: T) -> String {
+        withUnsafePointer(to: tuple) { ptr in
+            String(cString: UnsafeRawPointer(ptr).assumingMemoryBound(to: CChar.self))
+        }
+    }
+}
+
+// MARK: - Rust logging
+
+extension FishSenseChannel {
+    /// Send the Rust bridge's logs to the unified log under this app's
+    /// subsystem, next to the Swift loggers (category `rust-bridge`).
+    fileprivate static func startRustLogging() {
+        let subsystem = Bundle.main.bundleIdentifier ?? "fishsense"
+        subsystem.withCString { FishSenseRS.init_logging($0) }
     }
 }

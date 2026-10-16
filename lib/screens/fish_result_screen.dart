@@ -8,6 +8,7 @@ import '../logger.dart';
 import '../models.dart';
 import '../services/mask_snap.dart';
 import '../services/preferences_service.dart';
+import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
 import '../widgets/fish_photo_overlay.dart';
 
@@ -288,13 +289,15 @@ class _FishResultScreenState extends State<FishResultScreen> {
         return;
       }
 
-      final saved = await DatabaseModel.updateMeasurement(
-        id: widget.photoId!,
-        snoutX: snapped.snout!.x,
-        snoutY: snapped.snout!.y,
-        forkX: snapped.fork!.x,
-        forkY: snapped.fork!.y,
-        fishLength: recomputed.length,
+      final provenance = await ProvenanceService.get();
+      final saved = await DatabaseModel.addMeasurement(
+        provenance.measurement(
+          photoId: widget.photoId!,
+          lengthM: recomputed.length,
+          snout: snapped.snout!,
+          fork: snapped.fork!,
+          origin: MeasurementOrigin.manual,
+        ),
       );
       if (!saved) {
         _showError('Saved the new measurement in memory but the '

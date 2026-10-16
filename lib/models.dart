@@ -46,6 +46,51 @@ class PhotoModel {
   /// [encodeIntrinsics] / [decodeIntrinsics].
   final Uint8List? intrinsicsBytes;
 
+  /// Sync idempotency key (UUID v4), generated when the capture is taken.
+  final String? clientCaptureUuid;
+
+  /// Who took the capture and for which tenant: the ID token's `sub` and
+  /// the tenant slug at capture time. Null until the app has sign-in; the
+  /// server only lets this `sub` sync the capture.
+  final String? capturedBySub;
+  final String? tenantSlug;
+
+  /// Per-install UUID (kept in the Keychain), so one phone is one device.
+  final String? installId;
+
+  /// Hardware model identifier, e.g. "iPhone16,1".
+  final String? deviceModel;
+
+  /// Provenance: the app build, fishsense-core release, and segmentation
+  /// weights (`name/version@sha256[:12]`) that produced the capture.
+  final String? appVersion;
+  final String? coreVersion;
+  final String? modelVersion;
+
+  /// Row strides of [depthMap] / [confidenceMap]. ARKit can pad rows and
+  /// the stored bytes keep that padding, so these are needed to decode them.
+  final int? depthRowBytes;
+  final int? confidenceRowBytes;
+
+  /// ARKit camera-to-world transform: 16 little-endian f64, row-major.
+  /// Encode/decode via [encodeDoubles] / [decodeDoubles].
+  final Uint8List? cameraPoseBytes;
+
+  /// The ARKit frame's `timestamp` (seconds of device uptime).
+  final double? arkitTimestamp;
+
+  /// Filename of the lossless PNG of the exact frame `compute_length`
+  /// segmented. The JPEG at [rgbPath] is lossy, so this is what makes the
+  /// measurement reproducible. Null for captures taken before v8.
+  final String? rgbLosslessPath;
+
+  /// When the capture was committed to fishsense-services (ms since epoch
+  /// UTC), or null if it hasn't been.
+  final int? syncedAt;
+
+  /// Why the server refused this capture for good, or null.
+  final String? syncError;
+
   PhotoModel({
     required this.id,
     required this.utcUnixTimestamp,
@@ -67,6 +112,21 @@ class PhotoModel {
     this.horizontalAccuracy,
     this.placeName,
     this.intrinsicsBytes,
+    this.clientCaptureUuid,
+    this.capturedBySub,
+    this.tenantSlug,
+    this.installId,
+    this.deviceModel,
+    this.appVersion,
+    this.coreVersion,
+    this.modelVersion,
+    this.depthRowBytes,
+    this.confidenceRowBytes,
+    this.cameraPoseBytes,
+    this.arkitTimestamp,
+    this.rgbLosslessPath,
+    this.syncedAt,
+    this.syncError,
   });
 
   /// Factory constructor - equivalent to Swift init?() method
@@ -90,6 +150,19 @@ class PhotoModel {
     double? horizontalAccuracy,
     String? placeName,
     Uint8List? intrinsicsBytes,
+    String? clientCaptureUuid,
+    String? capturedBySub,
+    String? tenantSlug,
+    String? installId,
+    String? deviceModel,
+    String? appVersion,
+    String? coreVersion,
+    String? modelVersion,
+    int? depthRowBytes,
+    int? confidenceRowBytes,
+    Uint8List? cameraPoseBytes,
+    double? arkitTimestamp,
+    String? rgbLosslessPath,
     int id = -1,
   }) {
     return PhotoModel(
@@ -113,6 +186,19 @@ class PhotoModel {
       horizontalAccuracy: horizontalAccuracy,
       placeName: placeName,
       intrinsicsBytes: intrinsicsBytes,
+      clientCaptureUuid: clientCaptureUuid,
+      capturedBySub: capturedBySub,
+      tenantSlug: tenantSlug,
+      installId: installId,
+      deviceModel: deviceModel,
+      appVersion: appVersion,
+      coreVersion: coreVersion,
+      modelVersion: modelVersion,
+      depthRowBytes: depthRowBytes,
+      confidenceRowBytes: confidenceRowBytes,
+      cameraPoseBytes: cameraPoseBytes,
+      arkitTimestamp: arkitTimestamp,
+      rgbLosslessPath: rgbLosslessPath,
     );
   }
 
@@ -120,18 +206,28 @@ class PhotoModel {
   /// little-endian) for the `intrinsics_bytes` BLOB column. Returns
   /// null if `intrinsics` is empty so callers can pass through the
   /// "no intrinsics available" case (e.g. mock-data path) unchanged.
-  static Uint8List? encodeIntrinsics(List<double>? intrinsics) {
-    if (intrinsics == null || intrinsics.isEmpty) return null;
-    final bd = ByteData(intrinsics.length * 8);
-    for (var i = 0; i < intrinsics.length; i++) {
-      bd.setFloat64(i * 8, intrinsics[i], Endian.little);
+  static Uint8List? encodeIntrinsics(List<double>? intrinsics) =>
+      encodeDoubles(intrinsics);
+
+  /// Inverse of [encodeIntrinsics]. Returns null when the BLOB is
+  /// missing or has a non-multiple-of-8 length.
+  static List<double>? decodeIntrinsics(Uint8List? bytes) =>
+      decodeDoubles(bytes);
+
+  /// Pack doubles as little-endian f64 for a BLOB column (intrinsics,
+  /// camera pose). Returns null for a null or empty list.
+  static Uint8List? encodeDoubles(List<double>? values) {
+    if (values == null || values.isEmpty) return null;
+    final bd = ByteData(values.length * 8);
+    for (var i = 0; i < values.length; i++) {
+      bd.setFloat64(i * 8, values[i], Endian.little);
     }
     return bd.buffer.asUint8List();
   }
 
-  /// Inverse of [encodeIntrinsics]. Returns null when the BLOB is
-  /// missing or has a non-multiple-of-8 length.
-  static List<double>? decodeIntrinsics(Uint8List? bytes) {
+  /// Inverse of [encodeDoubles]. Returns null when the BLOB is missing or
+  /// has a non-multiple-of-8 length.
+  static List<double>? decodeDoubles(Uint8List? bytes) {
     if (bytes == null || bytes.isEmpty || bytes.length % 8 != 0) return null;
     final bd = ByteData.sublistView(bytes);
     final n = bytes.length ~/ 8;
@@ -165,6 +261,21 @@ class PhotoModel {
       'horizontal_accuracy': horizontalAccuracy,
       'place_name': placeName,
       'intrinsics_bytes': intrinsicsBytes,
+      'client_capture_uuid': clientCaptureUuid,
+      'captured_by_sub': capturedBySub,
+      'tenant_slug': tenantSlug,
+      'install_id': installId,
+      'device_model': deviceModel,
+      'app_version': appVersion,
+      'core_version': coreVersion,
+      'model_version': modelVersion,
+      'depth_row_bytes': depthRowBytes,
+      'confidence_row_bytes': confidenceRowBytes,
+      'camera_pose_bytes': cameraPoseBytes,
+      'arkit_timestamp': arkitTimestamp,
+      'rgb_lossless_path': rgbLosslessPath,
+      'synced_at': syncedAt,
+      'sync_error': syncError,
     };
   }
 
@@ -178,6 +289,10 @@ class PhotoModel {
     final Uint8List? intrinsics = rawIntrinsics is Uint8List
         ? rawIntrinsics
         : (rawIntrinsics is List<int> ? Uint8List.fromList(rawIntrinsics) : null);
+    final rawPose = map['camera_pose_bytes'];
+    final Uint8List? pose = rawPose is Uint8List
+        ? rawPose
+        : (rawPose is List<int> ? Uint8List.fromList(rawPose) : null);
     return PhotoModel(
       id: map['id'],
       utcUnixTimestamp: map['utc_unix_timestamp'],
@@ -207,8 +322,145 @@ class PhotoModel {
       horizontalAccuracy: (map['horizontal_accuracy'] as num?)?.toDouble(),
       placeName: map['place_name'] as String?,
       intrinsicsBytes: intrinsics,
+      clientCaptureUuid: map['client_capture_uuid'] as String?,
+      capturedBySub: map['captured_by_sub'] as String?,
+      tenantSlug: map['tenant_slug'] as String?,
+      installId: map['install_id'] as String?,
+      deviceModel: map['device_model'] as String?,
+      appVersion: map['app_version'] as String?,
+      coreVersion: map['core_version'] as String?,
+      modelVersion: map['model_version'] as String?,
+      depthRowBytes: map['depth_row_bytes'] as int?,
+      confidenceRowBytes: map['confidence_row_bytes'] as int?,
+      cameraPoseBytes: pose,
+      arkitTimestamp: (map['arkit_timestamp'] as num?)?.toDouble(),
+      rgbLosslessPath: map['rgb_lossless_path'] as String?,
+      syncedAt: map['synced_at'] as int?,
+      syncError: map['sync_error'] as String?,
     );
   }
+}
+
+/// Who placed a measurement's snout and fork points.
+enum MeasurementOrigin {
+  /// The phone found them (`compute_length`).
+  auto,
+
+  /// The user placed them (`recompute_length`).
+  manual,
+
+  /// Carried over from a pre-v8 row. v7 overwrote a manual edit in place,
+  /// so whether these points were the phone's or the user's is lost.
+  unknown,
+}
+
+/// One version of a capture's measurement. Every `compute_length` or
+/// `recompute_length` result is a new version and none is overwritten;
+/// the latest by [measuredAt] is the capture's current length.
+class MeasurementVersion {
+  final int? id;
+  final int photoId;
+
+  /// Sync idempotency key (UUID v4), generated when the version is made.
+  final String clientMeasurementUuid;
+
+  /// When it was measured, ms since epoch UTC.
+  final int measuredAt;
+  final double lengthM;
+
+  /// Points in RGB-frame pixels (the mask's frame), as floats.
+  final Coordinate snout;
+  final Coordinate fork;
+
+  final MeasurementOrigin origin;
+
+  /// What produced it, e.g. `fishsense-mobile.compute_length`, and the app
+  /// build that ran it. Null on versions carried over from before v8.
+  final String? algorithm;
+  final String? algorithmVersion;
+  final String? coreVersion;
+  final String? modelVersion;
+
+  /// When it was sent to fishsense-services (ms since epoch UTC), or null.
+  final int? syncedAt;
+
+  static const algorithmCompute = 'fishsense-mobile.compute_length';
+  static const algorithmRecompute = 'fishsense-mobile.recompute_length';
+
+  const MeasurementVersion({
+    this.id,
+    required this.photoId,
+    required this.clientMeasurementUuid,
+    required this.measuredAt,
+    required this.lengthM,
+    required this.snout,
+    required this.fork,
+    required this.origin,
+    this.algorithm,
+    this.algorithmVersion,
+    this.coreVersion,
+    this.modelVersion,
+    this.syncedAt,
+  });
+
+  /// The same version attached to [photoId]; used when the photo row's id
+  /// is only known after it has been inserted.
+  MeasurementVersion forPhoto(int photoId) => MeasurementVersion(
+        id: id,
+        photoId: photoId,
+        clientMeasurementUuid: clientMeasurementUuid,
+        measuredAt: measuredAt,
+        lengthM: lengthM,
+        snout: snout,
+        fork: fork,
+        origin: origin,
+        algorithm: algorithm,
+        algorithmVersion: algorithmVersion,
+        coreVersion: coreVersion,
+        modelVersion: modelVersion,
+        syncedAt: syncedAt,
+      );
+
+  Map<String, dynamic> toMap() => {
+        if (id != null) 'id': id,
+        'photo_id': photoId,
+        'client_measurement_uuid': clientMeasurementUuid,
+        'measured_at': measuredAt,
+        'length_m': lengthM,
+        'snout_x': snout.x,
+        'snout_y': snout.y,
+        'fork_x': fork.x,
+        'fork_y': fork.y,
+        'origin': origin.name,
+        'algorithm': algorithm,
+        'algorithm_version': algorithmVersion,
+        'core_version': coreVersion,
+        'model_version': modelVersion,
+        'synced_at': syncedAt,
+      };
+
+  static MeasurementVersion fromMap(Map<String, dynamic> map) =>
+      MeasurementVersion(
+        id: map['id'] as int?,
+        photoId: map['photo_id'] as int,
+        clientMeasurementUuid: map['client_measurement_uuid'] as String,
+        measuredAt: map['measured_at'] as int,
+        lengthM: (map['length_m'] as num).toDouble(),
+        snout: Coordinate(
+          x: (map['snout_x'] as num).toDouble(),
+          y: (map['snout_y'] as num).toDouble(),
+        ),
+        fork: Coordinate(
+          x: (map['fork_x'] as num).toDouble(),
+          y: (map['fork_y'] as num).toDouble(),
+        ),
+        origin: MeasurementOrigin.values.byName(map['origin'] as String),
+        algorithm: map['algorithm'] as String?,
+        algorithmVersion: map['algorithm_version'] as String?,
+        coreVersion: map['core_version'] as String?,
+        modelVersion: map['model_version'] as String?,
+        syncedAt: map['synced_at'] as int?,
+      );
 }
 
 /// ByteMatrixModel - Stores depth/confidence map data

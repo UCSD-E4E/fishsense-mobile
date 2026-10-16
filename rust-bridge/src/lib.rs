@@ -1,6 +1,6 @@
 extern crate libc;
 use core::slice;
-use std::{ffi::{c_char, c_uchar}, fmt::Display, panic::{AssertUnwindSafe, catch_unwind}, sync::{LazyLock, Mutex, Once}};
+use std::{ffi::{CStr, c_char, c_uchar}, fmt::Display, panic::{AssertUnwindSafe, catch_unwind}, sync::{Mutex, MutexGuard, Once, OnceLock, PoisonError}};
 
 use fishsense_core::errors::FishSenseError;
 use fishsense_core::fish::fish_head_tail_detector::FishHeadTailDetector;
@@ -8,49 +8,176 @@ use fishsense_core::fish::fish_segmentation::{FishSegmentation, SegmentationErro
 use fishsense_core::spatial::types::{DepthMap, ImageCoord};
 use fishsense_core::world_point_handler::WorldPointHandler;
 use ndarray::{Array1, Array2, Array3};
-use opencv::{core::{Mat, MatTrait, CV_8UC4}, imgproc::{cvt_color_def, COLOR_RGBA2BGR}};
-use opencv::prelude::MatTraitConst;
 use tracing::{debug, error, info, warn};
+use tracing_subscriber::{Layer, layer::SubscriberExt, registry::LookupSpan, util::SubscriberInitExt};
 
 static TRACING_INIT: Once = Once::new();
 
-/// The segmentation model is expensive to load (ONNX session init + graph optimizations).
-/// Cache it for the process lifetime so it is only initialized once.
-static SEGMENTATION: LazyLock<Mutex<FishSegmentation>> = LazyLock::new(|| {
-    info!("Loading segmentation model (one-time init)");
-    let mut seg = FishSegmentation::new();
-    seg.load_model().expect("Failed to load segmentation model");
-    info!("Segmentation model ready");
-    Mutex::new(seg)
-});
+/// The os_log subsystem, set by the app through [`init_logging`] (its bundle
+/// identifier, so Rust and Swift logs share one subsystem). Falls back to
+/// [`DEFAULT_LOG_SUBSYSTEM`] if the app logs before calling it.
+static LOG_SUBSYSTEM: OnceLock<String> = OnceLock::new();
+const DEFAULT_LOG_SUBSYSTEM: &str = "com.aqua3d.fishsense";
+const LOG_CATEGORY: &str = "rust-bridge";
 
-/// Initialize the tracing subscriber once per process lifetime.
-/// On iOS the output goes to stdout, visible in Xcode's console and `Console.app`.
+/// The segmentation model is expensive to load (ONNX session init + graph
+/// optimizations), so it is loaded once for the process lifetime; see
+/// [`segmentation`].
+static SEGMENTATION: OnceLock<Mutex<FishSegmentation>> = OnceLock::new();
+
+/// The cached segmentation model, loading it on first use.
+///
+/// A `OnceLock`, not a `LazyLock`: if loading panics, a `LazyLock` is poisoned
+/// for the life of the process, while a `OnceLock` stays empty and the next
+/// call tries again. The log lines sit outside the initializer for the same
+/// reason.
+fn segmentation() -> &'static Mutex<FishSegmentation> {
+    if let Some(seg) = SEGMENTATION.get() {
+        return seg;
+    }
+    info!("Loading segmentation model (one-time init)");
+    let seg = SEGMENTATION.get_or_init(|| {
+        let mut seg = FishSegmentation::new();
+        seg.load_model().expect("Failed to load segmentation model");
+        Mutex::new(seg)
+    });
+    info!("Segmentation model ready");
+    seg
+}
+
+/// Lock `mutex`, recovering it if a previous holder panicked. Every caller
+/// here is inside an FFI guard, so a panic mid-inference has already become
+/// an error result; the model itself holds no half-updated state, so there
+/// is no reason to fail every later measurement until the app restarts.
+fn lock_recovering<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Set the os_log subsystem (the app's bundle identifier) and start logging.
+/// Call once at startup, before anything else in this library; later calls
+/// are ignored. A null `subsystem` keeps the default.
+///
+/// # Safety
+///
+/// `subsystem` must be null or point to a null-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn init_logging(subsystem: *const c_char) {
+    ffi_guard(|| {
+        if !subsystem.is_null() {
+            // SAFETY: the caller passes a null-terminated string.
+            let name = unsafe { CStr::from_ptr(subsystem) }.to_string_lossy().into_owned();
+            let _ = LOG_SUBSYSTEM.set(name);
+        }
+        init_tracing();
+    }, |_| ());
+}
+
+/// Initialize logging once per process lifetime.
+///
+/// On Apple platforms events go to the unified log (subsystem: the app's
+/// bundle identifier, category `rust-bridge`), visible in Console.app and
+/// Xcode. Not stdout: a debug session's stdout is a pipe to the host, and
+/// when that connection stalls a write blocks, then fails, and
+/// `tracing-subscriber`'s fallback `eprintln!` panics, which aborted the app
+/// from inside `compute_length`. os_log neither blocks nor fails.
+///
+/// Nothing here can panic, so `TRACING_INIT` can't be poisoned; and
+/// `call_once_force` would retry rather than panic if it ever were.
+///
 /// Respects the `RUST_LOG` environment variable (e.g. `RUST_LOG=debug`).
 fn init_tracing() {
-    TRACING_INIT.call_once(|| {
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-            )
-            .init();
+    TRACING_INIT.call_once_force(|_| {
+        install_panic_hook();
+        let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+        let registry = tracing_subscriber::registry().with(filter).with(platform_layer());
+        // In tests, also write to the harness's captured output.
+        #[cfg(test)]
+        let registry = registry.with(tracing_subscriber::fmt::layer().with_test_writer());
+        // `try_init`: if a subscriber is somehow already set, keep it.
+        let _ = registry.try_init();
     });
+}
+
+/// The os_log subsystem to use; a NUL would make `OsLogger::new` panic.
+fn log_subsystem() -> String {
+    LOG_SUBSYSTEM
+        .get()
+        .map(|s| s.replace('\0', ""))
+        .unwrap_or_else(|| DEFAULT_LOG_SUBSYSTEM.to_string())
+}
+
+#[cfg(target_vendor = "apple")]
+fn platform_layer<S>() -> impl Layer<S>
+where
+    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+{
+    tracing_oslog::OsLogger::new(log_subsystem(), LOG_CATEGORY)
+}
+
+/// Not Apple (e.g. a future Android build): stderr, ignoring write errors so
+/// a closed stream can't panic. Android's logcat would be the better home.
+#[cfg(not(target_vendor = "apple"))]
+fn platform_layer<S>() -> impl Layer<S>
+where
+    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+{
+    let _ = (log_subsystem(), LOG_CATEGORY);
+    tracing_subscriber::fmt::layer().with_writer(|| LossyStderr)
+}
+
+#[cfg(not(target_vendor = "apple"))]
+struct LossyStderr;
+
+#[cfg(not(target_vendor = "apple"))]
+impl std::io::Write for LossyStderr {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let _ = std::io::stderr().write_all(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Report panics through `tracing` instead of the default hook, which writes
+/// to stderr: the same pipe that can stall in a debug session. Every panic
+/// in this library is caught by [`ffi_guard`], so the message is all that's
+/// lost. tracing drops an event raised while it is already dispatching one
+/// on this thread, so a panic inside a log call can't recurse here.
+fn install_panic_hook() {
+    std::panic::set_hook(Box::new(|info| {
+        error!("panic: {info}");
+    }));
+}
+
+/// Run an `extern "C"` function's whole body, turning any panic into
+/// `fallback(message)`. A panic can't unwind across the FFI boundary (the
+/// process aborts), so every exported function goes through this, logging
+/// included.
+fn ffi_guard<T>(body: impl FnOnce() -> T, fallback: impl FnOnce(String) -> T) -> T {
+    match catch_unwind(AssertUnwindSafe(body)) {
+        Ok(value) => value,
+        Err(payload) => fallback(panic_message(&payload)),
+    }
 }
 
 #[derive(Debug)]
 enum ExecutionError {
-    OpenCVError(opencv::Error),
     FishNotFound,
     SegmentationError(SegmentationError),
     HeadTailError(FishSenseError),
     ArrayShapeError(ndarray::ShapeError),
 }
 
+/// A keypoint in RGB-frame pixels. Floats, not integers: head/tail
+/// refinement yields sub-pixel positions, and truncating them would make the
+/// stored points disagree with the length computed from them.
 #[repr(C)]
 pub struct Coordinate {
-    x: usize,
-    y: usize
+    x: f32,
+    y: f32,
 }
 
 #[repr(C)]
@@ -65,19 +192,45 @@ pub struct ComputeLengthResult {
 }
 
 fn write_error_string(msg: &str) -> [c_char; 256] {
-    let mut buf = [0i8; 256];
-    for (i, b) in msg.bytes().take(255).enumerate() {
+    write_c_string(msg)
+}
+
+/// Copy `msg` into a null-terminated inline buffer, truncating to `N - 1` bytes.
+fn write_c_string<const N: usize>(msg: &str) -> [c_char; N] {
+    let mut buf = [0 as c_char; N];
+    for (i, b) in msg.bytes().take(N - 1).enumerate() {
         buf[i] = b as c_char;
     }
     buf
 }
 
+/// The fishsense-core release this bridge links, as its git tag. Kept in step
+/// with the `tag` in Cargo.toml by `core_version_matches_cargo_toml`.
+const CORE_VERSION: &str = "fishsense_core-v4.1.0";
+
+/// Provenance recorded with every measurement, so a result can be traced to
+/// the code and weights that produced it.
+#[repr(C)]
+pub struct PipelineVersions {
+    /// fishsense-core git tag, e.g. `fishsense_core-v4.1.0`. Null-terminated.
+    core_version: [c_char; 64],
+    /// Segmentation weights as `name/version@sha256[:12]`, e.g.
+    /// `fishial/1@f721445f37db`. The model is embedded at build time and
+    /// checked against fishsense-core's manifest, so the hash is what ran.
+    /// Null-terminated.
+    model_version: [c_char; 64],
+}
+
+fn model_version() -> String {
+    // `new()` only resolves the manifest entry; it doesn't build the ONNX
+    // session, so this is cheap even before the first capture.
+    FishSegmentation::new().model_id()
+}
+
 impl Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExecutionError::OpenCVError(error) => 
-                write!(f, "{}", error),
-            ExecutionError::FishNotFound => 
+            ExecutionError::FishNotFound =>
                 write!(f, "FishNotFound"),
             ExecutionError::SegmentationError(error) => 
                 write!(f, "{}", error),
@@ -89,32 +242,22 @@ impl Display for ExecutionError {
     }
 }
 
-fn ios_image_into_cv_bgr(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Mat, ExecutionError> {
-    let img_cv = unsafe {
-        // iOS images are 4 channel RGBA.
-        let length = (img_width * img_height * 4) as usize;
+/// Convert an iOS RGBA byte buffer into a BGR `Array3<u8>` (height, width, 3),
+/// matching OpenCV's `COLOR_RGBA2BGR`: the alpha channel is dropped and the
+/// R/B channels are swapped, since the segmentation model expects BGR input.
+fn ios_image_into_bgr(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array3<u8>, ExecutionError> {
+    let (width, height) = (img_width as usize, img_height as usize);
+    // iOS images are 4 channel RGBA.
+    let rgba = unsafe { slice::from_raw_parts(img_data, width * height * 4) };
 
-        match Mat::new_rows_cols(img_height as i32, img_width as i32, CV_8UC4) {
-            Ok(mut img_cv) => {
-                match img_cv.ptr_mut(0) {
-                    Ok(ptr) => {
-                        // Copy the data into the Mat structure.
-                        std::ptr::copy(img_data, ptr, length);
-                        Ok(img_cv)
-                    },
-                    Err(err) => Err(ExecutionError::OpenCVError(err))
-                }
-
-            },
-            Err(err) => Err(ExecutionError::OpenCVError(err))
-        }
-    }?;
-
-    let mut img_bgr = Mat::default();
-    match cvt_color_def(&img_cv, &mut img_bgr, COLOR_RGBA2BGR) {
-        Ok(_) => Ok(img_bgr),
-        Err(err) => Err(ExecutionError::OpenCVError(err))
+    let mut bgr = Vec::with_capacity(width * height * 3);
+    for px in rgba.chunks_exact(4) {
+        bgr.push(px[2]); // B
+        bgr.push(px[1]); // G
+        bgr.push(px[0]); // R
     }
+
+    Array3::from_shape_vec((height, width, 3), bgr).map_err(ExecutionError::ArrayShapeError)
 }
 
 fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: usize) -> Result<Array2<f32>, ExecutionError> {
@@ -133,22 +276,28 @@ fn ios_f32_array_data_to_ndarray(array_data: *const f32, width: usize, height: u
 
 fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
     debug!("Running fish segmentation inference on {}x{} image", img.shape()[1], img.shape()[0]);
-    let mut segmentation = SEGMENTATION.lock().unwrap();
+    let mut segmentation = lock_recovering(segmentation());
 
-    match segmentation.inference(&img) {
-        Ok(mask) => {
+    // `inference_single`, not `inference`: this app measures one fish per image.
+    // `inference` paints *every* detection with a distinct instance id and does
+    // no best-instance selection, so treating "any non-zero pixel" as the fish
+    // merged a second fish or an occluding hand into one blob and inflated the
+    // measured length. `inference_single` ranks detections by score x area,
+    // applies the score/contour-vertex/minimum-area filters, and returns a
+    // binary 0/255 mask for that one fish (or None when nothing qualifies).
+    match segmentation.inference_single(&img) {
+        Ok(Some(mask)) => {
             // Count in usize — mask is Array2<u8>, so the default `sum()` wraps at 256.
             let nonzero = mask.iter().filter(|&&v| v != 0).count();
-            if nonzero > 0 {
-                info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
-                Ok(mask)
-            } else {
-                info!("Segmentation returned empty mask — no fish detected");
-                Err(ExecutionError::FishNotFound)
-            }
+            info!("Segmentation found fish — {} non-zero pixels in mask", nonzero);
+            Ok(mask)
+        },
+        Ok(None) => {
+            info!("Segmentation found no detection passing the score/area filters");
+            Err(ExecutionError::FishNotFound)
         },
         Err(err) => {
-            error!("Segmentation inference failed: {}", err);
+            warn!("Segmentation inference failed: {}", err);
             Err(ExecutionError::SegmentationError(err))
         }
     }
@@ -156,11 +305,7 @@ fn do_inference(img: Array3<u8>) -> Result<Array2<u8>, ExecutionError> {
 
 fn inference(img_data: *const c_uchar, img_width: u32, img_height: u32) -> Result<Array2<u8>, ExecutionError> {
     debug!("Converting iOS RGBA image {}x{} to BGR", img_width, img_height);
-    let img_cv = ios_image_into_cv_bgr(img_data, img_width, img_height)?;
-    let (rows, cols) = (img_cv.rows() as usize, img_cv.cols() as usize);
-    let data = unsafe { slice::from_raw_parts(img_cv.data(), rows * cols * 3) };
-    let img_arr = Array3::from_shape_vec((rows, cols, 3), data.to_vec())
-        .map_err(ExecutionError::ArrayShapeError)?;
+    let img_arr = ios_image_into_bgr(img_data, img_width, img_height)?;
     do_inference(img_arr)
 }
 
@@ -203,7 +348,10 @@ fn do_compute_length(
     let detector = FishHeadTailDetector {};
     let coords = detector.find_head_tail_img(&mask)
         .map_err(ExecutionError::HeadTailError)?;
-    info!("Head/tail detected — head={:?}, tail={:?}", coords.head.0, coords.tail.0);
+    info!(
+        "Head/tail detected — head=({}, {}) tail=({}, {})",
+        coords.head.0[0], coords.head.0[1], coords.tail.0[0], coords.tail.0[1],
+    );
 
     // Stage 2: mask-bounded RANSAC plane fit → per-keypoint depth.
     // Replaces both the v1 depth-snap and naive depth-map sampling: robust to
@@ -226,51 +374,6 @@ fn do_compute_length(
     info!("Fish length calculated: {:.4}m", length);
 
     Ok((length, coords.head.0, coords.tail.0))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // ios_f32_array_data_to_ndarray
-
-    #[test]
-    fn f32_array_to_ndarray_correct_shape_and_values() {
-        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 3, 2).unwrap();
-
-        assert_eq!(result.shape(), &[2, 3]); // (height, width)
-        assert!((result[[0, 0]] - 1.0).abs() < 1e-6);
-        assert!((result[[0, 1]] - 2.0).abs() < 1e-6);
-        assert!((result[[0, 2]] - 3.0).abs() < 1e-6);
-        assert!((result[[1, 0]] - 4.0).abs() < 1e-6);
-        assert!((result[[1, 2]] - 6.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn f32_array_to_ndarray_1x1() {
-        let data: Vec<f32> = vec![99.0];
-        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 1, 1).unwrap();
-        assert_eq!(result.shape(), &[1, 1]);
-        assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
-    }
-
-    // ExecutionError Display
-
-    #[test]
-    fn execution_error_fish_not_found_displays_correctly() {
-        let err = ExecutionError::FishNotFound;
-        assert_eq!(err.to_string(), "FishNotFound");
-    }
-
-    #[test]
-    fn execution_error_array_shape_error_is_non_empty() {
-        // Trigger a real ShapeError via mismatched dimensions
-        let shape_err = ndarray::Array2::<f32>::from_shape_vec((2, 3), vec![1.0, 2.0])
-            .unwrap_err();
-        let err = ExecutionError::ArrayShapeError(shape_err);
-        assert!(!err.to_string().is_empty());
-    }
 }
 
 /// Re-run only the plane-fit + length math against caller-supplied snout
@@ -344,65 +447,40 @@ pub extern "C" fn compute_length(
     camera_intrinsics_inverted_data: *const f32,
     mask_out: *mut c_uchar,
 ) -> ComputeLengthResult {
-    init_tracing();
-    // Wrap the whole pipeline so any panic in OpenCV / ndarray-linalg /
-    // ONNX Runtime turns into a clean error result instead of UB across
-    // the FFI boundary. Without this, a Rust panic crossing `extern "C"`
-    // surfaces on iOS as an EXC_BAD_ACCESS in libunwind code with no
-    // useful symbols, masking the real failure.
-    let result = catch_unwind(AssertUnwindSafe(|| do_compute_length(
-        img_data, img_width, img_height,
-        depth_data, depth_width, depth_height,
-        camera_intrinsics_inverted_data,
-        mask_out,
-    )));
-    match result {
-        Ok(Ok((length, left, right))) => {
-            info!("compute_length succeeded: length={:.4}m left={:?} right={:?}", length, left, right);
-            ComputeLengthResult {
-                length,
-                left: Coordinate { x: left[0] as usize, y: left[1] as usize },
-                right: Coordinate { x: right[0] as usize, y: right[1] as usize },
-                fish_found: true,
-                error_string: [0i8; 256],
+    // Any panic in ndarray-linalg / ONNX Runtime (or in logging) becomes a
+    // clean error result instead of crossing the FFI boundary, where it
+    // aborts the app with no useful symbols.
+    ffi_guard(
+        || {
+            init_tracing();
+            let result = do_compute_length(
+                img_data, img_width, img_height,
+                depth_data, depth_width, depth_height,
+                camera_intrinsics_inverted_data,
+                mask_out,
+            );
+            into_ffi_result("compute_length", result)
+        },
+        |msg| ComputeLengthResult::failed(&format!("panic: {}", msg)),
+    )
+}
+
+/// Versions of the measurement pipeline compiled into this build.
+#[unsafe(no_mangle)]
+pub extern "C" fn pipeline_versions() -> PipelineVersions {
+    ffi_guard(
+        || {
+            init_tracing();
+            PipelineVersions {
+                core_version: write_c_string(CORE_VERSION),
+                model_version: write_c_string(&model_version()),
             }
         },
-        Ok(Err(error)) => {
-            match error {
-                ExecutionError::FishNotFound => {
-                    warn!("compute_length: no fish found in image");
-                    ComputeLengthResult {
-                        length: 0f32,
-                        left: Coordinate { x: 0, y: 0 },
-                        right: Coordinate { x: 0, y: 0 },
-                        fish_found: false,
-                        error_string: [0i8; 256],
-                    }
-                },
-                other => {
-                    error!("compute_length error: {}", other);
-                    ComputeLengthResult {
-                        length: 0f32,
-                        left: Coordinate { x: 0, y: 0 },
-                        right: Coordinate { x: 0, y: 0 },
-                        fish_found: false,
-                        error_string: write_error_string(&other.to_string()),
-                    }
-                },
-            }
+        |_| PipelineVersions {
+            core_version: write_c_string(CORE_VERSION),
+            model_version: write_c_string("unknown"),
         },
-        Err(panic_payload) => {
-            let msg = panic_message(&panic_payload);
-            error!("compute_length: panic caught at FFI boundary: {}", msg);
-            ComputeLengthResult {
-                length: 0f32,
-                left: Coordinate { x: 0, y: 0 },
-                right: Coordinate { x: 0, y: 0 },
-                fish_found: false,
-                error_string: write_error_string(&format!("panic: {}", msg)),
-            }
-        },
-    }
+    )
 }
 
 /// Best-effort string from a `catch_unwind` payload. Rust panics carry
@@ -435,44 +513,185 @@ pub extern "C" fn recompute_length(
     snout_x: f32, snout_y: f32,
     fork_x: f32, fork_y: f32,
 ) -> ComputeLengthResult {
-    init_tracing();
-    let result = catch_unwind(AssertUnwindSafe(|| do_recompute_length(
-        mask_data, mask_width, mask_height,
-        depth_data, depth_width, depth_height,
-        camera_intrinsics_inverted_data,
-        snout_x, snout_y, fork_x, fork_y,
-    )));
+    ffi_guard(
+        || {
+            init_tracing();
+            let result = do_recompute_length(
+                mask_data, mask_width, mask_height,
+                depth_data, depth_width, depth_height,
+                camera_intrinsics_inverted_data,
+                snout_x, snout_y, fork_x, fork_y,
+            );
+            into_ffi_result("recompute_length", result)
+        },
+        |msg| ComputeLengthResult::failed(&format!("panic: {}", msg)),
+    )
+}
+
+impl ComputeLengthResult {
+    fn failed(message: &str) -> Self {
+        ComputeLengthResult {
+            length: 0f32,
+            left: Coordinate { x: 0.0, y: 0.0 },
+            right: Coordinate { x: 0.0, y: 0.0 },
+            fish_found: false,
+            error_string: write_error_string(message),
+        }
+    }
+}
+
+/// Log a pipeline outcome and convert it for the FFI caller.
+///
+/// Levels follow what os_log makes of them: an image without a fish is
+/// routine (info); a measurement that failed is an os_log *error* (warn);
+/// only panics, logged by the panic hook, reach *fault* (error).
+fn into_ffi_result(
+    name: &str,
+    result: Result<(f32, Array1<f32>, Array1<f32>), ExecutionError>,
+) -> ComputeLengthResult {
     match result {
-        Ok(Ok((length, snout, fork))) => {
-            info!("recompute_length succeeded: length={:.4}m snout={:?} fork={:?}", length, snout, fork);
+        Ok((length, snout, fork)) => {
+            info!(
+                "{name} succeeded: length={:.4}m snout=({}, {}) fork=({}, {})",
+                length, snout[0], snout[1], fork[0], fork[1],
+            );
             ComputeLengthResult {
                 length,
-                left: Coordinate { x: snout[0] as usize, y: snout[1] as usize },
-                right: Coordinate { x: fork[0] as usize, y: fork[1] as usize },
+                left: Coordinate { x: snout[0], y: snout[1] },
+                right: Coordinate { x: fork[0], y: fork[1] },
                 fish_found: true,
                 error_string: [0i8; 256],
             }
         },
-        Ok(Err(error)) => {
-            error!("recompute_length error: {}", error);
-            ComputeLengthResult {
-                length: 0f32,
-                left: Coordinate { x: 0, y: 0 },
-                right: Coordinate { x: 0, y: 0 },
-                fish_found: false,
-                error_string: write_error_string(&error.to_string()),
-            }
+        Err(ExecutionError::FishNotFound) => {
+            info!("{name}: no fish found in image");
+            ComputeLengthResult::failed("")
         },
-        Err(panic_payload) => {
-            let msg = panic_message(&panic_payload);
-            error!("recompute_length: panic caught at FFI boundary: {}", msg);
-            ComputeLengthResult {
-                length: 0f32,
-                left: Coordinate { x: 0, y: 0 },
-                right: Coordinate { x: 0, y: 0 },
-                fish_found: false,
-                error_string: write_error_string(&format!("panic: {}", msg)),
-            }
+        Err(error) => {
+            warn!("{name} failed: {}", error);
+            ComputeLengthResult::failed(&error.to_string())
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ios_f32_array_data_to_ndarray
+
+    #[test]
+    fn f32_array_to_ndarray_correct_shape_and_values() {
+        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 3, 2).unwrap();
+
+        assert_eq!(result.shape(), &[2, 3]); // (height, width)
+        assert!((result[[0, 0]] - 1.0).abs() < 1e-6);
+        assert!((result[[0, 1]] - 2.0).abs() < 1e-6);
+        assert!((result[[0, 2]] - 3.0).abs() < 1e-6);
+        assert!((result[[1, 0]] - 4.0).abs() < 1e-6);
+        assert!((result[[1, 2]] - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn f32_array_to_ndarray_1x1() {
+        let data: Vec<f32> = vec![99.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 1, 1).unwrap();
+        assert_eq!(result.shape(), &[1, 1]);
+        assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
+    }
+
+    // Nothing may take the process down at the FFI boundary
+
+    #[test]
+    fn ffi_guard_turns_a_panic_into_the_fallback() {
+        init_tracing(); // panic hook: the message goes to tracing, not stderr
+        let result = ffi_guard(|| -> i32 { panic!("failed printing to stderr") }, |msg| {
+            assert_eq!(msg, "failed printing to stderr");
+            -1
+        });
+        assert_eq!(result, -1);
+        assert_eq!(ffi_guard(|| 7, |_| -1), 7);
+    }
+
+    #[test]
+    fn a_poisoned_lock_recovers_instead_of_failing_every_later_call() {
+        let mutex = std::sync::Arc::new(Mutex::new(41));
+        let poisoner = mutex.clone();
+        let _ = std::thread::spawn(move || {
+            let _guard = poisoner.lock().unwrap();
+            panic!("panicked while holding the model");
+        })
+        .join();
+        assert!(mutex.is_poisoned());
+
+        *lock_recovering(&mutex) += 1;
+        assert_eq!(*lock_recovering(&mutex), 42);
+    }
+
+    #[test]
+    fn init_logging_is_idempotent_and_accepts_null() {
+        unsafe { init_logging(c"com.aqua3d.fishsense.test".as_ptr()) };
+        unsafe { init_logging(std::ptr::null()) };
+        init_tracing();
+        info!("rust-bridge test event");
+    }
+
+    #[test]
+    fn no_fish_is_not_an_error() {
+        let result = into_ffi_result("compute_length", Err(ExecutionError::FishNotFound));
+        assert!(!result.fish_found);
+        assert_eq!(result.error_string[0], 0, "no error message");
+    }
+
+    #[test]
+    fn a_failed_measurement_carries_its_message() {
+        let shape_err = Array2::<f32>::from_shape_vec((2, 3), vec![1.0]).unwrap_err();
+        let result = into_ffi_result("recompute_length", Err(ExecutionError::ArrayShapeError(shape_err)));
+        assert!(!result.fish_found);
+        assert_ne!(result.error_string[0], 0);
+    }
+
+    // Pipeline versions
+
+    #[test]
+    fn core_version_matches_cargo_toml() {
+        let cargo_toml = include_str!("../Cargo.toml");
+        assert!(
+            cargo_toml.contains(&format!("tag = \"{}\"", CORE_VERSION)),
+            "CORE_VERSION {CORE_VERSION} is not the fishsense-core tag in Cargo.toml",
+        );
+    }
+
+    #[test]
+    fn model_version_names_pinned_fishial_hash() {
+        let v = model_version();
+        assert!(v.starts_with("fishial/"), "{v}");
+        let hash = v.split('@').nth(1).expect("model id has an @hash");
+        assert_eq!(hash.len(), 12);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()), "{v}");
+    }
+
+    #[test]
+    fn write_c_string_truncates_and_terminates() {
+        let buf: [c_char; 4] = write_c_string("abcdef");
+        assert_eq!(buf, [b'a' as c_char, b'b' as c_char, b'c' as c_char, 0]);
+    }
+
+    // ExecutionError Display
+
+    #[test]
+    fn execution_error_fish_not_found_displays_correctly() {
+        let err = ExecutionError::FishNotFound;
+        assert_eq!(err.to_string(), "FishNotFound");
+    }
+
+    #[test]
+    fn execution_error_array_shape_error_is_non_empty() {
+        // Trigger a real ShapeError via mismatched dimensions
+        let shape_err = ndarray::Array2::<f32>::from_shape_vec((2, 3), vec![1.0, 2.0])
+            .unwrap_err();
+        let err = ExecutionError::ArrayShapeError(shape_err);
+        assert!(!err.to_string().is_empty());
     }
 }

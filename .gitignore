@@ -17,6 +17,9 @@ doc/api/
 
 # dotenv environment variables file
 .env*
+# ...but do commit the direnv config (`use flake`); it carries no secrets and
+# gives everyone the Nix devShell on `cd`. `.env*` above would otherwise ignore it.
+!.envrc
 
 # Avoid committing generated Javascript files:
 *.dart.js
@@ -625,3 +628,7 @@ fabric.properties
 !Cargo.lock
 ios/Flutter/DeveloperSettings.xcconfig
 macos/Runner/Configs/DeveloperSettings.xcconfig
+# Nix / direnv
+.direnv/
+result
+result-*

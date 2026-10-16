@@ -2,14 +2,62 @@ name: Build
 
 on: [push]
 
+# Branching model (see CONTRIBUTING.md):
+#   develop  -> every push uploads to TestFlight for internal testers
+#   main     -> release-please keeps a release PR open; merging it tags vX.Y.Z,
+#               publishes a GitHub Release, and ships that build to the external
+#               TestFlight group(s). A sync PR then brings main back into develop.
 jobs:
+  release-please:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+    - id: release
+      uses: googleapis/release-please-action@v5
+      with:
+        # PRs opened with GITHUB_TOKEN don't trigger workflows, so required
+        # checks never report on them. A PAT/App token avoids that.
+        token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        config-file: release-please-config.json
+        manifest-file: .release-please-manifest.json
+
+  sync-develop:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - name: 🔁 Open main -> develop sync PR
+      env:
+        GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.release-please.outputs.tag_name }}
+      run: |
+        gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
+          --title "chore: sync main into develop after $TAG" \
+          --body "Brings the $TAG version bump and changelog back into develop. Merge with a merge commit."
+
   build:
+    needs: release-please
+    # release-please is skipped off main; still build everywhere else.
+    if: ${{ !cancelled() && !failure() }}
     runs-on: macos-15
     timeout-minutes: 120
     permissions:
       contents: read
       actions: write
     env:
+      # internal: develop pushes. external: the push to main that created a release.
+      DEPLOY: ${{ github.ref == 'refs/heads/develop' && 'internal' || (needs.release-please.outputs.release_created == 'true' && 'external' || '') }}
+      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+      TESTFLIGHT_EXTERNAL_GROUPS: ${{ vars.TESTFLIGHT_EXTERNAL_GROUPS }}
       FASTLANE_TEAM_ID: ${{ secrets.FASTLANE_TEAM_ID }}
       FASTLANE_ITC_TEAM_ID: ${{ secrets.FASTLANE_ITC_TEAM_ID }}
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
@@ -124,14 +172,14 @@ jobs:
         bundle config set --local path vendor/bundle
 
     - name: 🔑 Prepare SSH Key for Fastlane Match
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ env.DEPLOY != '' }}
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.MATCH_SSH_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         
     - name: 🔑 Sync Code Signing
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ env.DEPLOY != '' }}
       run: |
         cd ios
         bundle install
@@ -159,14 +207,14 @@ jobs:
       run: flutter build ios --release --no-codesign
 
     - name: 🔢 Increment iOS Build Number
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ env.DEPLOY != '' }}
       run: |
         cd ios
         bundle install
         bundle exec fastlane run increment_build_number build_number:${{ github.run_number }}
 
     - name: 🚀 Publish to TestFlight
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ env.DEPLOY != '' }}
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
           echo "FASTLANE_TEAM_ID is required for TestFlight upload."
@@ -174,4 +222,12 @@ jobs:
         fi
         cd ios
         bundle install
-        bundle exec fastlane beta
+        if [ "$DEPLOY" = external ]; then
+          RELEASE_NOTES="$(gh release view "$RELEASE_TAG" --json body -q .body)"
+          export RELEASE_NOTES
+          bundle exec fastlane release
+        else
+          bundle exec fastlane beta
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}

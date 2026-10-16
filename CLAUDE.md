@@ -12,6 +12,7 @@ FishSense Mobile is a cross-platform Flutter app (iOS primary, Android future) f
 ```bash
 flutter pub get          # Install dependencies
 flutter analyze          # Lint/static analysis
+make lint                # All linters CI runs: cargo fmt/clippy, flutter analyze, swiftlint --strict
 flutter test             # Run all tests
 flutter test test/models_test.dart  # Run a specific test file
 flutter run              # Run on connected device/simulator
@@ -59,6 +60,15 @@ SQLite (sqflite)            OpenCV + ONNX Runtime
 - Runs segmentation → head/tail detection → length calculation via `fishsense.rs` crate
 - Returns `ComputeLengthResult` with fish length, head/tail coordinates
 
+### Sync (fishsense-services)
+Contract: fishsense-services `docs/handoff/fishsense-mobile/SYNC.md`; schemas in its `apps/web/openapi.json` (a copy is in `test/fixtures/`, and `test/sync/` checks our JSON against it). Code in `lib/services/sync/`:
+- `SyncEngine` runs on its own whenever `syncBlockedBy` allows (signed in, tenant chosen, auto sync on, Wi-Fi unless cellular is allowed, not in Low Power or Low Data Mode), and on demand with "Sync now", which skips the cellular/power/data rules. It's started by a capture or measurement being saved (`DatabaseModel.changes`), the app resuming, the connection changing (`NetworkStatusChannel.swift`), and settings or sign-in changing.
+- Per capture: claim it if unowned → stage files and hash them → `POST …/uploads` → presigned PUTs via `background_downloader` (a background `URLSession`, so uploads continue after leaving the app) → `PUT` commit. Later measurement versions: `POST …/measurements`. Every call is idempotent on the app's UUIDs.
+- Temporary failures back off (30 s doubling to 30 min, or until the connection changes). Refusals (403, 409 conflicts, 422) are stored in `sync_error` and only retried by "Sync now".
+
+### Rust logs
+The bridge logs through `tracing` to Apple's unified log, never stdout: under `flutter run`, stdout is a pipe to the host, and a stalled pipe used to hang and then abort the app. Subsystem is the app's bundle identifier (set by `init_logging` from `FishSenseChannel`), category `rust-bridge`. They don't appear in `flutter run` output. To see them, use Console.app or Xcode with `subsystem BEGINSWITH "com.aqua3d.fishsense"`, or, on the Mac, `/usr/bin/log stream --level info --predicate 'category == "rust-bridge"'`. For a device after the fact, run `sudo log collect --device-udid <UDID> --last 20m` and open the archive with `log show --archive`. `cargo test` also prints them in each test's captured output. `RUST_LOG` sets the level.
+
 ### Flutter ↔ iOS Native
 - `ARViewPlatformView.swift` renders the live ARKit camera view as a Flutter platform view
 - Platform channel calls capture RGB (JPEG + raw bytes), depth map, confidence map, and camera intrinsics from ARKit
@@ -77,6 +87,7 @@ SQLite (sqflite)            OpenCV + ONNX Runtime
 | [lib/camera_screen.dart](lib/camera_screen.dart) | Camera UI with measurement overlay |
 | [lib/services.dart](lib/services.dart) | `RustService` (ML calls), `CameraService`, `FileService` |
 | [lib/database.dart](lib/database.dart) | SQLite schema and operations |
+| [lib/services/auth_service.dart](lib/services/auth_service.dart) | Optional Authentik sign-in (needed only to sync), tokens, tenant choice |
 | [lib/models.dart](lib/models.dart) | `PhotoModel`, `ComputeLengthResult`, `Coordinate`, `ByteMatrixModel` |
 | [rust-bridge/src/lib.rs](rust-bridge/src/lib.rs) | Fish length computation (OpenCV + ONNX) |
 | [ios/Runner/AppDelegate.swift](ios/Runner/AppDelegate.swift) | Flutter setup, method channel registration |
@@ -92,4 +103,6 @@ photos (id, utc_unix_timestamp, rgb_path, depth_bytes BLOB, depth_width, depth_h
 Toolchain pinned to 1.91. Targets: `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`, `aarch64-apple-darwin`, `x86_64-apple-darwin`.
 
 ## CI/CD
-GitHub Actions on macOS 15. Pipeline: `flutter pub get` → `cd rust-bridge && make` → `pod install` → `flutter build ios --release --no-codesign`. On `main` branch only: Fastlane uploads to TestFlight.
+GitHub Actions on macOS 15. Pipeline: `flutter pub get` → `cd rust-bridge && make` → `pod install` → `flutter build ios --release --no-codesign`.
+
+Branching (see [CONTRIBUTING.md](CONTRIBUTING.md)): `develop` is the default branch. Feature PRs target `develop`, are squash-merged, and need Conventional Commit titles. Each push to `develop` uploads to TestFlight for internal testers (`fastlane beta`). `main` only receives `develop` promotions (merge commit), `hotfix/*` branches, and release-please release PRs. Merging a release PR tags `vX.Y.Z` and ships to the external TestFlight groups (`fastlane release`), then CI opens a PR syncing `main` back into `develop`.
