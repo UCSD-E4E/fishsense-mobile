@@ -52,6 +52,7 @@ class Sandbox {
     bool lossless = true,
     bool intrinsics = true,
     int timestamp = 1760000000000,
+    String? placeName = 'La Jolla Cove',
   }) async {
     final jpeg = 'rgb_$timestamp.jpg';
     File('$documents/$jpeg').writeAsBytesSync(List.filled(64, 7));
@@ -89,7 +90,7 @@ class Sandbox {
         latitude: 32.88,
         longitude: -117.23,
         horizontalAccuracy: 4.5,
-        placeName: 'La Jolla Cove',
+        placeName: placeName,
         captureOrientation: 'portrait',
         fishLength: 0.42,
       )!,

@@ -38,6 +38,7 @@ void main() {
     NetworkStatus initial = wifi,
     bool settingsEnabled = true,
     bool settle = true,
+    Future<String?> Function(double, double)? placeName,
   }) async {
     auth = AuthService(storage: const FlutterSecureStorage());
     await auth.load();
@@ -57,6 +58,7 @@ void main() {
       network: network.stream,
       changes: DatabaseModel.changes,
       installId: () async => 'install-now',
+      placeName: placeName,
       watchLifecycle: false,
     )..start();
     network.add(initial);
@@ -438,6 +440,52 @@ void main() {
       network.add(cellular);
       await engine.settle();
       expect(server.requests.length, sent, reason: 'no retries until signed in again');
+    });
+  });
+
+  group('services review', () {
+    test('a capture taken offline gets its place name before its first commit', () async {
+      final id = await box.addCapture(uuid: uuidA, placeName: null);
+      final asked = <(double, double)>[];
+      await startEngine(placeName: (lat, lon) async {
+        asked.add((lat, lon));
+        return 'Scripps Pier';
+      });
+
+      expect(asked, [(32.88, -117.23)]);
+      expect(server.committed[uuidA]!['location']['place_name'], 'Scripps Pier');
+      expect((await photo(id)).placeName, 'Scripps Pier', reason: 'kept on the phone too');
+    });
+
+    test('a capture that has a place name is not geocoded again', () async {
+      await box.addCapture(uuid: uuidA);
+      var asked = 0;
+      await startEngine(placeName: (_, __) async {
+        asked++;
+        return 'Elsewhere';
+      });
+      expect(asked, 0);
+      expect(server.committed[uuidA]!['location']['place_name'], 'La Jolla Cove');
+    });
+
+    test('if geocoding fails, the capture syncs without a place name', () async {
+      final id = await box.addCapture(uuid: uuidA, placeName: null);
+      await startEngine(placeName: (_, __) async => throw Exception('rate limited'));
+
+      expect((await photo(id)).syncedAt, isNotNull);
+      final location = server.committed[uuidA]!['location'] as Map<String, dynamic>;
+      expect(location['place_name'], isNull);
+      expect(location['latitude'], 32.88, reason: 'the place can always be derived again');
+    });
+
+    test('refused even with fresh links says so, not "expired"', () async {
+      await box.addCapture(uuid: uuidA);
+      uploader.outcomes.addAll([UploadOutcome.expired, UploadOutcome.expired]);
+      await startEngine();
+
+      expect(server.where('POST', '/uploads'), hasLength(2));
+      expect(engine.lastError, contains('refused the upload'));
+      expect(engine.lastError, isNot(contains('expired')));
     });
   });
 }

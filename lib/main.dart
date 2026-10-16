@@ -14,6 +14,7 @@ import 'services/auth_service.dart';
 import 'services/onboarding_state.dart';
 import 'services/preferences_service.dart';
 import 'services/file_storage_service.dart';
+import 'services/geocoding_service.dart';
 import 'services/provenance_service.dart';
 import 'services/sync/network_status.dart';
 import 'services/sync/sync_api.dart';
@@ -67,6 +68,7 @@ SyncEngine _createSyncEngine(BuildContext context) {
     network: NetworkStatus.watch(),
     changes: DatabaseModel.changes,
     installId: () async => (await ProvenanceService.get()).installId,
+    placeName: GeocodingService.reverseGeocode,
   )..start();
 }
 
