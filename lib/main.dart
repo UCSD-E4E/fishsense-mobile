@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'screens/camera_screen.dart';
 import 'screens/fish_map_screen.dart';
@@ -11,6 +13,13 @@ import 'services/arkit_service.dart';
 import 'services/auth_service.dart';
 import 'services/onboarding_state.dart';
 import 'services/preferences_service.dart';
+import 'services/file_storage_service.dart';
+import 'services/provenance_service.dart';
+import 'services/sync/network_status.dart';
+import 'services/sync/sync_api.dart';
+import 'services/sync/sync_engine.dart';
+import 'services/sync/sync_settings.dart';
+import 'services/sync/uploader.dart';
 import 'database.dart';
 import 'logger.dart';
 
@@ -45,6 +54,22 @@ Future<void> _initializeApp() async {
   }
 }
 
+SyncEngine _createSyncEngine(BuildContext context) {
+  final auth = context.read<AuthService>();
+  return SyncEngine(
+    auth: auth,
+    settings: context.read<SyncSettings>(),
+    api: SyncApi(accessToken: auth.accessToken),
+    uploader: const BackgroundFileUploader(),
+    documentsDir: FileStorageService.getDocumentsDirectory,
+    stagingRoot: () async => Directory(
+        '${(await getApplicationSupportDirectory()).path}/sync-staging'),
+    network: NetworkStatus.watch(),
+    changes: DatabaseModel.changes,
+    installId: () async => (await ProvenanceService.get()).installId,
+  )..start();
+}
+
 /// Main app widget
 /// Translation from iOS app structure and tab navigation
 class FishSenseApp extends StatelessWidget {
@@ -57,6 +82,9 @@ class FishSenseApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppStateProvider()),
         ChangeNotifierProvider(create: (_) => PreferencesService()..load()),
         ChangeNotifierProvider(create: (_) => AuthService()..load()),
+        ChangeNotifierProvider(create: (_) => SyncSettings()..load()),
+        // Not lazy: sync starts with the app, not when a screen first asks.
+        ChangeNotifierProvider(lazy: false, create: _createSyncEngine),
       ],
       child: MaterialApp(
         title: 'FishSense',

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../logger.dart';
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
+import '../services/sync/sync_engine.dart';
+import '../services/sync/sync_settings.dart';
 
 /// User preferences panel: the optional account used to sync, and
 /// display units. Future toggles (offline mode, debug logging, etc.)
@@ -92,7 +94,9 @@ class _AccountTile extends StatelessWidget {
     } catch (e) {
       log.e('Sign-in failed', error: e);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Sign-in failed. Check your connection and try again.')),
+        const SnackBar(
+            content:
+                Text('Sign-in failed. Check your connection and try again.')),
       );
     }
   }
@@ -116,7 +120,8 @@ class _AccountTile extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sign out', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Sign out',
+                style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -223,11 +228,105 @@ class _AccountTile extends StatelessWidget {
               },
             ),
           ],
+          const Divider(height: 24, color: Colors.white24),
+          const _SyncSection(),
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: auth.busy ? null : () => _signOut(context),
             icon: const Icon(Icons.logout, color: Colors.redAccent),
-            label: const Text('Sign out', style: TextStyle(color: Colors.redAccent)),
+            label: const Text('Sign out',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sync controls, shown only to a signed-in user: automatic sync (like
+/// Google Photos backup), whether it may use cellular data, where it stands,
+/// and "Sync now".
+class _SyncSection extends StatelessWidget {
+  const _SyncSection();
+
+  static const _accent = Color(0xFF00AAA5);
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SyncSettings>();
+    final engine = context.watch<SyncEngine>();
+    final caption = TextStyle(color: Colors.grey[400], fontSize: 12);
+
+    Widget toggle(String title, String subtitle, bool value,
+            ValueChanged<bool> onChanged) =>
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          activeTrackColor: _accent,
+          title: Text(title, style: const TextStyle(color: Colors.white)),
+          subtitle: Text(subtitle, style: caption),
+          value: value,
+          onChanged: onChanged,
+        );
+
+    // The toggles' ink paints on the nearest Material, which the card's
+    // colored box would otherwise hide.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          toggle(
+            'Sync automatically',
+            'Upload captures to FishSense whenever allowed.',
+            settings.enabled,
+            settings.setEnabled,
+          ),
+          toggle(
+            'Use cellular data',
+            'About 9 MB per capture. Off: sync waits for Wi-Fi.',
+            settings.useCellular,
+            settings.setUseCellular,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                engine.running
+                    ? Icons.cloud_sync
+                    : engine.backlog.captures > 0 ||
+                            engine.backlog.measurements > 0
+                        ? Icons.cloud_upload_outlined
+                        : Icons.cloud_done_outlined,
+                color: Colors.white70,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  engine.statusText,
+                  key: const Key('sync-status'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          if (engine.lastError case final error? when !engine.running) ...[
+            const SizedBox(height: 4),
+            Text(error,
+                style: TextStyle(color: Colors.orange[300], fontSize: 12)),
+          ],
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: engine.canSyncNow ? engine.syncNow : null,
+            icon: engine.running
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            label: const Text('Sync now'),
           ),
         ],
       ),

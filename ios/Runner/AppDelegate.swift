@@ -7,6 +7,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     private var arViewPlatformFactory: ARViewPlatformViewFactory?
     private var arkitManager: ARKitManager?
     private var fishSenseChannel: FishSenseChannel?
+    private var networkStatusChannel: NetworkStatusChannel?
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: any FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
@@ -19,5 +20,8 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
         arkitManager = ARKitManager(factory: arViewPlatformFactory!)
         fishSenseChannel = FishSenseChannel(arkitManager: arkitManager!)
         fishSenseChannel?.setup(messenger: messenger)
+
+        networkStatusChannel = NetworkStatusChannel()
+        networkStatusChannel?.setup(messenger: messenger)
     }
 }

@@ -18,6 +18,7 @@
 		525241432E43C5F80077EA5D /* ARViewPlatformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241422E43C5F80077EA5D /* ARViewPlatformView.swift */; };
 		525241442E43C5F80077EA5D /* ARKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241452E43C5F80077EA5D /* ARKitManager.swift */; };
 		525241462E43C5F80077EA5D /* FishSenseChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241472E43C5F80077EA5D /* FishSenseChannel.swift */; };
+		525241482E43C5F80077EA5D /* NetworkStatusChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525241492E43C5F80077EA5D /* NetworkStatusChannel.swift */; };
 		6F5BCAFEC9B71456D0DB73AD /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEC613A8E7EAF7422D4D0086 /* Pods_Runner.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -64,6 +65,7 @@
 		525241422E43C5F80077EA5D /* ARViewPlatformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewPlatformView.swift; sourceTree = "<group>"; };
 		525241452E43C5F80077EA5D /* ARKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARKitManager.swift; sourceTree = "<group>"; };
 		525241472E43C5F80077EA5D /* FishSenseChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FishSenseChannel.swift; sourceTree = "<group>"; };
+		525241492E43C5F80077EA5D /* NetworkStatusChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkStatusChannel.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 				525241422E43C5F80077EA5D /* ARViewPlatformView.swift */,
 				525241452E43C5F80077EA5D /* ARKitManager.swift */,
 				525241472E43C5F80077EA5D /* FishSenseChannel.swift */,
+				525241492E43C5F80077EA5D /* NetworkStatusChannel.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -445,6 +448,7 @@
 				525241432E43C5F80077EA5D /* ARViewPlatformView.swift in Sources */,
 				525241442E43C5F80077EA5D /* ARKitManager.swift in Sources */,
 				525241462E43C5F80077EA5D /* FishSenseChannel.swift in Sources */,
+				525241482E43C5F80077EA5D /* NetworkStatusChannel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

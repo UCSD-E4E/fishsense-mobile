@@ -1,0 +1,2277 @@
+{
+  "components": {
+    "schemas": {
+      "CaptureCommit": {
+        "additionalProperties": true,
+        "description": "Everything the app recorded about one capture. Fields this API doesn't\nmodel are allowed, and kept in the manifest.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "camera_pose": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 16,
+                "minItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera Pose"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "captured_by_sub": {
+            "title": "Captured By Sub",
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceGeometry"
+          },
+          "core_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Version"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/DepthGeometry"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/DeclaredFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "intrinsics": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 9,
+            "minItems": 9,
+            "title": "Intrinsics",
+            "type": "array"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measurements": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MeasurementVersion"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "orientation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "portrait",
+                  "landscape"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orientation"
+          }
+        },
+        "required": [
+          "captured_at",
+          "captured_by_sub",
+          "device",
+          "intrinsics",
+          "depth",
+          "confidence",
+          "files"
+        ],
+        "title": "CaptureCommit",
+        "type": "object"
+      },
+      "CapturePage": {
+        "properties": {
+          "captures": {
+            "items": {
+              "$ref": "#/components/schemas/CaptureSummaryView"
+            },
+            "title": "Captures",
+            "type": "array"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          }
+        },
+        "required": [
+          "captures",
+          "next"
+        ],
+        "title": "CapturePage",
+        "type": "object"
+      },
+      "CaptureSummaryView": {
+        "properties": {
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "client_capture_uuid": {
+            "format": "uuid",
+            "title": "Client Capture Uuid",
+            "type": "string"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "place_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Name"
+          },
+          "rgb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rgb Url"
+          }
+        },
+        "required": [
+          "client_capture_uuid",
+          "captured_at",
+          "latitude",
+          "longitude",
+          "place_name",
+          "length_m",
+          "rgb_url"
+        ],
+        "title": "CaptureSummaryView",
+        "type": "object"
+      },
+      "CaptureView": {
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "camera_pose": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera Pose"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "client_capture_uuid": {
+            "format": "uuid",
+            "title": "Client Capture Uuid",
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceGeometry"
+          },
+          "core_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Version"
+          },
+          "current_measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "depth": {
+            "$ref": "#/components/schemas/DepthGeometry"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileView"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "intrinsics": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Intrinsics",
+            "type": "array"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest": {
+            "additionalProperties": true,
+            "title": "Manifest",
+            "type": "object"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementView"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "orientation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orientation"
+          }
+        },
+        "required": [
+          "client_capture_uuid",
+          "captured_at",
+          "device",
+          "app_version",
+          "core_version",
+          "model_version",
+          "location",
+          "orientation",
+          "intrinsics",
+          "camera_pose",
+          "depth",
+          "confidence",
+          "mask",
+          "files",
+          "measurements",
+          "current_measurement",
+          "manifest"
+        ],
+        "title": "CaptureView",
+        "type": "object"
+      },
+      "Cleared": {
+        "properties": {
+          "cleared": {
+            "title": "Cleared",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cleared"
+        ],
+        "title": "Cleared",
+        "type": "object"
+      },
+      "ConfidenceGeometry": {
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "row_bytes": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Bytes"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "ConfidenceGeometry",
+        "type": "object"
+      },
+      "DeclaredFile": {
+        "properties": {
+          "role": {
+            "enum": [
+              "rgb_jpeg",
+              "rgb_lossless",
+              "depth_f32",
+              "confidence_u8",
+              "mask_u8"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "minimum": 0.0,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "role",
+          "sha256",
+          "size"
+        ],
+        "title": "DeclaredFile",
+        "type": "object"
+      },
+      "DepthGeometry": {
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "row_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Row Bytes",
+            "type": "integer"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "row_bytes"
+        ],
+        "title": "DepthGeometry",
+        "type": "object"
+      },
+      "Device": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "lite",
+              "lite_flatport",
+              "mobile",
+              "multilens",
+              "mono",
+              "scout"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "serial"
+        ],
+        "title": "Device",
+        "type": "object"
+      },
+      "DeviceCreate": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "lite",
+              "lite_flatport",
+              "mobile",
+              "multilens",
+              "mono",
+              "scout"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "serial"
+        ],
+        "title": "DeviceCreate",
+        "type": "object"
+      },
+      "DeviceInfo": {
+        "properties": {
+          "info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Info"
+          },
+          "install_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Install Id",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "install_id"
+        ],
+        "title": "DeviceInfo",
+        "type": "object"
+      },
+      "Dive": {
+        "properties": {
+          "calibration_source_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Source Number"
+          },
+          "calibration_target_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Target Number"
+          },
+          "dived_at": {
+            "format": "date-time",
+            "title": "Dived At",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "high",
+              "none"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "slate_template_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slate Template Number"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "dived_at",
+          "priority",
+          "slate_template_number",
+          "calibration_target_number",
+          "calibration_source_number"
+        ],
+        "title": "Dive",
+        "type": "object"
+      },
+      "FileView": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "role",
+          "sha256",
+          "size",
+          "content_type",
+          "url"
+        ],
+        "title": "FileView",
+        "type": "object"
+      },
+      "Flagged": {
+        "properties": {
+          "flagged": {
+            "title": "Flagged",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "flagged"
+        ],
+        "title": "Flagged",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Location": {
+        "properties": {
+          "horizontal_accuracy_m": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizontal Accuracy M"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "place_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Name"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "Location",
+        "type": "object"
+      },
+      "MaskGeometry": {
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "MaskGeometry",
+        "type": "object"
+      },
+      "MeasurementVersion": {
+        "properties": {
+          "algorithm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorithm"
+          },
+          "algorithm_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorithm Version"
+          },
+          "client_measurement_uuid": {
+            "format": "uuid",
+            "title": "Client Measurement Uuid",
+            "type": "string"
+          },
+          "core_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Version"
+          },
+          "fork": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "length_m": {
+            "exclusiveMinimum": 0.0,
+            "title": "Length M",
+            "type": "number"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "origin": {
+            "enum": [
+              "auto",
+              "manual",
+              "unknown"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "snout": {
+            "$ref": "#/components/schemas/Point"
+          }
+        },
+        "required": [
+          "client_measurement_uuid",
+          "measured_at",
+          "length_m",
+          "snout",
+          "fork",
+          "origin"
+        ],
+        "title": "MeasurementVersion",
+        "type": "object"
+      },
+      "MeasurementView": {
+        "properties": {
+          "algorithm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorithm"
+          },
+          "algorithm_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorithm Version"
+          },
+          "client_measurement_uuid": {
+            "format": "uuid",
+            "title": "Client Measurement Uuid",
+            "type": "string"
+          },
+          "core_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Version"
+          },
+          "fork": {
+            "$ref": "#/components/schemas/Point"
+          },
+          "length_m": {
+            "title": "Length M",
+            "type": "number"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "snout": {
+            "$ref": "#/components/schemas/Point"
+          }
+        },
+        "required": [
+          "client_measurement_uuid",
+          "measured_at",
+          "length_m",
+          "snout",
+          "fork",
+          "origin",
+          "algorithm",
+          "algorithm_version",
+          "core_version",
+          "model_version"
+        ],
+        "title": "MeasurementView",
+        "type": "object"
+      },
+      "MyMembership": {
+        "properties": {
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "is_admin"
+        ],
+        "title": "MyMembership",
+        "type": "object"
+      },
+      "MyTenant": {
+        "properties": {
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "role",
+          "is_admin"
+        ],
+        "title": "MyTenant",
+        "type": "object"
+      },
+      "Point": {
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Point",
+        "type": "object"
+      },
+      "Upload": {
+        "properties": {
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "method": {
+            "const": "PUT",
+            "default": "PUT",
+            "title": "Method",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "rgb_jpeg",
+              "rgb_lossless",
+              "depth_f32",
+              "confidence_u8",
+              "mask_u8"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "url",
+          "headers"
+        ],
+        "title": "Upload",
+        "type": "object"
+      },
+      "UploadGrant": {
+        "properties": {
+          "already_committed": {
+            "title": "Already Committed",
+            "type": "boolean"
+          },
+          "uploads": {
+            "items": {
+              "$ref": "#/components/schemas/Upload"
+            },
+            "title": "Uploads",
+            "type": "array"
+          }
+        },
+        "required": [
+          "already_committed",
+          "uploads"
+        ],
+        "title": "UploadGrant",
+        "type": "object"
+      },
+      "UploadRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/DeclaredFile"
+            },
+            "minItems": 1,
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "UploadRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "FishSense Services API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/me/memberships": {
+      "get": {
+        "description": "The tenants the caller belongs to (a partner's is their org's).",
+        "operationId": "list_my_memberships",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MyTenant"
+                  },
+                  "title": "Response List My Memberships",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Memberships"
+      }
+    },
+    "/tenants/{slug}/devices": {
+      "get": {
+        "operationId": "list_devices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  },
+                  "title": "Response List Devices",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Devices"
+      },
+      "post": {
+        "operationId": "create_device",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Device"
+      }
+    },
+    "/tenants/{slug}/dives": {
+      "get": {
+        "operationId": "list_dives",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Dive"
+                  },
+                  "title": "Response List Dives",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Dives"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/calibration-refusal": {
+      "delete": {
+        "description": "Clear dive ``number``'s standing calibration refusal, so it is\nfitted again (idempotent): for a change its labels don't show.",
+        "operationId": "clear_dive_calibration_refusal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "why, kept with the clear",
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "why, kept with the clear",
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Dive Calibration Refusal"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/calibration-source": {
+      "delete": {
+        "description": "Unlink dive ``number`` from any borrowed calibration (idempotent).",
+        "operationId": "clear_dive_calibration_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Dive Calibration Source"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/calibration-source/{source_number}": {
+      "put": {
+        "description": "Dive ``number`` borrows dive ``source_number``'s laser calibration.\n\n400 on a self-link; 404 if either dive is missing from the tenant.",
+        "operationId": "set_dive_calibration_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "source_number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Source Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dive"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Dive Calibration Source"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/calibration-target": {
+      "delete": {
+        "description": "Unlink dive ``number`` from any calibration target (idempotent): it\nleaves the checkerboard cohort. A standing refusal is left as it is.",
+        "operationId": "clear_dive_calibration_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Dive Calibration Target"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/calibration-target/{target_number}": {
+      "put": {
+        "description": "Dive ``number`` was shot against calibration target\n``target_number``: it enters the checkerboard cohort, and a standing\ncalibration refusal expires.\n\n404 if the dive is missing from the tenant or no target has that\nnumber.",
+        "operationId": "set_dive_calibration_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "target_number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Target Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dive"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Dive Calibration Target"
+      }
+    },
+    "/tenants/{slug}/dives/{number}/labels/{kind}/needs-reprocess": {
+      "delete": {
+        "description": "Withdraw a redraw of dive ``number``'s ``kind`` frames (idempotent:\n0 when none was asked for).",
+        "operationId": "clear_needs_reprocess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "laser",
+                "head_tail",
+                "species",
+                "slate"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cleared"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Needs Reprocess"
+      },
+      "put": {
+        "description": "Redraw dive ``number``'s ``kind`` frames: the dive re-enters that\nkind's preprocessing, and the JPEGs are redrawn where they are.\nIncomplete labels only unless ``only_incomplete=false``.",
+        "operationId": "raise_needs_reprocess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "laser",
+                "head_tail",
+                "species",
+                "slate"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "only_incomplete",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Only Incomplete",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Flagged"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Raise Needs Reprocess"
+      }
+    },
+    "/tenants/{slug}/label-studio-projects": {
+      "get": {
+        "description": "Label Studio project ids with live labels of ``kind``.",
+        "operationId": "list_label_studio_project_ids",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "laser",
+                "head_tail",
+                "species",
+                "slate"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomplete",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Incomplete",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "laser only: the auto-accept gate is done here",
+            "in": "query",
+            "name": "gated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "laser only: the auto-accept gate is done here",
+              "title": "Gated"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "title": "Response List Label Studio Project Ids",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Label Studio Project Ids"
+      }
+    },
+    "/tenants/{slug}/membership": {
+      "get": {
+        "operationId": "get_my_membership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyMembership"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Membership"
+      }
+    },
+    "/tenants/{slug}/mobile/captures": {
+      "get": {
+        "operationId": "list_mobile_captures",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapturePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Captures"
+      }
+    },
+    "/tenants/{slug}/mobile/captures/{client_capture_uuid}": {
+      "get": {
+        "operationId": "get_mobile_capture",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "client_capture_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Client Capture Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Capture"
+      },
+      "put": {
+        "operationId": "commit_mobile_capture",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "client_capture_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Client Capture Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureCommit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Commit"
+      }
+    },
+    "/tenants/{slug}/mobile/captures/{client_capture_uuid}/measurements": {
+      "post": {
+        "operationId": "add_mobile_measurement_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "client_capture_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Client Capture Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Version"
+      }
+    },
+    "/tenants/{slug}/mobile/captures/{client_capture_uuid}/uploads": {
+      "post": {
+        "operationId": "request_mobile_capture_uploads",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "client_capture_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Client Capture Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Uploads"
+      }
+    }
+  }
+}
