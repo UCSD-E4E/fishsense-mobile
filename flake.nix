@@ -55,6 +55,7 @@
             cocoapods
             ruby             # Fastlane (Gemfile)
             bundler
+            swiftlint        # same `swiftlint lint --strict ios/Runner` CI runs
           ];
 
           # bindgen (ort crate) needs libclang.

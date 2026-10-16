@@ -1,13 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:uuid/uuid.dart';
 import '../models.dart';
 import '../services/camera_service.dart';
 import '../services/device_info_service.dart';
 import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
 import '../services/location_service.dart';
+import '../services/lossless_frame.dart';
 import '../services/measurement_check.dart';
+import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
 import '../logger.dart';
@@ -88,6 +91,12 @@ class _CameraScreenState extends State<CameraScreen>
       _processingMessage = 'Capturing photo...';
     });
 
+    // Files written for this capture; deleted in `finally` if no row ends
+    // up pointing at them, since per-row delete could never reach them.
+    Future<String?>? losslessFuture;
+    String? savedImageName;
+    int? insertedId;
+
     try {
       // Kick off GPS acquisition in parallel with the capture — the fix is
       // optional, so we don't want it on the critical path. Reverse-geocode
@@ -105,9 +114,29 @@ class _CameraScreenState extends State<CameraScreen>
         return;
       }
 
+      // The sync key is minted the moment the capture is taken.
+      final clientCaptureUuid = const Uuid().v4();
+      final provenanceFuture = ProvenanceService.get();
+
+      // Encode the exact frame the pipeline segments, losslessly, while
+      // inference runs. It's what makes the measurement reproducible; the
+      // JPEG below is lossy and only for display.
+      final losslessName = 'rgb_${captureResult.timestamp}.png';
+      losslessFuture = LosslessFrame.encodePng(
+        captureResult.rawImageBytes,
+        captureResult.imageWidth,
+        captureResult.imageHeight,
+      ).then<String?>(
+        (png) => FileStorageService.saveImage(png, customName: losslessName),
+        onError: (Object e) {
+          log.e('Failed to encode lossless frame', error: e);
+          return null;
+        },
+      );
+
       // Save RGB image
       final imageName = 'rgb_${captureResult.timestamp}.jpg';
-      final savedImageName = await FileStorageService.saveImage(
+      savedImageName = await FileStorageService.saveImage(
         captureResult.imageBytes,
         customName: imageName,
       );
@@ -175,6 +204,12 @@ class _CameraScreenState extends State<CameraScreen>
             'place=${placeName ?? "<not geocoded>"}');
       }
 
+      final provenance = await provenanceFuture;
+      final savedLosslessName = await losslessFuture;
+      if (savedLosslessName == null) {
+        log.e('Lossless frame not saved; this capture will not be reproducible');
+      }
+
       // Create photo model for database storage using factory method
       final photo = PhotoModel.create(
         utcUnixTimestamp: captureResult.timestamp,
@@ -201,12 +236,35 @@ class _CameraScreenState extends State<CameraScreen>
         placeName: placeName,
         intrinsicsBytes:
             PhotoModel.encodeIntrinsics(captureResult.cameraIntrinsics),
+        clientCaptureUuid: clientCaptureUuid,
+        installId: provenance.installId,
+        deviceModel: captureResult.deviceModel,
+        appVersion: provenance.appVersion,
+        coreVersion: provenance.coreVersion,
+        modelVersion: provenance.modelVersion,
+        depthRowBytes: captureResult.depthRowBytes,
+        confidenceRowBytes: captureResult.confidenceRowBytes,
+        cameraPoseBytes: PhotoModel.encodeDoubles(captureResult.cameraPose),
+        arkitTimestamp: captureResult.arkitTimestamp,
+        rgbLosslessPath: savedLosslessName,
       );
 
+      // The phone's own result is the capture's first measurement version.
+      // A frame that couldn't be measured has none.
+      final measurement = isFishUsable
+          ? provenance.measurement(
+              photoId: -1, // replaced with the new row's id on insert
+              lengthM: result.length,
+              snout: result.left,
+              fork: result.right,
+              origin: MeasurementOrigin.auto,
+            )
+          : null;
+
       // Save to database - equivalent to iOS insertPhoto(with:)
-      int? insertedId;
       if (photo != null) {
-        insertedId = await DatabaseModel.insertPhoto(photo);
+        insertedId =
+            await DatabaseModel.insertPhoto(photo, measurement: measurement);
         log.i('DB insert: id=$insertedId');
       } else {
         log.e('Failed to create PhotoModel from capture result');
@@ -243,12 +301,28 @@ class _CameraScreenState extends State<CameraScreen>
       log.e('Error in _capturePhoto', error: e);
       _showErrorDialog('Capture Error', 'An error occurred: $e');
     } finally {
+      if (insertedId == null) {
+        await _deleteOrphanedFiles(savedImageName, losslessFuture);
+      }
       if (mounted) {
         setState(() {
           _isProcessingPhoto = false;
           _processingMessage = '';
         });
       }
+    }
+  }
+
+  /// Remove a capture's image files when its row was never inserted.
+  Future<void> _deleteOrphanedFiles(
+    String? jpegName,
+    Future<String?>? losslessFuture,
+  ) async {
+    final pngName = await losslessFuture;
+    for (final name in [jpegName, pngName]) {
+      if (name == null) continue;
+      log.w('Deleting $name: no database row refers to it');
+      await FileStorageService.deleteImage(name);
     }
   }
 

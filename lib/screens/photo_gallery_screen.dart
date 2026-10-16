@@ -9,6 +9,7 @@ import '../services/file_storage_service.dart';
 import '../services/geocoding_service.dart';
 import '../services/mask_snap.dart';
 import '../services/preferences_service.dart';
+import '../services/provenance_service.dart';
 import '../services/rust_service.dart';
 import '../database.dart';
 import '../extensions.dart';
@@ -732,13 +733,15 @@ class _PhotoDetailModalState extends State<_PhotoDetailModal> {
         return;
       }
 
-      final saved = await DatabaseModel.updateMeasurement(
-        id: widget.photo.photoId,
-        snoutX: snappedSnout.x,
-        snoutY: snappedSnout.y,
-        forkX: snappedFork.x,
-        forkY: snappedFork.y,
-        fishLength: recomputed.length,
+      final provenance = await ProvenanceService.get();
+      final saved = await DatabaseModel.addMeasurement(
+        provenance.measurement(
+          photoId: widget.photo.photoId,
+          lengthM: recomputed.length,
+          snout: snappedSnout,
+          fork: snappedFork,
+          origin: MeasurementOrigin.manual,
+        ),
       );
       if (!saved) {
         _showError('Saved the new measurement in memory but the '

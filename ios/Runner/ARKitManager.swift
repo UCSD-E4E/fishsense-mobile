@@ -101,6 +101,9 @@ class ARKitManager {
         result([
             "success": true,
             "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "arkitTimestamp": currentFrame.timestamp,
+            "cameraPose": flattenTransform(currentFrame.camera.transform),
+            "deviceModel": deviceModelIdentifier(),
             "rgbImageData": rgb.jpegData,
             "rawRgbData": rgb.rawData,
             "imageWidth": rgb.width,
@@ -108,9 +111,13 @@ class ARKitManager {
             "depthData": depthDataBytes,
             "depthWidth": CVPixelBufferGetWidth(depthData),
             "depthHeight": CVPixelBufferGetHeight(depthData),
+            // ARKit may pad rows; the byte buffers above keep that padding,
+            // so the stride is needed to decode them.
+            "depthRowBytes": CVPixelBufferGetBytesPerRow(depthData),
             "confidenceData": confidenceDataBytes,
             "confidenceWidth": CVPixelBufferGetWidth(confidenceData),
             "confidenceHeight": CVPixelBufferGetHeight(confidenceData),
+            "confidenceRowBytes": CVPixelBufferGetBytesPerRow(confidenceData),
             "cameraIntrinsics": flattenIntrinsics(currentFrame.camera.intrinsics)
         ])
     }
@@ -153,10 +160,29 @@ class ARKitManager {
         guard let rawRgbData = cgImage.dataProvider?.data as Data? else {
             return .failure(.message("Failed to extract raw RGB data from image"))
         }
+        // The Rust pipeline reads the buffer as tightly packed RGBA. Padded
+        // rows would skew the image it segments, so make that visible.
+        if cgImage.bytesPerRow != cgImage.width * 4 {
+            logger.warning("RGB rows are padded: bytesPerRow=\(cgImage.bytesPerRow), width=\(cgImage.width)")
+        }
         guard let jpegData = UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.8) else {
             return .failure(.message("Failed to convert image to JPEG data"))
         }
         return .success(RgbFrame(jpegData: jpegData, rawData: rawRgbData, width: cgImage.width, height: cgImage.height))
+    }
+
+    /// Camera-to-world transform as 16 doubles, row-major.
+    private func flattenTransform(_ transform: simd_float4x4) -> [Double] {
+        let columns = [transform.columns.0, transform.columns.1, transform.columns.2, transform.columns.3]
+        return (0..<4).flatMap { row in columns.map { Double($0[row]) } }
+    }
+
+    /// Hardware model identifier, e.g. "iPhone16,1".
+    private func deviceModelIdentifier() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let bytes = withUnsafeBytes(of: &systemInfo.machine) { Array($0.prefix(while: { $0 != 0 })) }
+        return String(bytes: bytes, encoding: .utf8) ?? "unknown"
     }
 
     private func flattenIntrinsics(_ intrinsics: simd_float3x3) -> [Double] {

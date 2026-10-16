@@ -171,10 +171,13 @@ enum ExecutionError {
     ArrayShapeError(ndarray::ShapeError),
 }
 
+/// A keypoint in RGB-frame pixels. Floats, not integers: head/tail
+/// refinement yields sub-pixel positions, and truncating them would make the
+/// stored points disagree with the length computed from them.
 #[repr(C)]
 pub struct Coordinate {
-    x: usize,
-    y: usize
+    x: f32,
+    y: f32,
 }
 
 #[repr(C)]
@@ -189,11 +192,39 @@ pub struct ComputeLengthResult {
 }
 
 fn write_error_string(msg: &str) -> [c_char; 256] {
-    let mut buf = [0i8; 256];
-    for (i, b) in msg.bytes().take(255).enumerate() {
+    write_c_string(msg)
+}
+
+/// Copy `msg` into a null-terminated inline buffer, truncating to `N - 1` bytes.
+fn write_c_string<const N: usize>(msg: &str) -> [c_char; N] {
+    let mut buf = [0 as c_char; N];
+    for (i, b) in msg.bytes().take(N - 1).enumerate() {
         buf[i] = b as c_char;
     }
     buf
+}
+
+/// The fishsense-core release this bridge links, as its git tag. Kept in step
+/// with the `tag` in Cargo.toml by `core_version_matches_cargo_toml`.
+const CORE_VERSION: &str = "fishsense_core-v4.1.0";
+
+/// Provenance recorded with every measurement, so a result can be traced to
+/// the code and weights that produced it.
+#[repr(C)]
+pub struct PipelineVersions {
+    /// fishsense-core git tag, e.g. `fishsense_core-v4.1.0`. Null-terminated.
+    core_version: [c_char; 64],
+    /// Segmentation weights as `name/version@sha256[:12]`, e.g.
+    /// `fishial/1@f721445f37db`. The model is embedded at build time and
+    /// checked against fishsense-core's manifest, so the hash is what ran.
+    /// Null-terminated.
+    model_version: [c_char; 64],
+}
+
+fn model_version() -> String {
+    // `new()` only resolves the manifest entry; it doesn't build the ONNX
+    // session, so this is cheap even before the first capture.
+    FishSegmentation::new().model_id()
 }
 
 impl Display for ExecutionError {
@@ -345,102 +376,6 @@ fn do_compute_length(
     Ok((length, coords.head.0, coords.tail.0))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // ios_f32_array_data_to_ndarray
-
-    #[test]
-    fn f32_array_to_ndarray_correct_shape_and_values() {
-        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 3, 2).unwrap();
-
-        assert_eq!(result.shape(), &[2, 3]); // (height, width)
-        assert!((result[[0, 0]] - 1.0).abs() < 1e-6);
-        assert!((result[[0, 1]] - 2.0).abs() < 1e-6);
-        assert!((result[[0, 2]] - 3.0).abs() < 1e-6);
-        assert!((result[[1, 0]] - 4.0).abs() < 1e-6);
-        assert!((result[[1, 2]] - 6.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn f32_array_to_ndarray_1x1() {
-        let data: Vec<f32> = vec![99.0];
-        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 1, 1).unwrap();
-        assert_eq!(result.shape(), &[1, 1]);
-        assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
-    }
-
-    // Nothing may take the process down at the FFI boundary
-
-    #[test]
-    fn ffi_guard_turns_a_panic_into_the_fallback() {
-        init_tracing(); // panic hook: the message goes to tracing, not stderr
-        let result = ffi_guard(|| -> i32 { panic!("failed printing to stderr") }, |msg| {
-            assert_eq!(msg, "failed printing to stderr");
-            -1
-        });
-        assert_eq!(result, -1);
-        assert_eq!(ffi_guard(|| 7, |_| -1), 7);
-    }
-
-    #[test]
-    fn a_poisoned_lock_recovers_instead_of_failing_every_later_call() {
-        let mutex = std::sync::Arc::new(Mutex::new(41));
-        let poisoner = mutex.clone();
-        let _ = std::thread::spawn(move || {
-            let _guard = poisoner.lock().unwrap();
-            panic!("panicked while holding the model");
-        })
-        .join();
-        assert!(mutex.is_poisoned());
-
-        *lock_recovering(&mutex) += 1;
-        assert_eq!(*lock_recovering(&mutex), 42);
-    }
-
-    #[test]
-    fn init_logging_is_idempotent_and_accepts_null() {
-        unsafe { init_logging(c"com.aqua3d.fishsense.test".as_ptr()) };
-        unsafe { init_logging(std::ptr::null()) };
-        init_tracing();
-        info!("rust-bridge test event");
-    }
-
-    #[test]
-    fn no_fish_is_not_an_error() {
-        let result = into_ffi_result("compute_length", Err(ExecutionError::FishNotFound));
-        assert!(!result.fish_found);
-        assert_eq!(result.error_string[0], 0, "no error message");
-    }
-
-    #[test]
-    fn a_failed_measurement_carries_its_message() {
-        let shape_err = Array2::<f32>::from_shape_vec((2, 3), vec![1.0]).unwrap_err();
-        let result = into_ffi_result("recompute_length", Err(ExecutionError::ArrayShapeError(shape_err)));
-        assert!(!result.fish_found);
-        assert_ne!(result.error_string[0], 0);
-    }
-
-    // ExecutionError Display
-
-    #[test]
-    fn execution_error_fish_not_found_displays_correctly() {
-        let err = ExecutionError::FishNotFound;
-        assert_eq!(err.to_string(), "FishNotFound");
-    }
-
-    #[test]
-    fn execution_error_array_shape_error_is_non_empty() {
-        // Trigger a real ShapeError via mismatched dimensions
-        let shape_err = ndarray::Array2::<f32>::from_shape_vec((2, 3), vec![1.0, 2.0])
-            .unwrap_err();
-        let err = ExecutionError::ArrayShapeError(shape_err);
-        assert!(!err.to_string().is_empty());
-    }
-}
-
 /// Re-run only the plane-fit + length math against caller-supplied snout
 /// and fork pixel coordinates, reusing a previously-computed mask. Used by
 /// the manual-edit path where the user has dragged the keypoints to new
@@ -530,6 +465,24 @@ pub extern "C" fn compute_length(
     )
 }
 
+/// Versions of the measurement pipeline compiled into this build.
+#[unsafe(no_mangle)]
+pub extern "C" fn pipeline_versions() -> PipelineVersions {
+    ffi_guard(
+        || {
+            init_tracing();
+            PipelineVersions {
+                core_version: write_c_string(CORE_VERSION),
+                model_version: write_c_string(&model_version()),
+            }
+        },
+        |_| PipelineVersions {
+            core_version: write_c_string(CORE_VERSION),
+            model_version: write_c_string("unknown"),
+        },
+    )
+}
+
 /// Best-effort string from a `catch_unwind` payload. Rust panics carry
 /// either `&'static str` or `String` payloads in practice; anything else
 /// falls through to a placeholder.
@@ -579,8 +532,8 @@ impl ComputeLengthResult {
     fn failed(message: &str) -> Self {
         ComputeLengthResult {
             length: 0f32,
-            left: Coordinate { x: 0, y: 0 },
-            right: Coordinate { x: 0, y: 0 },
+            left: Coordinate { x: 0.0, y: 0.0 },
+            right: Coordinate { x: 0.0, y: 0.0 },
             fish_found: false,
             error_string: write_error_string(message),
         }
@@ -604,8 +557,8 @@ fn into_ffi_result(
             );
             ComputeLengthResult {
                 length,
-                left: Coordinate { x: snout[0] as usize, y: snout[1] as usize },
-                right: Coordinate { x: fork[0] as usize, y: fork[1] as usize },
+                left: Coordinate { x: snout[0], y: snout[1] },
+                right: Coordinate { x: fork[0], y: fork[1] },
                 fish_found: true,
                 error_string: [0i8; 256],
             }
@@ -618,5 +571,127 @@ fn into_ffi_result(
             warn!("{name} failed: {}", error);
             ComputeLengthResult::failed(&error.to_string())
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ios_f32_array_data_to_ndarray
+
+    #[test]
+    fn f32_array_to_ndarray_correct_shape_and_values() {
+        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 3, 2).unwrap();
+
+        assert_eq!(result.shape(), &[2, 3]); // (height, width)
+        assert!((result[[0, 0]] - 1.0).abs() < 1e-6);
+        assert!((result[[0, 1]] - 2.0).abs() < 1e-6);
+        assert!((result[[0, 2]] - 3.0).abs() < 1e-6);
+        assert!((result[[1, 0]] - 4.0).abs() < 1e-6);
+        assert!((result[[1, 2]] - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn f32_array_to_ndarray_1x1() {
+        let data: Vec<f32> = vec![99.0];
+        let result = ios_f32_array_data_to_ndarray(data.as_ptr(), 1, 1).unwrap();
+        assert_eq!(result.shape(), &[1, 1]);
+        assert!((result[[0, 0]] - 99.0).abs() < 1e-6);
+    }
+
+    // Nothing may take the process down at the FFI boundary
+
+    #[test]
+    fn ffi_guard_turns_a_panic_into_the_fallback() {
+        init_tracing(); // panic hook: the message goes to tracing, not stderr
+        let result = ffi_guard(|| -> i32 { panic!("failed printing to stderr") }, |msg| {
+            assert_eq!(msg, "failed printing to stderr");
+            -1
+        });
+        assert_eq!(result, -1);
+        assert_eq!(ffi_guard(|| 7, |_| -1), 7);
+    }
+
+    #[test]
+    fn a_poisoned_lock_recovers_instead_of_failing_every_later_call() {
+        let mutex = std::sync::Arc::new(Mutex::new(41));
+        let poisoner = mutex.clone();
+        let _ = std::thread::spawn(move || {
+            let _guard = poisoner.lock().unwrap();
+            panic!("panicked while holding the model");
+        })
+        .join();
+        assert!(mutex.is_poisoned());
+
+        *lock_recovering(&mutex) += 1;
+        assert_eq!(*lock_recovering(&mutex), 42);
+    }
+
+    #[test]
+    fn init_logging_is_idempotent_and_accepts_null() {
+        unsafe { init_logging(c"com.aqua3d.fishsense.test".as_ptr()) };
+        unsafe { init_logging(std::ptr::null()) };
+        init_tracing();
+        info!("rust-bridge test event");
+    }
+
+    #[test]
+    fn no_fish_is_not_an_error() {
+        let result = into_ffi_result("compute_length", Err(ExecutionError::FishNotFound));
+        assert!(!result.fish_found);
+        assert_eq!(result.error_string[0], 0, "no error message");
+    }
+
+    #[test]
+    fn a_failed_measurement_carries_its_message() {
+        let shape_err = Array2::<f32>::from_shape_vec((2, 3), vec![1.0]).unwrap_err();
+        let result = into_ffi_result("recompute_length", Err(ExecutionError::ArrayShapeError(shape_err)));
+        assert!(!result.fish_found);
+        assert_ne!(result.error_string[0], 0);
+    }
+
+    // Pipeline versions
+
+    #[test]
+    fn core_version_matches_cargo_toml() {
+        let cargo_toml = include_str!("../Cargo.toml");
+        assert!(
+            cargo_toml.contains(&format!("tag = \"{}\"", CORE_VERSION)),
+            "CORE_VERSION {CORE_VERSION} is not the fishsense-core tag in Cargo.toml",
+        );
+    }
+
+    #[test]
+    fn model_version_names_pinned_fishial_hash() {
+        let v = model_version();
+        assert!(v.starts_with("fishial/"), "{v}");
+        let hash = v.split('@').nth(1).expect("model id has an @hash");
+        assert_eq!(hash.len(), 12);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()), "{v}");
+    }
+
+    #[test]
+    fn write_c_string_truncates_and_terminates() {
+        let buf: [c_char; 4] = write_c_string("abcdef");
+        assert_eq!(buf, [b'a' as c_char, b'b' as c_char, b'c' as c_char, 0]);
+    }
+
+    // ExecutionError Display
+
+    #[test]
+    fn execution_error_fish_not_found_displays_correctly() {
+        let err = ExecutionError::FishNotFound;
+        assert_eq!(err.to_string(), "FishNotFound");
+    }
+
+    #[test]
+    fn execution_error_array_shape_error_is_non_empty() {
+        // Trigger a real ShapeError via mismatched dimensions
+        let shape_err = ndarray::Array2::<f32>::from_shape_vec((2, 3), vec![1.0, 2.0])
+            .unwrap_err();
+        let err = ExecutionError::ArrayShapeError(shape_err);
+        assert!(!err.to_string().is_empty());
     }
 }

@@ -27,6 +27,7 @@ test: flutter-deps rust
 lint: flutter-deps
 	cd rust-bridge && cargo fmt --check && cargo clippy -- -D warnings
 	flutter analyze
+	swiftlint lint --strict ios/Runner
 
 clean:
 	-flutter clean

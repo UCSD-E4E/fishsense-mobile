@@ -112,6 +112,9 @@ class ARKitService {
       final intrinsics = (result['cameraIntrinsics'] as List<dynamic>)
           .map((e) => e as double)
           .toList();
+      final cameraPose = (result['cameraPose'] as List<dynamic>?)
+          ?.map((e) => (e as num).toDouble())
+          .toList();
 
       final depthMap = ByteMatrixModel(
         bytes: depthData.toList(),
@@ -139,6 +142,11 @@ class ARKitService {
         confidenceMap: confidenceMap,
         cameraIntrinsics: intrinsics,
         timestamp: result['timestamp'],
+        depthRowBytes: result['depthRowBytes'] as int?,
+        confidenceRowBytes: result['confidenceRowBytes'] as int?,
+        cameraPose: cameraPose,
+        arkitTimestamp: (result['arkitTimestamp'] as num?)?.toDouble(),
+        deviceModel: result['deviceModel'] as String?,
       );
     } catch (e) {
       log.e('$_tag: Error capturing depth frame', error: e);
@@ -157,6 +165,11 @@ class CaptureResult {
   final ByteMatrixModel confidenceMap;
   final List<double> cameraIntrinsics;
   final int timestamp;
+  final int? depthRowBytes;         // Depth row stride, padding included
+  final int? confidenceRowBytes;    // Confidence row stride
+  final List<double>? cameraPose;   // Camera-to-world, 16 doubles row-major
+  final double? arkitTimestamp;     // ARFrame.timestamp (s of uptime)
+  final String? deviceModel;        // e.g. "iPhone16,1"
 
   const CaptureResult({
     required this.imageBytes,
@@ -167,5 +180,10 @@ class CaptureResult {
     required this.confidenceMap,
     required this.cameraIntrinsics,
     required this.timestamp,
+    this.depthRowBytes,
+    this.confidenceRowBytes,
+    this.cameraPose,
+    this.arkitTimestamp,
+    this.deviceModel,
   });
 }
