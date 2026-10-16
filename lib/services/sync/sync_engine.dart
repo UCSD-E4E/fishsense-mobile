@@ -78,6 +78,7 @@ class SyncEngine extends ChangeNotifier {
     Stream<NetworkStatus>? network,
     Stream<void>? changes,
     Future<String?> Function()? installId,
+    Future<String?> Function(double latitude, double longitude)? placeName,
     DateTime Function()? clock,
     bool watchLifecycle = true,
   })  : _auth = auth,
@@ -89,6 +90,7 @@ class SyncEngine extends ChangeNotifier {
         _networkStream = network,
         _changesStream = changes,
         _installId = installId ?? (() async => null),
+        _placeName = placeName,
         _now = clock ?? DateTime.now,
         _watchLifecycle = watchLifecycle;
 
@@ -101,6 +103,11 @@ class SyncEngine extends ChangeNotifier {
   final Stream<NetworkStatus>? _networkStream;
   final Stream<void>? _changesStream;
   final Future<String?> Function() _installId;
+  final Future<String?> Function(double latitude, double longitude)? _placeName;
+
+  /// Longest a sync waits for a missing place name before committing
+  /// without it.
+  static const _placeNameTimeout = Duration(seconds: 5);
   final DateTime Function() _now;
   final bool _watchLifecycle;
 
@@ -413,6 +420,15 @@ class SyncEngine extends ChangeNotifier {
       );
       photo = (await DatabaseModel.getPhotoWithBlobs(id))!;
     }
+    // A committed capture can't change on the server, so fill in a place
+    // name the capture missed (taken offline) now, while online, rather
+    // than never. Best effort: commit without it if it can't be had.
+    if (photo.placeName == null && photo.latitude != null && photo.longitude != null) {
+      if (await _resolvePlaceName(photo.latitude!, photo.longitude!) case final name?) {
+        await DatabaseModel.updatePlaceName(id, name);
+        photo = (await DatabaseModel.getPhotoWithBlobs(id))!;
+      }
+    }
     final captureUuid = photo.clientCaptureUuid;
     final captureTenant = photo.tenantSlug!;
     if (captureUuid == null) {
@@ -501,6 +517,17 @@ class SyncEngine extends ChangeNotifier {
       return _Result.synced;
     } catch (e, s) {
       return _onError(e, s, onRefused: (why) => DatabaseModel.setMeasurementSyncError(id, why));
+    }
+  }
+
+  Future<String?> _resolvePlaceName(double latitude, double longitude) async {
+    final resolve = _placeName;
+    if (resolve == null) return null;
+    try {
+      return await resolve(latitude, longitude).timeout(_placeNameTimeout);
+    } catch (e) {
+      log.w('Place name unavailable; syncing without it', error: e);
+      return null;
     }
   }
 
