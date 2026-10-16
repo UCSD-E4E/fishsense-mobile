@@ -97,9 +97,16 @@ class FishSenseApp extends StatelessWidget {
 
   /// App theme - equivalent to iOS color scheme
   ThemeData _buildTheme() {
+    const accent = Color(0xFF00AAA5);
     return ThemeData(
-      primarySwatch: Colors.cyan,
-      primaryColor: const Color(0xFF00AAA5),
+      // Material 3 ignores primarySwatch, so without a color scheme every
+      // widget that doesn't set its own color falls back to M3's default
+      // purple. Seed it from the app's accent instead.
+      colorScheme: ColorScheme.fromSeed(seedColor: accent).copyWith(
+        primary: accent,
+        onPrimary: Colors.black,
+      ),
+      primaryColor: accent,
       scaffoldBackgroundColor: Colors.black,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.black,

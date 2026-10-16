@@ -57,6 +57,21 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Outlined buttons in the accent, matching the filled "Sign in"; grey
+/// when disabled, border included.
+final _outlinedAccent = OutlinedButton.styleFrom(
+  foregroundColor: const Color(0xFF00AAA5),
+  disabledForegroundColor: Colors.grey[600],
+).copyWith(
+  side: WidgetStateProperty.resolveWith(
+    (states) => BorderSide(
+      color: states.contains(WidgetState.disabled)
+          ? Colors.grey[700]!
+          : const Color(0xFF00AAA5),
+    ),
+  ),
+);
+
 /// Rounded card shared by the settings tiles.
 class _Card extends StatelessWidget {
   final Widget child;
@@ -186,6 +201,7 @@ class _AccountTile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
+              style: _outlinedAccent,
               onPressed: auth.busy ? null : () => _signIn(context),
               child: const Text('Sign in again'),
             ),
@@ -318,6 +334,7 @@ class _SyncSection extends StatelessWidget {
           ],
           const SizedBox(height: 8),
           OutlinedButton.icon(
+            style: _outlinedAccent,
             onPressed: engine.canSyncNow ? engine.syncNow : null,
             icon: engine.running
                 ? const SizedBox(
