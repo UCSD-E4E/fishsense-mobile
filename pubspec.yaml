@@ -1,7 +1,7 @@
 name: fishsense_android
 description: FishSense Android app for fish length measurement and species classification
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

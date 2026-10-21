@@ -2,64 +2,38 @@ name: Build
 
 on: [push]
 
-# Branching model (see CONTRIBUTING.md):
-#   develop  -> every push uploads to TestFlight for internal testers
-#   main     -> release-please keeps a release PR open; merging it tags vX.Y.Z,
-#               publishes a GitHub Release, and ships that build to the external
-#               TestFlight group(s). A sync PR then brings main back into develop.
+# Release rings (see CONTRIBUTING.md). A version starts on develop and moves,
+# unchanged, through staging to main; only the build number changes.
+#   develop  -> TestFlight, internal testers, on every push. release-please
+#               keeps a release PR open here; merging it starts the next
+#               version (bumps pubspec.yaml, tags vX.Y.Z, writes the changelog).
+#   staging  -> TestFlight, external beta groups, on every push
+#   main     -> App Store, uploaded and submitted for review, on every push
 jobs:
   release-please:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/develop' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-    - id: release
-      uses: googleapis/release-please-action@v5
+    - uses: googleapis/release-please-action@v5
       with:
         # PRs opened with GITHUB_TOKEN don't trigger workflows, so required
         # checks never report on them. A PAT/App token avoids that.
         token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
         config-file: release-please-config.json
         manifest-file: .release-please-manifest.json
-        # Without this release-please targets the repo's default branch
-        # (develop), so the release PR lands there and never tags or ships.
-        target-branch: main
-
-  sync-develop:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-    - name: 🔁 Open main -> develop sync PR
-      env:
-        GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        TAG: ${{ needs.release-please.outputs.tag_name }}
-      run: |
-        gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
-          --title "chore: sync main into develop after $TAG" \
-          --body "Brings the $TAG version bump and changelog back into develop. Merge with a merge commit."
+        target-branch: develop
 
   build:
-    needs: release-please
-    # release-please is skipped off main; still build everywhere else.
-    if: ${{ !cancelled() && !failure() }}
     runs-on: macos-15
     timeout-minutes: 120
     permissions:
       contents: read
       actions: write
     env:
-      # internal: develop pushes. external: the push to main that created a release.
-      DEPLOY: ${{ github.ref == 'refs/heads/develop' && 'internal' || (needs.release-please.outputs.release_created == 'true' && 'external' || '') }}
-      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+      DEPLOY: ${{ github.ref == 'refs/heads/develop' && 'internal' || github.ref == 'refs/heads/staging' && 'external' || github.ref == 'refs/heads/main' && 'appstore' || '' }}
       TESTFLIGHT_EXTERNAL_GROUPS: ${{ vars.TESTFLIGHT_EXTERNAL_GROUPS }}
       FASTLANE_TEAM_ID: ${{ secrets.FASTLANE_TEAM_ID }}
       FASTLANE_ITC_TEAM_ID: ${{ secrets.FASTLANE_ITC_TEAM_ID }}
@@ -216,21 +190,24 @@ jobs:
         bundle install
         bundle exec fastlane run increment_build_number build_number:${{ github.run_number }}
 
-    - name: 🚀 Publish to TestFlight
+    - name: 🚀 Publish
       if: ${{ env.DEPLOY != '' }}
       run: |
         if [ -z "${FASTLANE_TEAM_ID}" ]; then
-          echo "FASTLANE_TEAM_ID is required for TestFlight upload."
+          echo "FASTLANE_TEAM_ID is required to upload."
           exit 1
         fi
+        # Notes for testers and the App Store come from the GitHub Release
+        # release-please made when this version was started on develop.
+        VERSION="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
+        RELEASE_NOTES="$(gh release view "v$VERSION" --json body -q .body 2>/dev/null || true)"
+        export RELEASE_NOTES APP_VERSION="$VERSION"
         cd ios
         bundle install
-        if [ "$DEPLOY" = external ]; then
-          RELEASE_NOTES="$(gh release view "$RELEASE_TAG" --json body -q .body)"
-          export RELEASE_NOTES
-          bundle exec fastlane release
-        else
-          bundle exec fastlane beta
-        fi
+        case "$DEPLOY" in
+          internal) bundle exec fastlane beta ;;
+          external) bundle exec fastlane beta_external ;;
+          appstore) bundle exec fastlane app_store ;;
+        esac
       env:
         GH_TOKEN: ${{ github.token }}
