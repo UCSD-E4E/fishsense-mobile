@@ -28,10 +28,10 @@ platform :ios do
     upload_to_testflight(skip_waiting_for_build_processing: true, api_key: api_key)
   end
 
-  desc "Build, upload, and distribute to external TestFlight groups (release)"
-  lane :release do
+  desc "Build, upload, and distribute to external TestFlight groups (staging)"
+  lane :beta_external do
     groups = ENV.fetch("TESTFLIGHT_EXTERNAL_GROUPS", "").split(",").map(&:strip).reject(&:empty?)
-    UI.user_error!("TESTFLIGHT_EXTERNAL_GROUPS is required for a release") if groups.empty?
+    UI.user_error!("TESTFLIGHT_EXTERNAL_GROUPS is required for external testing") if groups.empty?
 
     api_key = build_and_sign
     # External distribution waits for processing so the build can be
@@ -42,6 +42,31 @@ platform :ios do
       groups: groups,
       changelog: ENV.fetch("RELEASE_NOTES", "").strip.empty? ? "Bug fixes and improvements." : ENV["RELEASE_NOTES"],
       notify_external_testers: true,
+    )
+  end
+
+  desc "Build, upload, and submit for App Store review (main)"
+  lane :app_store do
+    api_key = build_and_sign
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+    app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+    notes = ENV.fetch("RELEASE_NOTES", "").strip
+    # "What's New" can only be set on updates, not on the app's first version.
+    first_release = app.get_live_app_store_version.nil?
+
+    # The listing (description, screenshots, review info) is kept in App
+    # Store Connect; only the build and its release notes come from here.
+    upload_to_app_store(
+      api_key: api_key,
+      app_version: ENV.fetch("APP_VERSION"),
+      skip_screenshots: true,
+      skip_metadata: first_release || notes.empty?,
+      release_notes: { "default" => notes },
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      run_precheck_before_submit: false,
+      submission_information: { add_id_info_uses_idfa: false },
     )
   end
 

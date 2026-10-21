@@ -3,14 +3,14 @@ name: Branch Policy
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-    branches: [main, develop]
+    branches: [main, staging, develop]
 
 permissions:
   pull-requests: read
 
 jobs:
-  # Only develop (a promotion), hotfix/* and release-please's own branch may
-  # merge into main.
+  # Versions move develop -> staging -> main. hotfix/* may go straight into
+  # staging when develop has already moved on to the next version.
   source-branch:
     runs-on: ubuntu-latest
     steps:
@@ -19,10 +19,11 @@ jobs:
         BASE: ${{ github.base_ref }}
         HEAD: ${{ github.head_ref }}
       run: |
-        if [ "$BASE" != main ]; then exit 0; fi
-        case "$HEAD" in
-          develop|hotfix/*|release-please--*) echo "OK: $HEAD -> main" ;;
-          *) echo "::error::PRs into main must come from develop or hotfix/* (got $HEAD)"; exit 1 ;;
+        case "$BASE:$HEAD" in
+          staging:develop|staging:hotfix/*|main:staging) echo "OK: $HEAD -> $BASE" ;;
+          staging:*) echo "::error::PRs into staging must come from develop or hotfix/* (got $HEAD)"; exit 1 ;;
+          main:*) echo "::error::PRs into main must come from staging (got $HEAD)"; exit 1 ;;
+          *) exit 0 ;;
         esac
 
   # PRs into develop are squash-merged, so the PR title becomes the commit
