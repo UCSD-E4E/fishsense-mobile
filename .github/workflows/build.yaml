@@ -26,6 +26,9 @@ jobs:
         token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
         config-file: release-please-config.json
         manifest-file: .release-please-manifest.json
+        # Without this release-please targets the repo's default branch
+        # (develop), so the release PR lands there and never tags or ships.
+        target-branch: main
 
   sync-develop:
     needs: release-please
